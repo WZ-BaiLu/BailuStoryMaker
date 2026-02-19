@@ -506,7 +506,32 @@ class App {
         const description = document.getElementById('char-description').value;
         const notes = document.getElementById('char-notes').value;
 
-        this.state.updateCharacter(characterId, { name, description, notes });
+        // 收集属性
+        const attributes = { current: {} };
+        document.querySelectorAll('#char-attributes .attribute-entry').forEach(entry => {
+            const attrName = entry.querySelector('.attr-name').value.trim();
+            const attrValue = entry.querySelector('.attr-value').value.trim();
+            if (attrName && attrValue) {
+                attributes.current[attrName] = attrValue;
+            }
+        });
+
+        // 收集能力
+        const abilities = [];
+        document.querySelectorAll('#char-abilities .ability-entry').forEach(entry => {
+            const abilityName = entry.querySelector('.ability-name').value.trim();
+            const abilityLevel = entry.querySelector('.ability-level').value;
+            const abilityDesc = entry.querySelector('.ability-desc').value.trim();
+            if (abilityName) {
+                abilities.push({
+                    name: abilityName,
+                    level: parseInt(abilityLevel) || 1,
+                    description: abilityDesc
+                });
+            }
+        });
+
+        this.state.updateCharacter(characterId, { name, description, notes, attributes, abilities });
         this.showToast(i18n.t('messages.characterSaved'), 'success');
         this.renderCharacters();
     }
