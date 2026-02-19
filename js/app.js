@@ -428,7 +428,7 @@ class App {
         const chapterId = document.getElementById('prompt-chapter').value;
         const templateName = document.getElementById('prompt-template').value;
 
-        const contextBuilder = new ContextBuilder(story);
+        const contextBuilder = new contextBuilder(story);
         const context = contextBuilder.buildContext(chapterId);
 
         const promptGenerator = new PromptGenerator(Constants.PROMPT_TEMPLATES);

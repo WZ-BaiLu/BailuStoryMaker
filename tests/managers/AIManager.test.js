@@ -297,7 +297,7 @@ describe('AIManager', () => {
         });
 
         it('should handle empty message', async () => {
-            const result = await manager.handleSendMessage('');
+            await manager.handleSendMessage('');
             expect(aiServiceMock.sendMessage).not.toHaveBeenCalled();
         });
     });
