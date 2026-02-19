@@ -2,8 +2,25 @@
 
 class FileManager {
     // Save story as JSON file
-    static saveAsJSON(data, filename = 'story.json') {
+    static async saveAsJSON(data, filename = 'story.json') {
         try {
+            // Try using File System Access API first (modern browsers)
+            if ('showSaveFilePicker' in window) {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'JSON Files',
+                        accept: { 'application/json': ['.json'] }
+                    }]
+                });
+
+                const writable = await handle.createWritable();
+                await writable.write(JSON.stringify(data, null, 2));
+                await writable.close();
+                return true;
+            }
+
+            // Fallback to traditional download (older browsers)
             const jsonString = JSON.stringify(data, null, 2);
             const blob = new Blob([jsonString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -16,6 +33,10 @@ class FileManager {
             URL.revokeObjectURL(url);
             return true;
         } catch (error) {
+            // User cancelled the file picker
+            if (error.name === 'AbortError') {
+                return false;
+            }
             console.error('Save failed:', error);
             throw new Error(`保存失败: ${error.message}`);
         }

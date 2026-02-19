@@ -16,12 +16,14 @@ class ExportImportManager {
     /**
      * Handle export operation
      */
-    handleExport() {
+    async handleExport() {
         try {
             const story = this.state.saveStory();
             const filename = `${story.metadata.title}.json`;
-            FileManager.saveAsJSON(story, filename);
-            this.app.notificationManager.showSuccess(i18n.t('status.saved'));
+            const success = await FileManager.saveAsJSON(story, filename);
+            if (success) {
+                this.app.notificationManager.showSuccess(i18n.t('status.saved'));
+            }
         } catch (error) {
             this.app.notificationManager.showError(error.message);
         }

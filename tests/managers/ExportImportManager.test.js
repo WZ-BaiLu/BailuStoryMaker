@@ -9,12 +9,14 @@ class ExportImportManager {
         this.state = state;
     }
 
-    handleExport() {
+    async handleExport() {
         try {
             const story = this.state.saveStory();
             const filename = `${story.metadata.title}.json`;
-            FileManager.saveAsJSON(story, filename);
-            this.app.notificationManager.showSuccess(i18n.t('status.saved'));
+            const success = await FileManager.saveAsJSON(story, filename);
+            if (success) {
+                this.app.notificationManager.showSuccess(i18n.t('status.saved'));
+            }
         } catch (error) {
             this.app.notificationManager.showError(error.message);
         }
@@ -82,30 +84,39 @@ describe('ExportImportManager', () => {
     });
 
     describe('handleExport', () => {
-        it('should save story to file', () => {
-            exportImportManager.handleExport();
+        it('should save story to file', async () => {
+            FileManager.saveAsJSON.mockResolvedValue(true);
+            await exportImportManager.handleExport();
             expect(mockState.saveStory).toHaveBeenCalled();
         });
 
-        it('should use story title as filename', () => {
-            exportImportManager.handleExport();
+        it('should use story title as filename', async () => {
+            FileManager.saveAsJSON.mockResolvedValue(true);
+            await exportImportManager.handleExport();
             expect(FileManager.saveAsJSON).toHaveBeenCalledWith(
                 expect.any(Object),
                 'Test Story.json'
             );
         });
 
-        it('should show success notification', () => {
-            exportImportManager.handleExport();
+        it('should show success notification', async () => {
+            FileManager.saveAsJSON.mockResolvedValue(true);
+            await exportImportManager.handleExport();
             expect(mockApp.notificationManager.showSuccess).toHaveBeenCalledWith('status.saved');
         });
 
-        it('should show error notification on failure', () => {
+        it('should show error notification on failure', async () => {
             mockState.saveStory.mockImplementation(() => {
                 throw new Error('Export failed');
             });
-            exportImportManager.handleExport();
+            await exportImportManager.handleExport();
             expect(mockApp.notificationManager.showError).toHaveBeenCalledWith('Export failed');
+        });
+
+        it('should handle user cancellation', async () => {
+            FileManager.saveAsJSON.mockResolvedValue(false);
+            await exportImportManager.handleExport();
+            expect(mockApp.notificationManager.showSuccess).not.toHaveBeenCalled();
         });
     });
 
