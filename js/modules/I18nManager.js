@@ -72,6 +72,7 @@ class I18nManager {
             "saveCharacter": "保存角色",
             "saveItem": "保存道具",
             "saveSetting": "保存设定",
+            "save": "保存",
             "generatePrompt": "生成提示词",
             "copyPrompt": "复制到剪贴板",
             "confirm": "确认",
@@ -84,7 +85,8 @@ class I18nManager {
             "chapters": "章节",
             "chapterTitle": "章节标题",
             "chapterContent": "开始编写你的故事...",
-            "selectChapter": "请从左侧选择一个章节或创建新章节"
+            "selectChapter": "请从左侧选择一个章节或创建新章节",
+            "changesTracker": "修改追踪"
           },
           "character": {
             "list": "角色列表",
@@ -186,6 +188,22 @@ class I18nManager {
             "propertyName": "属性名",
             "propertyValue": "属性值",
             "delete": "删除"
+          },
+          "ai": {
+            "title": "AI助手",
+            "configTitle": "AI配置",
+            "send": "发送",
+            "provider": "提供商",
+            "apiKey": "API密钥",
+            "endpoint": "端点URL",
+            "model": "模型",
+            "temperature": "温度",
+            "maxTokens": "最大Token数",
+            "historyLimit": "历史记录限制",
+            "testConnection": "测试连接",
+            "resetDefaults": "重置默认",
+            "clearKey": "清除密钥",
+            "save": "保存"
           }
         };
 
@@ -217,6 +235,7 @@ class I18nManager {
             "saveCharacter": "Save Character",
             "saveItem": "Save Item",
             "saveSetting": "Save Setting",
+            "save": "Save",
             "generatePrompt": "Generate Prompt",
             "copyPrompt": "Copy to Clipboard",
             "confirm": "Confirm",
@@ -229,7 +248,8 @@ class I18nManager {
             "chapters": "Chapters",
             "chapterTitle": "Chapter Title",
             "chapterContent": "Start writing your story...",
-            "selectChapter": "Please select a chapter from the left or create a new one"
+            "selectChapter": "Please select a chapter from the left or create a new one",
+            "changesTracker": "Changes Tracker"
           },
           "character": {
             "list": "Character List",
@@ -331,6 +351,22 @@ class I18nManager {
             "propertyName": "Property name",
             "propertyValue": "Property value",
             "delete": "Delete"
+          },
+          "ai": {
+            "title": "AI Assistant",
+            "configTitle": "AI Configuration",
+            "send": "Send",
+            "provider": "Provider",
+            "apiKey": "API Key",
+            "endpoint": "Endpoint URL",
+            "model": "Model",
+            "temperature": "Temperature",
+            "maxTokens": "Max Tokens",
+            "historyLimit": "History Limit",
+            "testConnection": "Test Connection",
+            "resetDefaults": "Reset to Defaults",
+            "clearKey": "Clear Key",
+            "save": "Save"
           }
         };
     }

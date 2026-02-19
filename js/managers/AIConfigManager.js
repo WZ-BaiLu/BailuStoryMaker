@@ -83,8 +83,8 @@ class AIConfigManager {
         const errors = [];
 
         // Check required fields
-        if (!config.provider || !['openai', 'anthropic', 'custom'].includes(config.provider)) {
-            errors.push('Invalid provider. Must be one of: openai, anthropic, custom');
+        if (!config.provider || !['openai', 'anthropic', 'deepseek', 'grok', 'custom'].includes(config.provider)) {
+            errors.push('Invalid provider. Must be one of: openai, anthropic, deepseek, grok, custom');
         }
 
         if (!config.apiKey || config.apiKey.trim() === '') {
@@ -105,8 +105,8 @@ class AIConfigManager {
 
         if (config.maxTokens !== undefined) {
             const tokens = parseInt(config.maxTokens);
-            if (isNaN(tokens) || tokens < 1 || tokens > 8000) {
-                errors.push('Max tokens must be between 1 and 8000');
+            if (isNaN(tokens) || tokens < 1) {
+                errors.push('Max tokens must be at least 1');
             }
         }
 

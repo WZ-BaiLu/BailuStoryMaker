@@ -191,9 +191,10 @@ class EventManager {
 
         // Temperature slider
         const aiTemp = document.getElementById('ai-temperature');
-        if (aiTemp) {
+        const aiTempValue = document.getElementById('ai-temp-value');
+        if (aiTemp && aiTempValue) {
             aiTemp.addEventListener('input', (e) => {
-                document.getElementById('ai-temp-value').textContent = e.target.value;
+                aiTempValue.textContent = e.target.value;
             });
         }
 

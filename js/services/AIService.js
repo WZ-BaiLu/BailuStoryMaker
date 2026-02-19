@@ -1,7 +1,7 @@
 /**
  * AI Service
- * 
- * Handles communication with AI providers (OpenAI, Anthropic, Custom).
+ *
+ * Handles communication with AI providers (OpenAI, Anthropic, DeepSeek, Grok, Custom).
  * Uses adapter pattern to support multiple providers through a unified interface.
  */
 class AIService {
@@ -20,12 +20,14 @@ class AIService {
     initializeAdapters() {
         this.adapters.openai = new OpenAIAdapter();
         this.adapters.anthropic = new AnthropicAdapter();
+        this.adapters.deepseek = new DeepSeekAdapter();
+        this.adapters.grok = new GrokAdapter();
         this.adapters.custom = new CustomAdapter();
     }
 
     /**
      * Get adapter for specified provider
-     * @param {string} provider - Provider name (openai, anthropic, custom)
+     * @param {string} provider - Provider name (openai, anthropic, deepseek, grok, custom)
      * @returns {Object} Provider adapter
      */
     getAdapter(provider) {
@@ -41,9 +43,19 @@ class AIService {
      */
     async chat(config, messages, context = null) {
         try {
+            console.log('[AIService] Chat request started');
+            console.log('[AIService] Config:', {
+                provider: config.provider,
+                model: config.model,
+                endpoint: config.endpoint,
+                temperature: config.temperature,
+                maxTokens: config.maxTokens
+            });
+
             // Validate configuration
             const configValidation = this.validateConfig(config);
             if (!configValidation.valid) {
+                console.error('[AIService] Config validation failed:', configValidation.errors);
                 return {
                     success: false,
                     error: {
@@ -56,6 +68,7 @@ class AIService {
             // Get adapter
             const adapter = this.getAdapter(config.provider);
             if (!adapter) {
+                console.error('[AIService] Adapter not found for provider:', config.provider);
                 return {
                     success: false,
                     error: {
@@ -67,21 +80,29 @@ class AIService {
 
             // Build request with context if provided
             const messagesWithContext = this.addContextToMessages(messages, context);
+            console.log('[AIService] Messages:', messagesWithContext);
 
             // Build request
             const request = adapter.buildRequest(config, messagesWithContext);
+            console.log('[AIService] Request body:', JSON.parse(request.body));
+
+            const endpoint = config.endpoint || adapter.getDefaultEndpoint();
+            console.log('[AIService] Sending request to:', endpoint);
 
             // Send request with timeout
-            const response = await this.sendRequestWithTimeout(config.endpoint || adapter.getDefaultEndpoint(), request);
+            const response = await this.sendRequestWithTimeout(endpoint, request);
+            console.log('[AIService] Response status:', response.status, response.statusText);
 
-            // Parse response
-            const result = adapter.parseResponse(response);
+            // Parse response (await the Promise returned by adapter)
+            const result = await adapter.parseResponse(response);
+            console.log('[AIService] Parsed result:', result);
 
             return {
                 success: true,
                 data: result
             };
         } catch (error) {
+            console.error('[AIService] Chat request error:', error);
             return this.handleError(error);
         }
     }
@@ -128,6 +149,10 @@ class AIService {
      * @returns {Promise<Response>} Fetch response
      */
     async sendRequestWithTimeout(url, options) {
+        console.log('[AIService] sendRequestWithTimeout called');
+        console.log('[AIService] URL:', url);
+        console.log('[AIService] Headers:', options.headers);
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -137,9 +162,11 @@ class AIService {
                 signal: controller.signal
             });
             clearTimeout(timeoutId);
+            console.log('[AIService] Fetch response received, status:', response.status);
             return response;
         } catch (error) {
             clearTimeout(timeoutId);
+            console.error('[AIService] Fetch error:', error);
             throw error;
         }
     }
@@ -338,6 +365,88 @@ class AnthropicAdapter {
             }
             return {
                 content: data.content[0]?.text || '',
+                usage: data.usage
+            };
+        });
+    }
+}
+
+/**
+ * DeepSeek Adapter (OpenAI-compatible)
+ */
+class DeepSeekAdapter {
+    getDefaultEndpoint() {
+        return 'https://api.deepseek.com/v1/chat/completions';
+    }
+
+    buildRequest(config, messages) {
+        // DeepSeek max_tokens limit: 8192
+        const maxTokens = Math.min(config.maxTokens || 2000, 8192);
+        return {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: messages.map(m => ({
+                    role: m.role,
+                    content: m.content
+                })),
+                temperature: config.temperature || 0.7,
+                max_tokens: maxTokens
+            })
+        };
+    }
+
+    parseResponse(response) {
+        return response.json().then(data => {
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+            return {
+                content: data.choices[0]?.message?.content || '',
+                usage: data.usage
+            };
+        });
+    }
+}
+
+/**
+ * Grok Adapter (OpenAI-compatible)
+ */
+class GrokAdapter {
+    getDefaultEndpoint() {
+        return 'https://api.x.ai/v1/chat/completions';
+    }
+
+    buildRequest(config, messages) {
+        return {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: messages.map(m => ({
+                    role: m.role,
+                    content: m.content
+                })),
+                temperature: config.temperature || 0.7,
+                max_tokens: config.maxTokens || 2000
+            })
+        };
+    }
+
+    parseResponse(response) {
+        return response.json().then(data => {
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+            return {
+                content: data.choices[0]?.message?.content || '',
                 usage: data.usage
             };
         });

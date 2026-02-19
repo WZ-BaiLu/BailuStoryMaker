@@ -318,18 +318,25 @@ class AIManager {
         const messages = this.buildMessageHistory(message);
 
         try {
+            console.log('[AIManager] Getting config');
             const config = this.configManager.getConfig();
+            console.log('[AIManager] Config retrieved:', config);
+            console.log('[AIManager] Calling aiService.chat');
             const result = await this.aiService.chat(config, messages, context);
+            console.log('[AIManager] AI Service result:', result);
 
             if (result.success) {
+                console.log('[AIManager] Displaying AI response');
                 // Display AI response
                 this.displayMessage(result.data.content, 'assistant');
                 this.saveHistory();
             } else {
+                console.error('[AIManager] AI Service returned error:', result.error);
                 // Show error
                 this.showError(result.error);
             }
         } catch (error) {
+            console.error('[AIManager] Exception caught:', error);
             this.showError({
                 type: 'unknown_error',
                 message: error.message
@@ -489,27 +496,36 @@ class AIManager {
      * @param {string} content - Content to insert
      */
     insertToEditor(content) {
-        const selection = window.getSelection();
-        
-        if (selection && selection.toString()) {
-            // Replace selected text
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(document.createTextNode(content));
-            this.notificationManager.showSuccess('已插入到编辑器');
-        } else {
-            // Try to insert at cursor position in active textarea
-            const activeElement = document.activeElement;
-            if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
-                const cursorPos = activeElement.selectionStart;
-                const text = activeElement.value;
-                activeElement.value = text.slice(0, cursorPos) + content + text.slice(cursorPos);
-                activeElement.selectionStart = activeElement.selectionEnd = cursorPos + content.length;
-                this.notificationManager.showSuccess('已插入到编辑器');
-            } else {
-                this.notificationManager.showError('无法插入：请选择文本或在输入框中点击');
-            }
+        // Check if there is a selected chapter
+        if (!this.state.selectedChapter) {
+            this.notificationManager.showError('请先选择一个章节');
+            return;
         }
+
+        let insertBeforeId = null;
+
+        // 1. Check if there is a selected paragraph in UIRenderer
+        const uiRenderer = this.app.uiRenderer;
+        if (uiRenderer && uiRenderer.selectedParagraph) {
+            insertBeforeId = uiRenderer.selectedParagraph;
+        }
+        // 2. Check if there is an editing paragraph
+        else if (uiRenderer && uiRenderer.editingParagraph) {
+            insertBeforeId = uiRenderer.editingParagraph;
+        }
+        // 3. Otherwise, insert at the end (no insertBeforeId needed)
+
+        // Add new paragraph
+        const paragraph = this.state.addParagraph(this.state.selectedChapter, insertBeforeId);
+
+        // Set content
+        this.state.updateParagraph(this.state.selectedChapter, paragraph.id, { content });
+
+        // Refresh display
+        this.app.uiRenderer.renderParagraphs();
+        this.app.updateSaveStatus();
+
+        this.notificationManager.showSuccess('已插入为新段落');
     }
 
     /**

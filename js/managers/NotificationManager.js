@@ -50,4 +50,12 @@ class NotificationManager {
     showWarning(message) {
         this.showToast(message, 'warning');
     }
+
+    /**
+     * Show an info notification
+     * @param {string} message - The message to display
+     */
+    showInfo(message) {
+        this.showToast(message, 'success');
+    }
 }

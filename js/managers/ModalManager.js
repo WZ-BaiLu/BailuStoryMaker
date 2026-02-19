@@ -91,8 +91,22 @@ class ModalManager {
      */
     toggleEndpointField(provider) {
         const endpointGroup = document.getElementById('ai-endpoint-group');
-        if (provider === 'custom') {
+        const endpointInput = document.getElementById('ai-endpoint');
+
+        const defaultEndpoints = {
+            'deepseek': 'https://api.deepseek.com/v1/chat/completions',
+            'grok': 'https://api.x.ai/v1/chat/completions'
+        };
+
+        if (['custom', 'deepseek', 'grok'].includes(provider)) {
             endpointGroup.style.display = 'block';
+            // Set default endpoint if provider has a default and input is empty or doesn't match expected pattern
+            if (defaultEndpoints[provider] && endpointInput) {
+                const currentVal = endpointInput.value.trim();
+                if (!currentVal || !currentVal.includes('/chat/completions')) {
+                    endpointInput.value = defaultEndpoints[provider];
+                }
+            }
         } else {
             endpointGroup.style.display = 'none';
         }

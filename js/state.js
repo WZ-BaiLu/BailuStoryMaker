@@ -119,7 +119,7 @@ class AppState {
     }
 
     // Paragraph management
-    addParagraph(chapterId) {
+    addParagraph(chapterId, insertBeforeId = null) {
         if (!this.currentStory) {
             throw new Error('没有加载的故事');
         }
@@ -144,7 +144,18 @@ class AppState {
         if (!chapter.paragraphs) {
             chapter.paragraphs = [];
         }
-        chapter.paragraphs.push(paragraph);
+
+        // Insert before specified paragraph, or at the end
+        if (insertBeforeId) {
+            const insertIndex = chapter.paragraphs.findIndex(p => p.id === insertBeforeId);
+            if (insertIndex !== -1) {
+                chapter.paragraphs.splice(insertIndex, 0, paragraph);
+            } else {
+                chapter.paragraphs.push(paragraph);
+            }
+        } else {
+            chapter.paragraphs.push(paragraph);
+        }
 
         this.notify('paragraphAdded', { chapterId, paragraph });
         this.updateChapter(chapterId, { updatedAt: Formatters.formatDate() });
