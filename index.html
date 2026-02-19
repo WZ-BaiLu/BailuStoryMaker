@@ -46,6 +46,8 @@
                     <h2 id="story-title">未加载故事</h2>
                 </div>
                 <div class="header-right">
+                    <button id="undo-btn" class="btn btn-secondary" disabled>↩ 撤销</button>
+                    <button id="redo-btn" class="btn btn-secondary" disabled>↪ 重做</button>
                     <button id="save-btn" class="btn btn-secondary">保存</button>
                     <button id="load-btn" class="btn btn-secondary">加载</button>
                     <button id="export-btn" class="btn btn-secondary">导出</button>
@@ -241,6 +243,7 @@
     <script src="js/modules/ContextBuilder.js"></script>
     <script src="js/modules/MemoryManager.js"></script>
     <script src="js/modules/PromptGenerator.js"></script>
+    <script src="js/modules/HistoryManager.js"></script>
     <script src="js/state.js"></script>
     <script src="js/app.js"></script>
 </body>

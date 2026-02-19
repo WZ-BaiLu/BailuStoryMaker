@@ -9,6 +9,8 @@ class AppState {
         this.selectedSetting = null;
         this.autoSaveTimer = null;
         this.listeners = [];
+        this.history = new HistoryManager(50);
+        this.historyEnabled = true;
     }
 
     // Load story
@@ -19,6 +21,7 @@ class AppState {
             this.selectedCharacter = null;
             this.selectedItem = null;
             this.selectedSetting = null;
+            this.history.clear(); // Clear history when loading new story
             this.notify('storyLoaded', storyData);
             return true;
         } catch (error) {
@@ -39,6 +42,7 @@ class AppState {
                 author: ''
             }
         };
+        this.history.clear(); // Clear history for new story
         return newStory;
     }
 
@@ -59,6 +63,8 @@ class AppState {
             throw new Error('没有加载的故事');
         }
 
+        this.saveStateBeforeChange('添加章节');
+
         const chapter = {
             id: Formatters.generateId('chapter'),
             title: title || '新章节',
@@ -76,6 +82,8 @@ class AppState {
     updateChapter(chapterId, updates) {
         if (!this.currentStory) return;
 
+        this.saveStateBeforeChange('编辑章节');
+
         const chapter = this.currentStory.chapters.find(c => c.id === chapterId);
         if (chapter) {
             Object.assign(chapter, updates, { updatedAt: Formatters.formatDate() });
@@ -85,6 +93,8 @@ class AppState {
 
     deleteChapter(chapterId) {
         if (!this.currentStory) return;
+
+        this.saveStateBeforeChange('删除章节');
 
         const index = this.currentStory.chapters.findIndex(c => c.id === chapterId);
         if (index !== -1) {
@@ -106,6 +116,8 @@ class AppState {
             throw new Error('没有加载的故事');
         }
 
+        this.saveStateBeforeChange('添加角色');
+
         const character = {
             id: Formatters.generateId('char'),
             name: characterData.name || '新角色',
@@ -123,6 +135,8 @@ class AppState {
     updateCharacter(characterId, updates) {
         if (!this.currentStory) return;
 
+        this.saveStateBeforeChange('编辑角色');
+
         const character = this.currentStory.characters.find(c => c.id === characterId);
         if (character) {
             Object.assign(character, updates);
@@ -132,6 +146,8 @@ class AppState {
 
     deleteCharacter(characterId) {
         if (!this.currentStory) return;
+
+        this.saveStateBeforeChange('删除角色');
 
         const index = this.currentStory.characters.findIndex(c => c.id === characterId);
         if (index !== -1) {
@@ -151,6 +167,8 @@ class AppState {
             throw new Error('没有加载的故事');
         }
 
+        this.saveStateBeforeChange('添加道具');
+
         const item = {
             id: Formatters.generateId('item'),
             name: itemData.name || '新道具',
@@ -169,6 +187,8 @@ class AppState {
     updateItem(itemId, updates) {
         if (!this.currentStory) return;
 
+        this.saveStateBeforeChange('编辑道具');
+
         const item = this.currentStory.items.find(i => i.id === itemId);
         if (item) {
             Object.assign(item, updates);
@@ -178,6 +198,8 @@ class AppState {
 
     deleteItem(itemId) {
         if (!this.currentStory) return;
+
+        this.saveStateBeforeChange('删除道具');
 
         const index = this.currentStory.items.findIndex(i => i.id === itemId);
         if (index !== -1) {
@@ -197,6 +219,8 @@ class AppState {
             throw new Error('没有加载的故事');
         }
 
+        this.saveStateBeforeChange('添加设定');
+
         const setting = {
             id: Formatters.generateId('setting'),
             name: settingData.name || '新设定',
@@ -214,6 +238,8 @@ class AppState {
     updateSetting(settingId, updates) {
         if (!this.currentStory) return;
 
+        this.saveStateBeforeChange('编辑设定');
+
         const setting = this.currentStory.settings.find(s => s.id === settingId);
         if (setting) {
             Object.assign(setting, updates);
@@ -223,6 +249,8 @@ class AppState {
 
     deleteSetting(settingId) {
         if (!this.currentStory) return;
+
+        this.saveStateBeforeChange('删除设定');
 
         const index = this.currentStory.settings.findIndex(s => s.id === settingId);
         if (index !== -1) {
@@ -284,15 +312,76 @@ class AppState {
             .forEach(l => l.callback(data));
     }
 
-    // Get current state
+    // Get current state (for history saving)
     getState() {
         return {
-            currentStory: this.currentStory,
+            story: this.currentStory,
             selectedChapter: this.selectedChapter,
             selectedCharacter: this.selectedCharacter,
             selectedItem: this.selectedItem,
             selectedSetting: this.selectedSetting
         };
+    }
+
+    // Undo/Redo support
+    saveStateBeforeChange(description = 'Action') {
+        if (!this.historyEnabled || !this.currentStory) return;
+
+        const stateSnapshot = {
+            story: this.currentStory,
+            selectedChapter: this.selectedChapter,
+            selectedCharacter: this.selectedCharacter,
+            selectedItem: this.selectedItem,
+            selectedSetting: this.selectedSetting
+        };
+
+        this.history.pushState(stateSnapshot, description);
+    }
+
+    undo() {
+        if (!this.currentStory) return false;
+
+        const previousState = this.history.undo(this.getState());
+
+        if (previousState && previousState.story) {
+            this.currentStory = previousState.story;
+            this.selectedChapter = previousState.selectedChapter;
+            this.selectedCharacter = previousState.selectedCharacter;
+            this.selectedItem = previousState.selectedItem;
+            this.selectedSetting = previousState.selectedSetting;
+            this.notify('stateRestored', { direction: 'undo', state: previousState });
+            return true;
+        }
+        return false;
+    }
+
+    redo() {
+        if (!this.currentStory) return false;
+
+        const nextState = this.history.redo(this.getState());
+
+        if (nextState && nextState.story) {
+            this.currentStory = nextState.story;
+            this.selectedChapter = nextState.selectedChapter;
+            this.selectedCharacter = nextState.selectedCharacter;
+            this.selectedItem = nextState.selectedItem;
+            this.selectedSetting = nextState.selectedSetting;
+            this.notify('stateRestored', { direction: 'redo', state: nextState });
+            return true;
+        }
+        return false;
+    }
+
+    enableHistory() {
+        this.historyEnabled = true;
+    }
+
+    disableHistory() {
+        this.historyEnabled = false;
+    }
+
+    getHistoryStatus() {
+        return this.history.getStatus();
     }
 }
 

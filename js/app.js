@@ -34,6 +34,18 @@ class App {
                 this.handleLoad();
             }
 
+            // Ctrl/Cmd + Z: Undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                this.handleUndo();
+            }
+
+            // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z: Redo
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                this.handleRedo();
+            }
+
             // Escape: Close modal
             if (e.key === 'Escape') {
                 this.hideModal();
@@ -55,6 +67,8 @@ class App {
         });
 
         // Header buttons
+        document.getElementById('undo-btn').addEventListener('click', () => this.handleUndo());
+        document.getElementById('redo-btn').addEventListener('click', () => this.handleRedo());
         document.getElementById('save-btn').addEventListener('click', () => this.handleSave());
         document.getElementById('load-btn').addEventListener('click', () => this.handleLoad());
         document.getElementById('export-btn').addEventListener('click', () => this.handleExport());
@@ -104,6 +118,8 @@ class App {
         this.state.on('itemUpdated', () => this.updateSaveStatus());
         this.state.on('settingAdded', () => this.renderSettings());
         this.state.on('settingUpdated', () => this.updateSaveStatus());
+        this.state.on('stateRestored', () => this.onStateRestored());
+        this.state.history.on('historyChanged', () => this.updateUndoRedoButtons());
     }
 
     handleNavigation(e) {
@@ -256,6 +272,7 @@ class App {
             item.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('btn-delete')) {
                     const chapterId = item.dataset.chapterId;
+                    console.log('Click chapter:', chapterId, 'Story:', this.state.currentStory);
                     this.state.selectChapter(chapterId);
                     this.renderChapters();
                     this.renderChapterEditor(chapterId);
@@ -290,6 +307,8 @@ class App {
         const contentInput = document.getElementById('chapter-content');
         const story = this.state.currentStory;
 
+        console.log('renderChapterEditor called with chapterId:', chapterId, 'story:', story);
+
         if (!chapterId || !story) {
             contentPanel.classList.add('hidden');
             placeholderPanel.classList.add('active');
@@ -297,6 +316,7 @@ class App {
         }
 
         const chapter = story.chapters.find(c => c.id === chapterId);
+        console.log('Found chapter:', chapter);
         if (chapter) {
             contentPanel.classList.remove('hidden');
             placeholderPanel.classList.remove('active');
@@ -309,6 +329,11 @@ class App {
             titleInput.oninput = () => {
                 this.state.updateChapter(chapterId, { title: titleInput.value });
             };
+        } else {
+            // Chapter not found in current story (may have been deleted)
+            console.log('Chapter not found in story');
+            contentPanel.classList.add('hidden');
+            placeholderPanel.classList.add('active');
         }
     }
 
@@ -400,6 +425,10 @@ class App {
             document.getElementById('char-notes').value = character.notes || '';
             this.renderAttributes(character.attributes);
             this.renderAbilities(character.abilities);
+        } else {
+            contentPanel.classList.add('hidden');
+            placeholderPanel.classList.add('active');
+            this.clearCharacterForm();
         }
     }
 
@@ -587,6 +616,10 @@ class App {
             document.getElementById('item-type').value = item.type;
             document.getElementById('item-description').value = item.description || '';
             this.renderItemProperties(item.properties);
+        } else {
+            contentPanel.classList.add('hidden');
+            placeholderPanel.classList.add('active');
+            this.clearItemForm();
         }
     }
 
@@ -734,6 +767,10 @@ class App {
             document.getElementById('setting-type').value = setting.type;
             document.getElementById('setting-parent').value = setting.parentId || '';
             document.getElementById('setting-description').value = setting.description || '';
+        } else {
+            contentPanel.classList.add('hidden');
+            placeholderPanel.classList.add('active');
+            this.clearSettingForm();
         }
     }
 
@@ -828,6 +865,93 @@ class App {
         // Try to load from localStorage
         if (this.state.loadFromLocalStorage()) {
             this.showToast('已恢复上次的故事', 'success');
+        }
+
+        this.updateUndoRedoButtons();
+    }
+
+    // Undo/Redo handlers
+    handleUndo() {
+        if (this.state.undo()) {
+            this.showToast('已撤销', 'success');
+            this.refreshCurrentView();
+        }
+    }
+
+    handleRedo() {
+        if (this.state.redo()) {
+            this.showToast('已重做', 'success');
+            this.refreshCurrentView();
+        }
+    }
+
+    onStateRestored() {
+        console.log('onStateRestored - currentStory:', this.state.currentStory);
+
+        // Update story title
+        const story = this.state.currentStory;
+        if (story) {
+            document.getElementById('story-title').textContent = story.metadata.title;
+
+            console.log('onStateRestored - selectedChapter:', this.state.selectedChapter, 'chapters:', story.chapters.map(c => ({id: c.id, title: c.title})));
+
+            // Validate selected items exist in current story
+            if (this.state.selectedChapter && !story.chapters.find(c => c.id === this.state.selectedChapter)) {
+                console.log('Selected chapter not found, clearing');
+                this.state.selectedChapter = null;
+            }
+            if (this.state.selectedCharacter && !story.characters.find(c => c.id === this.state.selectedCharacter)) {
+                this.state.selectedCharacter = null;
+            }
+            if (this.state.selectedItem && !story.items.find(i => i.id === this.state.selectedItem)) {
+                this.state.selectedItem = null;
+            }
+            if (this.state.selectedSetting && !story.settings.find(s => s.id === this.state.selectedSetting)) {
+                this.state.selectedSetting = null;
+            }
+        } else {
+            console.error('Story is undefined after undo/redo!');
+        }
+
+        this.refreshCurrentView();
+        this.updateUndoRedoButtons();
+        this.updateSaveStatus();
+    }
+
+    refreshCurrentView() {
+        switch (this.currentView) {
+            case 'story':
+                this.renderChapters();
+                this.renderChapterEditor(this.state.selectedChapter);
+                break;
+            case 'character':
+                this.renderCharacters();
+                this.renderCharacterEditor(this.state.selectedCharacter);
+                break;
+            case 'item':
+                this.renderItems();
+                this.renderItemEditor(this.state.selectedItem);
+                break;
+            case 'setting':
+                this.renderSettings();
+                this.renderSettingEditor(this.state.selectedSetting);
+                break;
+        }
+    }
+
+    updateUndoRedoButtons() {
+        const status = this.state.getHistoryStatus();
+        const undoBtn = document.getElementById('undo-btn');
+        const redoBtn = document.getElementById('redo-btn');
+
+        if (undoBtn) {
+            undoBtn.disabled = !status.canUndo;
+            undoBtn.title = status.canUndo ? `撤销 (${status.undoCount}) - Ctrl+Z` : '无撤销操作';
+        }
+
+        if (redoBtn) {
+            redoBtn.disabled = !status.canRedo;
+            redoBtn.title = status.canRedo ? `重做 (${status.redoCount}) - Ctrl+Y` : '无重做操作';
         }
     }
 
