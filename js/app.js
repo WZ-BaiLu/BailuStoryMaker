@@ -165,6 +165,9 @@ class App {
 
         this.currentView = viewName;
 
+        // Save view to localStorage
+        this.saveViewToStorage();
+
         // Render content
         switch (viewName) {
             case 'story':
@@ -253,7 +256,26 @@ class App {
         this.renderCharacters();
         this.renderItems();
         this.renderSettings();
-        this.switchView('story');
+
+        // Restore selected items in editors
+        if (this.state.selectedChapter) {
+            this.renderChapterEditor(this.state.selectedChapter);
+        }
+        if (this.state.selectedCharacter) {
+            this.renderCharacterEditor(this.state.selectedCharacter);
+        }
+        if (this.state.selectedItem) {
+            this.renderItemEditor(this.state.selectedItem);
+        }
+        if (this.state.selectedSetting) {
+            this.renderSettingEditor(this.state.selectedSetting);
+        }
+
+        // Only switch to story view if no saved view
+        const savedView = localStorage.getItem(Constants.STORAGE_KEYS.CURRENT_VIEW);
+        if (!savedView) {
+            this.switchView('story');
+        }
 
         // Enable auto-save if configured
         if (story.settings && story.settings.autoSave) {
@@ -907,7 +929,21 @@ class App {
             this.showToast(i18n.t('status.saved'), 'success');
         }
 
+        // Restore current view from localStorage
+        this.loadViewFromStorage();
+
         this.updateUndoRedoButtons();
+    }
+
+    loadViewFromStorage() {
+        const savedView = localStorage.getItem(Constants.STORAGE_KEYS.CURRENT_VIEW);
+        if (savedView) {
+            this.switchView(savedView);
+        }
+    }
+
+    saveViewToStorage() {
+        localStorage.setItem(Constants.STORAGE_KEYS.CURRENT_VIEW, this.currentView);
     }
 
     // Undo/Redo handlers

@@ -96,7 +96,8 @@ const Constants = {
     STORAGE_KEYS: {
         CURRENT_STORY: 'bailustory_current',
         STORY_LIST: 'bailustory_list',
-        THEME: 'bailustory_theme'
+        THEME: 'bailustory_theme',
+        CURRENT_VIEW: 'bailustory_current_view'
     },
 
     // Validation rules

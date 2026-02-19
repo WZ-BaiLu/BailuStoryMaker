@@ -22,6 +22,8 @@ class AppState {
             this.selectedItem = null;
             this.selectedSetting = null;
             this.history.clear(); // Clear history when loading new story
+            // Save to localStorage after loading
+            this.saveToLocalStorage();
             this.notify('storyLoaded', storyData);
             return true;
         } catch (error) {
@@ -43,6 +45,8 @@ class AppState {
             }
         };
         this.history.clear(); // Clear history for new story
+        // Load the new story which will save to localStorage
+        this.loadStory(newStory);
         return newStory;
     }
 
@@ -88,6 +92,8 @@ class AppState {
         if (chapter) {
             Object.assign(chapter, updates, { updatedAt: Formatters.formatDate() });
             this.notify('chapterUpdated', chapter);
+            // Auto-save to localStorage when content changes
+            this.saveToLocalStorage();
         }
     }
 
@@ -108,6 +114,8 @@ class AppState {
     selectChapter(chapterId) {
         this.selectedChapter = chapterId;
         this.notify('chapterSelected', chapterId);
+        // Auto-save to localStorage when selection changes
+        this.saveToLocalStorage();
     }
 
     // Character management
@@ -141,6 +149,8 @@ class AppState {
         if (character) {
             Object.assign(character, updates);
             this.notify('characterUpdated', character);
+            // Auto-save to localStorage when content changes
+            this.saveToLocalStorage();
         }
     }
 
@@ -159,6 +169,8 @@ class AppState {
     selectCharacter(characterId) {
         this.selectedCharacter = characterId;
         this.notify('characterSelected', characterId);
+        // Auto-save to localStorage when selection changes
+        this.saveToLocalStorage();
     }
 
     // Item management
@@ -193,6 +205,8 @@ class AppState {
         if (item) {
             Object.assign(item, updates);
             this.notify('itemUpdated', item);
+            // Auto-save to localStorage when content changes
+            this.saveToLocalStorage();
         }
     }
 
@@ -211,6 +225,8 @@ class AppState {
     selectItem(itemId) {
         this.selectedItem = itemId;
         this.notify('itemSelected', itemId);
+        // Auto-save to localStorage when selection changes
+        this.saveToLocalStorage();
     }
 
     // Setting management
@@ -244,6 +260,8 @@ class AppState {
         if (setting) {
             Object.assign(setting, updates);
             this.notify('settingUpdated', setting);
+            // Auto-save to localStorage when content changes
+            this.saveToLocalStorage();
         }
     }
 
@@ -262,6 +280,8 @@ class AppState {
     selectSetting(settingId) {
         this.selectedSetting = settingId;
         this.notify('settingSelected', settingId);
+        // Auto-save to localStorage when selection changes
+        this.saveToLocalStorage();
     }
 
     // Auto-save
@@ -286,7 +306,15 @@ class AppState {
     // Manual save to localStorage
     saveToLocalStorage() {
         if (this.currentStory) {
-            return FileManager.saveToLocalStorage(Constants.STORAGE_KEYS.CURRENT_STORY, this.currentStory);
+            // Save complete state including selected items and current view
+            const stateToSave = {
+                story: this.currentStory,
+                selectedChapter: this.selectedChapter,
+                selectedCharacter: this.selectedCharacter,
+                selectedItem: this.selectedItem,
+                selectedSetting: this.selectedSetting
+            };
+            return FileManager.saveToLocalStorage(Constants.STORAGE_KEYS.CURRENT_STORY, stateToSave);
         }
         return false;
     }
@@ -295,7 +323,25 @@ class AppState {
     loadFromLocalStorage() {
         const data = FileManager.loadFromLocalStorage(Constants.STORAGE_KEYS.CURRENT_STORY);
         if (data) {
-            this.loadStory(data);
+            // Check if data is in old format (story only) or new format (with selected items)
+            if (data.story) {
+                // New format: contains selected items
+                this.currentStory = data.story;
+                this.selectedChapter = data.selectedChapter || null;
+                this.selectedCharacter = data.selectedCharacter || null;
+                this.selectedItem = data.selectedItem || null;
+                this.selectedSetting = data.selectedSetting || null;
+            } else {
+                // Old format: story data only
+                this.currentStory = data;
+                this.selectedChapter = null;
+                this.selectedCharacter = null;
+                this.selectedItem = null;
+                this.selectedSetting = null;
+            }
+            // Also save to localStorage after loading to ensure format consistency
+            this.saveToLocalStorage();
+            this.notify('storyLoaded', this.currentStory);
             return true;
         }
         return false;
