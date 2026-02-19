@@ -345,6 +345,12 @@ class I18nManager {
      * Load translation file for a specific language (works with HTTP server)
      */
     async loadLanguage(lang) {
+        // Skip fetch for file:// protocol (CORS restriction)
+        if (window.location.protocol === 'file:') {
+            console.log('File protocol detected, using embedded translations only');
+            return true;
+        }
+
         try {
             const response = await fetch(`locales/${lang}.json`);
             if (!response.ok) {
