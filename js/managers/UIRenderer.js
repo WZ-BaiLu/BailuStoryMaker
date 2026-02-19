@@ -187,6 +187,7 @@ class UIRenderer {
                 });
 
                 textarea.addEventListener('input', () => {
+                    // Just update state, don't re-render
                     this.state.updateParagraph(this.state.selectedChapter, paragraphId, { content: textarea.value });
                 });
 
