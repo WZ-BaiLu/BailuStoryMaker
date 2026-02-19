@@ -18,7 +18,7 @@
     "import": "Import",
     "undo": "Undo",
     "redo": "Redo",
-    "addChapter": "Add Chapter",
+    "addChapter": "+ Add Chapter",
     "addCharacter": "Add Character",
     "addItem": "Add Item",
     "addSetting": "Add Setting",
@@ -28,7 +28,8 @@
     "generatePrompt": "Generate Prompt",
     "copyPrompt": "Copy to Clipboard",
     "confirm": "Confirm",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "addParagraph": "+ Add Paragraph"
   },
   "header": {
     "noStoryLoaded": "No Story Loaded"
@@ -37,7 +38,8 @@
     "chapters": "Chapters",
     "chapterTitle": "Chapter Title",
     "chapterContent": "Start writing your story...",
-    "selectChapter": "Please select a chapter from the left or create a new one"
+    "selectChapter": "Please select a chapter from the left or create a new one",
+    "changesTracker": "Changes Tracker"
   },
   "character": {
     "list": "Character List",

@@ -18,7 +18,7 @@
     "import": "导入",
     "undo": "撤销",
     "redo": "重做",
-    "addChapter": "添加章节",
+    "addChapter": "+ 添加章节",
     "addCharacter": "添加角色",
     "addItem": "添加道具",
     "addSetting": "添加设定",
@@ -28,7 +28,8 @@
     "generatePrompt": "生成提示词",
     "copyPrompt": "复制到剪贴板",
     "confirm": "确认",
-    "cancel": "取消"
+    "cancel": "取消",
+    "addParagraph": "+ 添加段落"
   },
   "header": {
     "noStoryLoaded": "未加载故事"
@@ -37,7 +38,8 @@
     "chapters": "章节",
     "chapterTitle": "章节标题",
     "chapterContent": "开始编写你的故事...",
-    "selectChapter": "请从左侧选择一个章节或创建新章节"
+    "selectChapter": "请从左侧选择一个章节或创建新章节",
+    "changesTracker": "修改追踪"
   },
   "character": {
     "list": "角色列表",

@@ -78,8 +78,17 @@
                             </div>
                             <div id="chapter-editor-content" class="chapter-editor-content hidden">
                                 <input type="text" id="chapter-title" class="input-field" data-i18n-placeholder="story.chapterTitle" placeholder="章节标题">
-                                <textarea id="chapter-content" class="editor" data-i18n-placeholder="story.chapterContent" placeholder="开始编写你的故事..."></textarea>
+                                <div class="paragraphs-container">
+                                    <div id="paragraphs-list" class="paragraphs-list"></div>
+                                    <div class="paragraph-input-area">
+                                        <textarea id="new-paragraph-input" class="input-field" placeholder="输入段落内容，按 Enter 添加..." rows="2"></textarea>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+                        <div class="changes-tracker" id="changes-tracker">
+                            <h4 data-i18n="story.changesTracker">修改追踪</h4>
+                            <div id="changes-content" class="changes-content"></div>
                         </div>
                     </div>
                 </div>

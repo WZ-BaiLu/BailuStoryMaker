@@ -4,6 +4,8 @@ class App {
     constructor() {
         this.state = appState;
         this.currentView = 'story';
+        this.selectedParagraph = null;
+        this.editingParagraph = null;
         this.init();
     }
 
@@ -110,7 +112,19 @@ class App {
 
         // Story view
         document.getElementById('add-chapter-btn').addEventListener('click', () => this.addChapter());
-        document.getElementById('chapter-content').addEventListener('input', () => this.handleChapterEdit());
+        const newParagraphInput = document.getElementById('new-paragraph-input');
+        newParagraphInput.addEventListener('keydown', (e) => {
+            // Enter (without Shift or Ctrl) to submit
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+                e.preventDefault();
+                this.handleNewParagraph();
+            }
+            // Ctrl+Enter to also submit
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                this.handleNewParagraph();
+            }
+        });
 
         // Character view
         document.getElementById('add-character-btn').addEventListener('click', () => this.addCharacter());
@@ -135,6 +149,9 @@ class App {
         this.state.on('storyLoaded', () => this.onStoryLoaded());
         this.state.on('chapterAdded', () => this.renderChapters());
         this.state.on('chapterUpdated', () => this.updateSaveStatus());
+        this.state.on('paragraphAdded', () => this.renderParagraphs());
+        this.state.on('paragraphUpdated', () => this.renderParagraphs());
+        this.state.on('paragraphDeleted', () => this.renderParagraphs());
         this.state.on('characterAdded', () => this.renderCharacters());
         this.state.on('characterUpdated', () => this.updateSaveStatus());
         this.state.on('itemAdded', () => this.renderItems());
@@ -351,7 +368,6 @@ class App {
         const contentPanel = document.getElementById('chapter-editor-content');
         const placeholderPanel = document.getElementById('chapter-editor-placeholder');
         const titleInput = document.getElementById('chapter-title');
-        const contentInput = document.getElementById('chapter-content');
         const story = this.state.currentStory;
 
         console.log('renderChapterEditor called with chapterId:', chapterId, 'story:', story);
@@ -359,6 +375,7 @@ class App {
         if (!chapterId || !story) {
             contentPanel.classList.add('hidden');
             placeholderPanel.classList.add('active');
+            document.getElementById('changes-tracker').classList.remove('visible');
             return;
         }
 
@@ -369,19 +386,272 @@ class App {
             placeholderPanel.classList.remove('active');
 
             titleInput.value = chapter.title;
-            contentInput.value = chapter.content || '';
             titleInput.disabled = false;
-            contentInput.disabled = false;
 
             titleInput.oninput = () => {
                 this.state.updateChapter(chapterId, { title: titleInput.value });
             };
+
+            // Render paragraphs
+            this.renderParagraphs();
         } else {
             // Chapter not found in current story (may have been deleted)
             console.log('Chapter not found in story');
             contentPanel.classList.add('hidden');
             placeholderPanel.classList.add('active');
         }
+    }
+
+    // Paragraph management
+    handleNewParagraph() {
+        if (!this.state.selectedChapter) {
+            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
+            return;
+        }
+
+        const input = document.getElementById('new-paragraph-input');
+        const content = input.value.trim();
+
+        if (!content) {
+            return; // Don't add empty paragraphs
+        }
+
+        this.state.addParagraph(this.state.selectedChapter);
+
+        const chapter = this.state.currentStory.chapters.find(c => c.id === this.state.selectedChapter);
+        if (chapter && chapter.paragraphs.length > 0) {
+            const lastParagraph = chapter.paragraphs[chapter.paragraphs.length - 1];
+            this.state.updateParagraph(this.state.selectedChapter, lastParagraph.id, { content });
+        }
+
+        // Clear input and render
+        input.value = '';
+        this.renderParagraphs();
+    }
+
+    renderParagraphs() {
+        const container = document.getElementById('paragraphs-list');
+        const story = this.state.currentStory;
+        const changesTracker = document.getElementById('changes-tracker');
+
+        if (!this.state.selectedChapter || !story) {
+            container.innerHTML = '';
+            changesTracker.classList.remove('visible');
+            return;
+        }
+
+        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) {
+            container.innerHTML = '';
+            changesTracker.classList.remove('visible');
+            return;
+        }
+
+        const paragraphs = chapter.paragraphs || [];
+
+        container.innerHTML = paragraphs.map((paragraph, index) => `
+            <div class="paragraph-bubble ${this.selectedParagraph === paragraph.id ? 'selected' : ''}"
+                 data-paragraph-id="${paragraph.id}">
+                <div class="paragraph-bubble-header">
+                    <span class="paragraph-bubble-number">段落 ${index + 1}</span>
+                    <div class="paragraph-bubble-actions">
+                        <button class="btn btn-sm" data-action="edit-paragraph">编辑</button>
+                        <button class="btn btn-sm btn-delete" data-action="delete-paragraph">删除</button>
+                    </div>
+                </div>
+                <div class="paragraph-bubble-content ${this.editingParagraph === paragraph.id ? 'editing' : ''}">
+                    ${paragraph.content || '点击编辑添加内容...'}
+                </div>
+                <textarea class="paragraph-bubble-textarea ${this.editingParagraph === paragraph.id ? 'editing' : ''}"
+                          placeholder="输入段落内容...">${paragraph.content || ''}</textarea>
+                ${this.renderParagraphChanges(paragraph)}
+            </div>
+        `).join('');
+
+        // Bind events
+        container.querySelectorAll('.paragraph-bubble').forEach(bubble => {
+            const paragraphId = bubble.dataset.paragraphId;
+
+            // Textarea input - bind first to prevent event bubbling
+            const textarea = bubble.querySelector('.paragraph-bubble-textarea');
+            if (textarea) {
+                textarea.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent bubble click event
+                });
+
+                textarea.addEventListener('input', () => {
+                    this.state.updateParagraph(this.state.selectedChapter, paragraphId, { content: textarea.value });
+                });
+
+                textarea.addEventListener('keydown', (e) => {
+                    // Escape to cancel editing
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.editingParagraph = null;
+                        this.renderParagraphs();
+                    }
+                    // Ctrl+Enter to save
+                    if (e.key === 'Enter' && e.ctrlKey) {
+                        e.preventDefault();
+                        this.editingParagraph = null;
+                        this.renderParagraphs();
+                    }
+                });
+
+                textarea.addEventListener('blur', () => {
+                    this.editingParagraph = null;
+                    this.renderParagraphs();
+                });
+            }
+
+            // Click to select
+            bubble.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('btn') && e.target !== textarea) {
+                    this.selectedParagraph = paragraphId;
+                    this.renderParagraphs();
+                }
+            });
+
+            // Edit button
+            const editBtn = bubble.querySelector('[data-action="edit-paragraph"]');
+            if (editBtn) {
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.editingParagraph = paragraphId;
+                    this.renderParagraphs();
+                    // Focus textarea after render - need to find the new bubble
+                    setTimeout(() => {
+                        const newBubble = container.querySelector(`[data-paragraph-id="${paragraphId}"]`);
+                        const newTextarea = newBubble?.querySelector('.paragraph-bubble-textarea');
+                        if (newTextarea) {
+                            newTextarea.focus();
+                            newTextarea.setSelectionRange(newTextarea.value.length, newTextarea.value.length);
+                        }
+                    }, 0);
+                });
+            }
+
+            // Delete button
+            const deleteBtn = bubble.querySelector('[data-action="delete-paragraph"]');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm('确定删除这个段落吗？')) {
+                        this.state.deleteParagraph(this.state.selectedChapter, paragraphId);
+                        if (this.selectedParagraph === paragraphId) {
+                            this.selectedParagraph = null;
+                        }
+                    }
+                });
+            }
+        });
+
+        // Show/hide changes tracker
+        if (paragraphs.some(p => p.changes && (p.changes.characters?.length > 0 || p.changes.items?.length > 0))) {
+            changesTracker.classList.add('visible');
+            this.renderChangesTracker();
+        } else {
+            changesTracker.classList.remove('visible');
+        }
+
+        if (paragraphs.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-text">开始输入内容来添加段落...</div></div>`;
+        }
+    }
+
+    renderParagraphChanges(paragraph) {
+        if (!paragraph.changes || (paragraph.changes.characters?.length === 0 && paragraph.changes.items?.length === 0)) {
+            return '';
+        }
+
+        const story = this.state.currentStory;
+        const changes = [];
+
+        paragraph.changes.characters?.forEach(charId => {
+            const character = story?.characters.find(c => c.id === charId);
+            if (character) {
+                changes.push(`<span class="change-badge character">👤 ${character.name}</span>`);
+            }
+        });
+
+        paragraph.changes.items?.forEach(itemId => {
+            const item = story?.items.find(i => i.id === itemId);
+            if (item) {
+                changes.push(`<span class="change-badge item">🎒 ${item.name}</span>`);
+            }
+        });
+
+        if (changes.length === 0) {
+            return '';
+        }
+
+        return `
+            <div class="paragraph-changes">
+                <div class="paragraph-changes-label">涉及修改：</div>
+                <div class="paragraph-changes-list">${changes.join('')}</div>
+            </div>
+        `;
+    }
+
+    renderChangesTracker() {
+        const container = document.getElementById('changes-content');
+        const story = this.state.currentStory;
+
+        if (!this.state.selectedChapter || !story) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraphs = chapter.paragraphs || [];
+        const allChanges = [];
+
+        paragraphs.forEach((paragraph, index) => {
+            if (!paragraph.changes) return;
+
+            paragraph.changes.characters?.forEach(charId => {
+                const character = story.characters.find(c => c.id === charId);
+                if (character) {
+                    allChanges.push({
+                        type: 'character',
+                        name: character.name,
+                        id: charId,
+                        paragraphIndex: index,
+                        paragraphId: paragraph.id
+                    });
+                }
+            });
+
+            paragraph.changes.items?.forEach(itemId => {
+                const item = story.items.find(i => i.id === itemId);
+                if (item) {
+                    allChanges.push({
+                        type: 'item',
+                        name: item.name,
+                        id: itemId,
+                        paragraphIndex: index,
+                        paragraphId: paragraph.id
+                    });
+                }
+            });
+        });
+
+        if (allChanges.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:var(--secondary-color);font-size:0.8rem;padding:20px;">暂无修改记录</div>';
+            return;
+        }
+
+        container.innerHTML = allChanges.map(change => `
+            <div class="change-item" data-change-type="${change.type}" data-change-id="${change.id}" data-paragraph-id="${change.paragraphId}">
+                <div class="change-item-header ${change.type}">
+                    <span class="type-icon">${change.type === 'character' ? '👤' : '🎒'}</span>
+                    <span class="change-item-name">${change.name}</span>
+                </div>
+                <div class="change-item-paragraph">段落 ${change.paragraphIndex + 1}</div>
+            </div>
+        `).join('');
     }
 
     handleChapterEdit() {
@@ -905,8 +1175,17 @@ class App {
             await navigator.clipboard.writeText(prompt.value);
             this.showToast(i18n.t('buttons.copyPrompt'), 'success');
         } catch (err) {
-            prompt.select();
-            document.execCommand('copy');
+            // Fallback for older browsers
+            const textarea = prompt;
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+            } catch (e) {
+                console.error('Copy failed:', e);
+                this.showToast('复制失败', 'error');
+                return;
+            }
             this.showToast(i18n.t('buttons.copyPrompt'), 'success');
         }
     }

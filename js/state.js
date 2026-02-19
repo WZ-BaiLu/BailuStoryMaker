@@ -73,7 +73,7 @@ class AppState {
             id: Formatters.generateId('chapter'),
             title: title || '新章节',
             order: this.currentStory.chapters.length + 1,
-            content: '',
+            paragraphs: [],
             createdAt: Formatters.formatDate(),
             updatedAt: Formatters.formatDate()
         };
@@ -116,6 +116,70 @@ class AppState {
         this.notify('chapterSelected', chapterId);
         // Auto-save to localStorage when selection changes
         this.saveToLocalStorage();
+    }
+
+    // Paragraph management
+    addParagraph(chapterId) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const chapter = this.currentStory.chapters.find(c => c.id === chapterId);
+        if (!chapter) {
+            throw new Error('章节不存在');
+        }
+
+        this.saveStateBeforeChange('添加段落');
+
+        const paragraph = {
+            id: Formatters.generateId('paragraph'),
+            content: '',
+            changes: {
+                characters: [],
+                items: []
+            },
+            createdAt: Formatters.formatDate()
+        };
+
+        if (!chapter.paragraphs) {
+            chapter.paragraphs = [];
+        }
+        chapter.paragraphs.push(paragraph);
+
+        this.notify('paragraphAdded', { chapterId, paragraph });
+        this.updateChapter(chapterId, { updatedAt: Formatters.formatDate() });
+        return paragraph;
+    }
+
+    updateParagraph(chapterId, paragraphId, updates) {
+        if (!this.currentStory) return;
+
+        const chapter = this.currentStory.chapters.find(c => c.id === chapterId);
+        if (!chapter || !chapter.paragraphs) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (paragraph) {
+            this.saveStateBeforeChange('编辑段落');
+            Object.assign(paragraph, updates);
+            this.notify('paragraphUpdated', { chapterId, paragraph });
+            this.saveToLocalStorage();
+        }
+    }
+
+    deleteParagraph(chapterId, paragraphId) {
+        if (!this.currentStory) return;
+
+        const chapter = this.currentStory.chapters.find(c => c.id === chapterId);
+        if (!chapter || !chapter.paragraphs) return;
+
+        this.saveStateBeforeChange('删除段落');
+
+        const index = chapter.paragraphs.findIndex(p => p.id === paragraphId);
+        if (index !== -1) {
+            chapter.paragraphs.splice(index, 1);
+            this.notify('paragraphDeleted', { chapterId, paragraphId });
+            this.saveToLocalStorage();
+        }
     }
 
     // Character management
