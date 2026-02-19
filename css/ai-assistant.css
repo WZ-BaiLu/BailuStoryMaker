@@ -237,9 +237,11 @@
     line-height: 1.5;
     min-height: 60px;
     max-height: 150px;
+    overflow-y: auto;
     margin-bottom: 8px;
     background: var(--input-bg, #ffffff);
     color: var(--text-color, #333);
+    transition: height 0.1s ease;
 }
 
 #ai-input:focus {

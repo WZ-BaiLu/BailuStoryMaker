@@ -21,6 +21,11 @@ class ViewManager {
         });
 
         this.currentView = viewName;
+
+        // Handle AI panel visibility based on view
+        this.handleAIPanelVisibility(viewName);
+
+        // Save view to localStorage
         this.saveViewToStorage();
 
         switch (viewName) {
@@ -77,6 +82,40 @@ class ViewManager {
     getCurrentView() {
         return this.currentView;
     }
+
+    handleAIPanelVisibility(viewName) {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (!aiPanel) return;
+
+        // Show AI panel only in story view when a chapter is selected
+        if (viewName === 'story' && this.state.selectedChapter) {
+            aiPanel.classList.remove('hidden');
+            this.app.aiManager.loadHistory(this.state.selectedChapter);
+        } else {
+            aiPanel.classList.add('hidden');
+        }
+    }
+
+    showAIAssistantPanel() {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (aiPanel) {
+            aiPanel.classList.remove('hidden');
+        }
+    }
+
+    hideAIAssistantPanel() {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (aiPanel) {
+            aiPanel.classList.add('hidden');
+        }
+    }
+
+    toggleAIAssistantPanel() {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (aiPanel) {
+            aiPanel.classList.toggle('hidden');
+        }
+    }
 }
 
 describe('ViewManager', () => {
@@ -84,6 +123,7 @@ describe('ViewManager', () => {
     let mockApp;
     let mockState;
     let mockUIRenderer;
+    let mockAIManager;
 
     beforeEach(() => {
         localStorage.clear();
@@ -95,6 +135,7 @@ describe('ViewManager', () => {
             <div>
                 <div id="story-view" class="view"></div>
                 <div id="character-view" class="view"></div>
+                <div id="ai-assistant-panel" class="hidden"></div>
             </div>
         `;
 
@@ -110,6 +151,10 @@ describe('ViewManager', () => {
             renderSettingEditor: jest.fn()
         };
 
+        mockAIManager = {
+            loadHistory: jest.fn()
+        };
+
         mockState = {
             selectedChapter: null,
             selectedCharacter: null,
@@ -118,7 +163,8 @@ describe('ViewManager', () => {
         };
 
         mockApp = {
-            uiRenderer: mockUIRenderer
+            uiRenderer: mockUIRenderer,
+            aiManager: mockAIManager
         };
 
         viewManager = new ViewManager(mockApp, mockState);
@@ -236,6 +282,131 @@ describe('ViewManager', () => {
         it('should return current view', () => {
             viewManager.currentView = 'prompt';
             expect(viewManager.getCurrentView()).toBe('prompt');
+        });
+    });
+
+    describe('AI Panel Visibility', () => {
+        describe('handleAIPanelVisibility', () => {
+            it('should show AI panel in story view with selected chapter', () => {
+                mockState.selectedChapter = 'ch1';
+                viewManager.handleAIPanelVisibility('story');
+
+                const aiPanel = document.getElementById('ai-assistant-panel');
+                expect(aiPanel.classList.contains('hidden')).toBe(false);
+                expect(mockAIManager.loadHistory).toHaveBeenCalledWith('ch1');
+            });
+
+            it('should hide AI panel in story view without selected chapter', () => {
+                mockState.selectedChapter = null;
+                viewManager.handleAIPanelVisibility('story');
+
+                const aiPanel = document.getElementById('ai-assistant-panel');
+                expect(aiPanel.classList.contains('hidden')).toBe(true);
+                expect(mockAIManager.loadHistory).not.toHaveBeenCalled();
+            });
+
+            it('should hide AI panel when not in story view', () => {
+                mockState.selectedChapter = 'ch1';
+                viewManager.handleAIPanelVisibility('character');
+
+                const aiPanel = document.getElementById('ai-assistant-panel');
+                expect(aiPanel.classList.contains('hidden')).toBe(true);
+                expect(mockAIManager.loadHistory).not.toHaveBeenCalled();
+            });
+
+            it('should handle missing AI panel element gracefully', () => {
+                document.getElementById('ai-assistant-panel')?.remove();
+                mockState.selectedChapter = 'ch1';
+
+                expect(() => viewManager.handleAIPanelVisibility('story')).not.toThrow();
+            });
+        });
+
+        describe('showAIAssistantPanel', () => {
+            it('should show AI panel', () => {
+                const aiPanel = document.getElementById('ai-assistant-panel');
+                aiPanel.classList.add('hidden');
+
+                viewManager.showAIAssistantPanel();
+
+                expect(aiPanel.classList.contains('hidden')).toBe(false);
+            });
+
+            it('should handle missing AI panel element gracefully', () => {
+                document.getElementById('ai-assistant-panel')?.remove();
+
+                expect(() => viewManager.showAIAssistantPanel()).not.toThrow();
+            });
+        });
+
+        describe('hideAIAssistantPanel', () => {
+            it('should hide AI panel', () => {
+                const aiPanel = document.getElementById('ai-assistant-panel');
+                aiPanel.classList.remove('hidden');
+
+                viewManager.hideAIAssistantPanel();
+
+                expect(aiPanel.classList.contains('hidden')).toBe(true);
+            });
+
+            it('should handle missing AI panel element gracefully', () => {
+                document.getElementById('ai-assistant-panel')?.remove();
+
+                expect(() => viewManager.hideAIAssistantPanel()).not.toThrow();
+            });
+        });
+
+        describe('toggleAIAssistantPanel', () => {
+            it('should toggle AI panel visibility from hidden to visible', () => {
+                const aiPanel = document.getElementById('ai-assistant-panel');
+                aiPanel.classList.add('hidden');
+
+                viewManager.toggleAIAssistantPanel();
+
+                expect(aiPanel.classList.contains('hidden')).toBe(false);
+            });
+
+            it('should toggle AI panel visibility from visible to hidden', () => {
+                const aiPanel = document.getElementById('ai-assistant-panel');
+                aiPanel.classList.remove('hidden');
+
+                viewManager.toggleAIAssistantPanel();
+
+                expect(aiPanel.classList.contains('hidden')).toBe(true);
+            });
+
+            it('should handle missing AI panel element gracefully', () => {
+                document.getElementById('ai-assistant-panel')?.remove();
+
+                expect(() => viewManager.toggleAIAssistantPanel()).not.toThrow();
+            });
+        });
+    });
+
+    describe('switchView with AI Panel', () => {
+        it('should show AI panel when switching to story view with chapter', () => {
+            mockState.selectedChapter = 'ch1';
+            viewManager.switchView('story');
+
+            const aiPanel = document.getElementById('ai-assistant-panel');
+            expect(aiPanel.classList.contains('hidden')).toBe(false);
+            expect(mockAIManager.loadHistory).toHaveBeenCalledWith('ch1');
+        });
+
+        it('should hide AI panel when switching away from story view', () => {
+            mockState.selectedChapter = 'ch1';
+            viewManager.switchView('character');
+
+            const aiPanel = document.getElementById('ai-assistant-panel');
+            expect(aiPanel.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should hide AI panel when switching to story view without chapter', () => {
+            mockState.selectedChapter = null;
+            viewManager.switchView('story');
+
+            const aiPanel = document.getElementById('ai-assistant-panel');
+            expect(aiPanel.classList.contains('hidden')).toBe(true);
         });
     });
 });

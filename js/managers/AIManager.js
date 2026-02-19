@@ -39,6 +39,9 @@ class AIManager {
         this.loadPanelState();
         this.checkResponsiveLayout();
 
+        // Initialize input height
+        this.autoResizeInput();
+
         // Listen for configuration changes
         this.configManager.onChange(() => {
             this.updateWarningBadge();
@@ -92,6 +95,7 @@ class AIManager {
 
             this.elements.inputField.addEventListener('input', () => {
                 this.updateCharacterCounter();
+                this.autoResizeInput();
             });
         }
 
@@ -306,6 +310,7 @@ class AIManager {
         // Clear input
         input.value = '';
         this.updateCharacterCounter();
+        this.autoResizeInput();
 
         // Show loading
         this.showLoadingIndicator();
@@ -318,25 +323,18 @@ class AIManager {
         const messages = this.buildMessageHistory(message);
 
         try {
-            console.log('[AIManager] Getting config');
             const config = this.configManager.getConfig();
-            console.log('[AIManager] Config retrieved:', config);
-            console.log('[AIManager] Calling aiService.chat');
             const result = await this.aiService.chat(config, messages, context);
-            console.log('[AIManager] AI Service result:', result);
 
             if (result.success) {
-                console.log('[AIManager] Displaying AI response');
                 // Display AI response
                 this.displayMessage(result.data.content, 'assistant');
                 this.saveHistory();
             } else {
-                console.error('[AIManager] AI Service returned error:', result.error);
                 // Show error
                 this.showError(result.error);
             }
         } catch (error) {
-            console.error('[AIManager] Exception caught:', error);
             this.showError({
                 type: 'unknown_error',
                 message: error.message
@@ -572,17 +570,34 @@ class AIManager {
     updateCharacterCounter() {
         const input = this.elements.inputField;
         const counter = this.elements.characterCounter;
-        
+
         if (input && counter) {
             const count = input.value.length;
             counter.textContent = `${count}/4000`;
-            
+
             if (count > 4000) {
                 counter.style.color = 'var(--warning-color)';
             } else {
                 counter.style.color = '';
             }
         }
+    }
+
+    /**
+     * Auto-resize input field based on content
+     */
+    autoResizeInput() {
+        const input = this.elements.inputField;
+        if (!input) return;
+
+        // Reset height to auto first to properly calculate
+        input.style.height = 'auto';
+
+        // Calculate new height based on scrollHeight
+        const newHeight = Math.min(input.scrollHeight, 150);
+
+        // Apply new height with minimum of 60px
+        input.style.height = `${Math.max(newHeight, 60)}px`;
     }
 
     /**

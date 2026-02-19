@@ -43,15 +43,6 @@ class AIService {
      */
     async chat(config, messages, context = null) {
         try {
-            console.log('[AIService] Chat request started');
-            console.log('[AIService] Config:', {
-                provider: config.provider,
-                model: config.model,
-                endpoint: config.endpoint,
-                temperature: config.temperature,
-                maxTokens: config.maxTokens
-            });
-
             // Validate configuration
             const configValidation = this.validateConfig(config);
             if (!configValidation.valid) {
@@ -80,22 +71,17 @@ class AIService {
 
             // Build request with context if provided
             const messagesWithContext = this.addContextToMessages(messages, context);
-            console.log('[AIService] Messages:', messagesWithContext);
 
             // Build request
             const request = adapter.buildRequest(config, messagesWithContext);
-            console.log('[AIService] Request body:', JSON.parse(request.body));
 
             const endpoint = config.endpoint || adapter.getDefaultEndpoint();
-            console.log('[AIService] Sending request to:', endpoint);
 
             // Send request with timeout
             const response = await this.sendRequestWithTimeout(endpoint, request);
-            console.log('[AIService] Response status:', response.status, response.statusText);
 
             // Parse response (await the Promise returned by adapter)
             const result = await adapter.parseResponse(response);
-            console.log('[AIService] Parsed result:', result);
 
             return {
                 success: true,
@@ -149,10 +135,6 @@ class AIService {
      * @returns {Promise<Response>} Fetch response
      */
     async sendRequestWithTimeout(url, options) {
-        console.log('[AIService] sendRequestWithTimeout called');
-        console.log('[AIService] URL:', url);
-        console.log('[AIService] Headers:', options.headers);
-
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -162,11 +144,9 @@ class AIService {
                 signal: controller.signal
             });
             clearTimeout(timeoutId);
-            console.log('[AIService] Fetch response received, status:', response.status);
             return response;
         } catch (error) {
             clearTimeout(timeoutId);
-            console.error('[AIService] Fetch error:', error);
             throw error;
         }
     }

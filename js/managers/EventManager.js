@@ -263,6 +263,11 @@ class EventManager {
         }
 
         const newParagraphInput = document.getElementById('new-paragraph-input');
+        newParagraphInput.addEventListener('focus', () => {
+            // Clear paragraph selection when focusing on new paragraph input
+            this.app.uiRenderer.selectedParagraph = null;
+            this.app.uiRenderer.renderParagraphs();
+        });
         newParagraphInput.addEventListener('keydown', (e) => {
             // Enter (without Shift or Ctrl) to submit
             if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {

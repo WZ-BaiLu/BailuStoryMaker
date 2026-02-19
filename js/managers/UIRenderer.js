@@ -210,11 +210,17 @@ class UIRenderer {
                 });
             }
 
-            // Click to select
+            // Click to select (or deselect if already selected)
             bubble.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('btn') && e.target !== textarea) {
-                    this.selectedParagraph = paragraphId;
-                    this.renderParagraphs();
+                    // If clicking the already selected paragraph, deselect it
+                    if (this.selectedParagraph === paragraphId) {
+                        this.selectedParagraph = null;
+                        this.renderParagraphs();
+                    } else {
+                        this.selectedParagraph = paragraphId;
+                        this.renderParagraphs();
+                    }
                 }
             });
 
