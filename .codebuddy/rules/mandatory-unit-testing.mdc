@@ -1,0 +1,206 @@
+---
+description: 
+alwaysApply: true
+enabled: true
+updatedAt: 2026-02-19T07:53:46.745Z
+provider: 
+---
+
+# 单元测试强制规范
+
+## 规则目的
+确保项目中的所有代码都有相应的单元测试覆盖，提高代码质量和可维护性。
+
+## 适用范围
+- 所有 JavaScript 模块、类和函数
+- 所有管理器类（managers）
+- 所有工具函数（utils）
+- 所有业务逻辑模块
+
+## 测试要求
+
+### 1. 新代码
+- 每个新增的 JavaScript 文件必须配套创建相应的测试文件
+- 测试文件命名规范：`<原文件名>.test.js` 或 `<原文件名>.spec.js`
+- 测试文件应放在 `tests/` 目录下，保持与源代码相同的目录结构
+
+```
+源代码结构：
+js/
+├── managers/
+│   ├── ViewManager.js
+│   └── ThemeManager.js
+├── utils/
+│   └── validators.js
+
+测试文件结构：
+tests/
+├── managers/
+│   ├── ViewManager.test.js
+│   └── ThemeManager.test.js
+├── utils/
+│   └── validators.test.js
+```
+
+### 2. 测试覆盖率要求
+- 核心逻辑代码覆盖率 ≥ 80%
+- 关键业务逻辑覆盖率 = 100%
+- 分支覆盖率 ≥ 70%
+
+### 3. 测试类型
+- **单元测试**：测试独立的函数和类方法
+- **集成测试**：测试多个组件之间的交互
+- **边界测试**：测试边界条件和异常情况
+
+### 4. 测试内容要求
+每个测试文件应包含：
+- 正常情况测试
+- 边界条件测试
+- 异常情况测试
+- Mock 外部依赖（如 DOM 操作、localStorage、文件系统）
+
+## 现有代码测试计划
+
+### 第一优先级（高）
+1. **NotificationManager.test.js**
+   - `showToast()` 方法
+   - `showSuccess()`, `showError()`, `showWarning()` 方法
+   - 自动消失和淡出动画逻辑
+
+2. **ThemeManager.test.js**
+   - `loadTheme()` 方法
+   - `toggleTheme()` 方法
+   - `getCurrentTheme()` 方法
+   - localStorage 交互
+
+### 第二优先级（中）
+3. **ViewManager.test.js**
+   - 视图切换逻辑
+   - 视图持久化
+   - 视图刷新
+
+4. **EventManager.test.js**
+   - 键盘快捷键处理
+   - 事件绑定和触发
+
+5. **ModalManager.test.js**
+   - 模态框显示和隐藏
+   - 表单提交处理
+
+### 第三优先级（低）
+6. **UIRenderer.test.js**
+   - 渲染方法（需要 Mock DOM）
+   - 事件绑定
+
+7. **ExportImportManager.test.js**
+   - 导入导出逻辑（需要 Mock 文件操作）
+
+## 测试框架要求
+
+### 推荐测试框架
+- **Jest**: 主测试框架
+- **Vitest**: 如果使用 Vite 构建
+- **Mocha + Chai**: 替代方案
+
+### 测试工具
+- **@testing-library/dom**: DOM 测试
+- **jsdom**: 提供 DOM 环境
+- **sinon**: Mock 和 spy
+
+## 测试编写规范
+
+### 测试命名
+使用描述性名称，格式：`should <期望结果> when <条件>`
+
+```javascript
+describe('ThemeManager', () => {
+    describe('loadTheme', () => {
+        it('should add dark class to body when theme is dark', () => {
+            // 测试代码
+        });
+
+        it('should not add dark class when theme is light', () => {
+            // 测试代码
+        });
+    });
+});
+```
+
+### Before/After
+使用 `beforeEach` 和 `afterEach` 清理测试环境
+
+```javascript
+beforeEach(() => {
+    document.body.className = '';
+    localStorage.clear();
+});
+
+afterEach(() => {
+    // 清理
+});
+```
+
+### Mock 外部依赖
+```javascript
+// Mock localStorage
+const localStorageMock = {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    clear: jest.fn()
+};
+global.localStorage = localStorageMock;
+```
+
+## 代码审查检查点
+
+在代码审查时，必须检查：
+1. [ ] 是否有对应的测试文件
+2. [ ] 测试覆盖率是否达标
+3. [ ] 测试是否覆盖边界情况
+4. [ ] 测试命名是否清晰
+5. [ ] 是否正确 Mock 了外部依赖
+
+## CI/CD 集成
+
+### 自动化测试
+在 CI/CD 流程中：
+- 每次提交自动运行测试
+- 测试失败时阻止合并
+- 生成测试覆盖率报告
+
+### 覆盖率阈值
+- 整体代码覆盖率 < 60% → 构建失败
+- 新增代码覆盖率 < 80% → 构建失败
+
+## 例外情况
+
+以下情况可以豁免测试要求（需在代码注释中说明）：
+1. 纯展示性代码（仅 UI 样式）
+2. 已弃用且即将移除的代码
+3. 第三方库的包装器（仅传递调用）
+
+豁免格式：
+```javascript
+/**
+ * TODO: 需要添加单元测试
+ * 豁免原因：[说明原因]
+ * 计划测试时间：[日期或版本]
+ */
+```
+
+## 执行计划
+
+### 立即执行
+1. 创建测试目录结构 `tests/`
+2. 设置测试框架（Jest 或 Vitest）
+3. 为新创建的 7 个管理器编写测试
+
+### 近期目标（1-2周）
+1. 完成所有管理器的单元测试
+2. 完成工具函数的单元测试
+3. 达到整体代码覆盖率 60%
+
+### 中期目标（1个月）
+1. 完成所有现有代码的测试
+2. 完善集成测试
+3. 达到整体代码覆盖率 80%

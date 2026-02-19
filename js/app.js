@@ -3,9 +3,16 @@
 class App {
     constructor() {
         this.state = appState;
-        this.currentView = 'story';
-        this.selectedParagraph = null;
-        this.editingParagraph = null;
+
+        // Initialize managers
+        this.notificationManager = new NotificationManager();
+        this.themeManager = new ThemeManager();
+        this.modalManager = new ModalManager(this, this.state);
+        this.exportImportManager = new ExportImportManager(this, this.state);
+        this.viewManager = new ViewManager(this, this.state);
+        this.eventManager = new EventManager(this, this.state);
+        this.uiRenderer = new UIRenderer(this, this.state);
+
         this.init();
     }
 
@@ -24,8 +31,7 @@ class App {
         i18n.onLanguageChange(() => {
             i18n.applyTranslations();
             this.updateStoryTitle();
-            // Re-render current view to update dynamic content
-            this.refreshCurrentView();
+            this.viewManager.refreshCurrentView();
         });
     }
 
@@ -42,246 +48,60 @@ class App {
     }
 
     setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + E: Export
-            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-                e.preventDefault();
-                this.handleExport();
-            }
-
-            // Ctrl/Cmd + I: Import
-            if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
-                e.preventDefault();
-                this.handleImport();
-            }
-
-            // Ctrl/Cmd + N: New story
-            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-                e.preventDefault();
-                this.showNewStoryModal();
-            }
-
-            // Ctrl/Cmd + Z: Undo
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleUndo();
-            }
-
-            // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z: Redo
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-                e.preventDefault();
-                this.handleRedo();
-            }
-
-            // Escape: Close modal
-            if (e.key === 'Escape') {
-                this.hideModal();
-            }
-
-            // Alt + 1-5: Switch views
-            if (e.altKey && ['1', '2', '3', '4', '5'].includes(e.key)) {
-                e.preventDefault();
-                const views = ['story', 'character', 'item', 'setting', 'prompt'];
-                this.switchView(views[parseInt(e.key) - 1]);
-            }
-        });
+        this.eventManager.setupKeyboardShortcuts();
     }
 
     bindEvents() {
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', (e) => this.handleNavigation(e));
-        });
-
-        // Header buttons
-        document.getElementById('undo-btn').addEventListener('click', () => this.handleUndo());
-        document.getElementById('redo-btn').addEventListener('click', () => this.handleRedo());
-        document.getElementById('export-btn').addEventListener('click', () => this.handleExport());
-        document.getElementById('import-btn').addEventListener('click', () => this.handleImport());
-        document.getElementById('theme-toggle').addEventListener('click', () => this.toggleTheme());
-
-        // Import input
-        document.getElementById('import-input').addEventListener('change', (e) => this.handleImportFile(e));
-
-        // New story button
-        document.getElementById('new-story-btn').addEventListener('click', () => this.showNewStoryModal());
-
-        // Modal
-        document.querySelector('.modal-close').addEventListener('click', () => this.hideModal());
-        document.getElementById('modal-form').addEventListener('submit', (e) => this.handleModalSubmit(e));
-
-        // Story view
-        document.getElementById('add-chapter-btn').addEventListener('click', () => this.addChapter());
-        const newParagraphInput = document.getElementById('new-paragraph-input');
-        newParagraphInput.addEventListener('keydown', (e) => {
-            // Enter (without Shift or Ctrl) to submit
-            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
-                e.preventDefault();
-                this.handleNewParagraph();
-            }
-            // Ctrl+Enter to also submit
-            if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                this.handleNewParagraph();
-            }
-        });
-
-        // Character view
-        document.getElementById('add-character-btn').addEventListener('click', () => this.addCharacter());
-        document.getElementById('character-form').addEventListener('submit', (e) => this.saveCharacter(e));
-        document.getElementById('add-attr-btn').addEventListener('click', () => this.addAttribute());
-        document.getElementById('add-ability-btn').addEventListener('click', () => this.addAbility());
-
-        // Item view
-        document.getElementById('add-item-btn').addEventListener('click', () => this.addItem());
-        document.getElementById('item-form').addEventListener('submit', (e) => this.saveItem(e));
-        document.getElementById('add-prop-btn').addEventListener('click', () => this.addProperty());
-
-        // Setting view
-        document.getElementById('add-setting-btn').addEventListener('click', () => this.addSetting());
-        document.getElementById('setting-form').addEventListener('submit', (e) => this.saveSetting(e));
-
-        // Prompt view
-        document.getElementById('generate-prompt-btn').addEventListener('click', () => this.generatePrompt());
-        document.getElementById('copy-prompt-btn').addEventListener('click', () => this.copyPrompt());
-
-        // State listeners
-        this.state.on('storyLoaded', () => this.onStoryLoaded());
-        this.state.on('chapterAdded', () => this.renderChapters());
-        this.state.on('chapterUpdated', () => this.updateSaveStatus());
-        this.state.on('paragraphAdded', () => this.renderParagraphs());
-        this.state.on('paragraphUpdated', () => this.renderParagraphs());
-        this.state.on('paragraphDeleted', () => this.renderParagraphs());
-        this.state.on('characterAdded', () => this.renderCharacters());
-        this.state.on('characterUpdated', () => this.updateSaveStatus());
-        this.state.on('itemAdded', () => this.renderItems());
-        this.state.on('itemUpdated', () => this.updateSaveStatus());
-        this.state.on('settingAdded', () => this.renderSettings());
-        this.state.on('settingUpdated', () => this.updateSaveStatus());
-        this.state.on('stateRestored', () => this.onStateRestored());
-        this.state.history.on('historyChanged', () => this.updateUndoRedoButtons());
+        this.eventManager.bindEvents();
     }
 
-    handleNavigation(e) {
-        const viewName = e.currentTarget.dataset.view;
-        this.switchView(viewName);
-    }
-
-    switchView(viewName) {
-        // Update navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.view === viewName);
-        });
-
-        // Update views
-        document.querySelectorAll('.view').forEach(view => {
-            view.classList.toggle('active', view.id === `${viewName}-view`);
-        });
-
-        this.currentView = viewName;
-
-        // Save view to localStorage
-        this.saveViewToStorage();
-
-        // Render content
-        switch (viewName) {
-            case 'story':
-                this.renderChapters();
-                break;
-            case 'character':
-                this.renderCharacters();
-                break;
-            case 'item':
-                this.renderItems();
-                break;
-            case 'setting':
-                this.renderSettings();
-                break;
-            case 'prompt':
-                this.renderPromptOptions();
-                break;
-        }
-    }
-
-    // Story management
+    // Story management (delegated to managers)
     handleExport() {
-        try {
-            const story = this.state.saveStory();
-            const filename = `${story.metadata.title}.json`;
-            FileManager.saveAsJSON(story, filename);
-            this.showToast(i18n.t('status.saved'), 'success');
-        } catch (error) {
-            this.showToast(error.message, 'error');
-        }
+        this.exportImportManager.handleExport();
     }
 
     handleImport() {
-        document.getElementById('import-input').click();
-    }
-
-    async handleImportFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        try {
-            const story = await FileManager.loadFromJSON(file);
-            this.state.loadStory(story);
-            this.showToast(i18n.t('status.saved'), 'success');
-        } catch (error) {
-            this.showToast(error.message, 'error');
-        }
-
-        e.target.value = '';
+        this.exportImportManager.handleImport();
     }
 
     showNewStoryModal() {
-        document.getElementById('modal-title').textContent = i18n.t('modal.newStory');
-        document.getElementById('modal-input').placeholder = i18n.t('placeholder.inputName');
-        document.getElementById('modal-input').value = '';
-        document.getElementById('modal').classList.remove('hidden');
+        this.modalManager.showNewStoryModal();
     }
 
     hideModal() {
-        document.getElementById('modal').classList.add('hidden');
+        this.modalManager.hideModal();
     }
 
     handleModalSubmit(e) {
-        e.preventDefault();
-        const title = document.getElementById('modal-input').value.trim();
-        if (!title) return;
-
-        const newStory = this.state.createStory(title);
-        this.state.loadStory(newStory);
-        this.hideModal();
-        this.showToast(i18n.t('status.saved'), 'success');
+        this.modalManager.handleModalSubmit(e);
     }
 
     onStoryLoaded() {
         const story = this.state.currentStory;
         document.getElementById('story-title').textContent = story.metadata.title;
-        this.renderChapters();
-        this.renderCharacters();
-        this.renderItems();
-        this.renderSettings();
+        this.uiRenderer.renderChapters();
+        this.uiRenderer.renderCharacters();
+        this.uiRenderer.renderItems();
+        this.uiRenderer.renderSettings();
 
         // Restore selected items in editors
         if (this.state.selectedChapter) {
-            this.renderChapterEditor(this.state.selectedChapter);
+            this.uiRenderer.renderChapterEditor(this.state.selectedChapter);
         }
         if (this.state.selectedCharacter) {
-            this.renderCharacterEditor(this.state.selectedCharacter);
+            this.uiRenderer.renderCharacterEditor(this.state.selectedCharacter);
         }
         if (this.state.selectedItem) {
-            this.renderItemEditor(this.state.selectedItem);
+            this.uiRenderer.renderItemEditor(this.state.selectedItem);
         }
         if (this.state.selectedSetting) {
-            this.renderSettingEditor(this.state.selectedSetting);
+            this.uiRenderer.renderSettingEditor(this.state.selectedSetting);
         }
 
         // Only switch to story view if no saved view
         const savedView = localStorage.getItem(Constants.STORAGE_KEYS.CURRENT_VIEW);
         if (!savedView) {
-            this.switchView('story');
+            this.viewManager.switchView('story');
         }
 
         // Enable auto-save if configured
@@ -304,108 +124,19 @@ class App {
     // Chapter management
     addChapter() {
         if (!this.state.currentStory) {
-            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
+            this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
             return;
         }
         const chapter = this.state.addChapter(i18n.t('messages.noChapters'));
         this.state.selectChapter(chapter.id);
-        this.renderChapters();
-        this.renderChapterEditor(chapter.id);
-    }
-
-    renderChapters() {
-        const container = document.getElementById('chapters');
-        const story = this.state.currentStory;
-        if (!story) return;
-
-        container.innerHTML = story.chapters
-            .sort((a, b) => a.order - b.order)
-            .map(chapter => `
-                <div class="list-item ${this.state.selectedChapter === chapter.id ? 'active' : ''}"
-                     data-chapter-id="${chapter.id}">
-                    <div class="list-item-header">
-                        <span class="list-item-title">${chapter.order}. ${chapter.title}</span>
-                        <div class="list-item-actions">
-                            <button class="btn btn-sm btn-delete" data-action="delete-chapter" data-chapter-id="${chapter.id}">删除</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-
-        container.querySelectorAll('.list-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('btn-delete')) {
-                    const chapterId = item.dataset.chapterId;
-                    console.log('Click chapter:', chapterId, 'Story:', this.state.currentStory);
-                    this.state.selectChapter(chapterId);
-                    this.renderChapters();
-                    this.renderChapterEditor(chapterId);
-                }
-            });
-        });
-
-        container.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const chapterId = btn.dataset.chapterId;
-                if (confirm(i18n.t('messages.confirmDeleteChapter'))) {
-                    this.state.deleteChapter(chapterId);
-                    this.renderChapters();
-                    if (this.state.selectedChapter === chapterId) {
-                        this.state.selectChapter(null);
-                        this.renderChapterEditor(null);
-                    }
-                }
-            });
-        });
-
-        if (story.chapters.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📖</div><div class="empty-state-text">${i18n.t('messages.noChapters')}</div></div>`;
-        }
-    }
-
-    renderChapterEditor(chapterId) {
-        const contentPanel = document.getElementById('chapter-editor-content');
-        const placeholderPanel = document.getElementById('chapter-editor-placeholder');
-        const titleInput = document.getElementById('chapter-title');
-        const story = this.state.currentStory;
-
-        console.log('renderChapterEditor called with chapterId:', chapterId, 'story:', story);
-
-        if (!chapterId || !story) {
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-            document.getElementById('changes-tracker').classList.remove('visible');
-            return;
-        }
-
-        const chapter = story.chapters.find(c => c.id === chapterId);
-        console.log('Found chapter:', chapter);
-        if (chapter) {
-            contentPanel.classList.remove('hidden');
-            placeholderPanel.classList.remove('active');
-
-            titleInput.value = chapter.title;
-            titleInput.disabled = false;
-
-            titleInput.oninput = () => {
-                this.state.updateChapter(chapterId, { title: titleInput.value });
-            };
-
-            // Render paragraphs
-            this.renderParagraphs();
-        } else {
-            // Chapter not found in current story (may have been deleted)
-            console.log('Chapter not found in story');
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-        }
+        this.uiRenderer.renderChapters();
+        this.uiRenderer.renderChapterEditor(chapter.id);
     }
 
     // Paragraph management
     handleNewParagraph() {
         if (!this.state.selectedChapter) {
-            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
+            this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
             return;
         }
 
@@ -413,7 +144,7 @@ class App {
         const content = input.value.trim();
 
         if (!content) {
-            return; // Don't add empty paragraphs
+            return;
         }
 
         this.state.addParagraph(this.state.selectedChapter);
@@ -424,337 +155,20 @@ class App {
             this.state.updateParagraph(this.state.selectedChapter, lastParagraph.id, { content });
         }
 
-        // Clear input and render
         input.value = '';
-        this.renderParagraphs();
-    }
-
-    renderParagraphs() {
-        const container = document.getElementById('paragraphs-list');
-        const story = this.state.currentStory;
-        const changesTracker = document.getElementById('changes-tracker');
-
-        if (!this.state.selectedChapter || !story) {
-            container.innerHTML = '';
-            changesTracker.classList.remove('visible');
-            return;
-        }
-
-        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
-        if (!chapter) {
-            container.innerHTML = '';
-            changesTracker.classList.remove('visible');
-            return;
-        }
-
-        const paragraphs = chapter.paragraphs || [];
-
-        container.innerHTML = paragraphs.map((paragraph, index) => `
-            <div class="paragraph-bubble ${this.selectedParagraph === paragraph.id ? 'selected' : ''}"
-                 data-paragraph-id="${paragraph.id}">
-                <div class="paragraph-bubble-header">
-                    <span class="paragraph-bubble-number">段落 ${index + 1}</span>
-                    <div class="paragraph-bubble-actions">
-                        <button class="btn btn-sm" data-action="edit-paragraph">编辑</button>
-                        <button class="btn btn-sm btn-delete" data-action="delete-paragraph">删除</button>
-                    </div>
-                </div>
-                <div class="paragraph-bubble-content ${this.editingParagraph === paragraph.id ? 'editing' : ''}">
-                    ${paragraph.content || '点击编辑添加内容...'}
-                </div>
-                <textarea class="paragraph-bubble-textarea ${this.editingParagraph === paragraph.id ? 'editing' : ''}"
-                          placeholder="输入段落内容...">${paragraph.content || ''}</textarea>
-                ${this.renderParagraphChanges(paragraph)}
-            </div>
-        `).join('');
-
-        // Bind events
-        container.querySelectorAll('.paragraph-bubble').forEach(bubble => {
-            const paragraphId = bubble.dataset.paragraphId;
-
-            // Textarea input - bind first to prevent event bubbling
-            const textarea = bubble.querySelector('.paragraph-bubble-textarea');
-            if (textarea) {
-                textarea.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent bubble click event
-                });
-
-                textarea.addEventListener('input', () => {
-                    this.state.updateParagraph(this.state.selectedChapter, paragraphId, { content: textarea.value });
-                });
-
-                textarea.addEventListener('keydown', (e) => {
-                    // Escape to cancel editing
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        this.editingParagraph = null;
-                        this.renderParagraphs();
-                    }
-                    // Ctrl+Enter to save
-                    if (e.key === 'Enter' && e.ctrlKey) {
-                        e.preventDefault();
-                        this.editingParagraph = null;
-                        this.renderParagraphs();
-                    }
-                });
-
-                textarea.addEventListener('blur', () => {
-                    this.editingParagraph = null;
-                    this.renderParagraphs();
-                });
-            }
-
-            // Click to select
-            bubble.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('btn') && e.target !== textarea) {
-                    this.selectedParagraph = paragraphId;
-                    this.renderParagraphs();
-                }
-            });
-
-            // Edit button
-            const editBtn = bubble.querySelector('[data-action="edit-paragraph"]');
-            if (editBtn) {
-                editBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.editingParagraph = paragraphId;
-                    this.renderParagraphs();
-                    // Focus textarea after render - need to find the new bubble
-                    setTimeout(() => {
-                        const newBubble = container.querySelector(`[data-paragraph-id="${paragraphId}"]`);
-                        const newTextarea = newBubble?.querySelector('.paragraph-bubble-textarea');
-                        if (newTextarea) {
-                            newTextarea.focus();
-                            newTextarea.setSelectionRange(newTextarea.value.length, newTextarea.value.length);
-                        }
-                    }, 0);
-                });
-            }
-
-            // Delete button
-            const deleteBtn = bubble.querySelector('[data-action="delete-paragraph"]');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (confirm('确定删除这个段落吗？')) {
-                        this.state.deleteParagraph(this.state.selectedChapter, paragraphId);
-                        if (this.selectedParagraph === paragraphId) {
-                            this.selectedParagraph = null;
-                        }
-                    }
-                });
-            }
-        });
-
-        // Show/hide changes tracker
-        if (paragraphs.some(p => p.changes && (p.changes.characters?.length > 0 || p.changes.items?.length > 0))) {
-            changesTracker.classList.add('visible');
-            this.renderChangesTracker();
-        } else {
-            changesTracker.classList.remove('visible');
-        }
-
-        if (paragraphs.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-text">开始输入内容来添加段落...</div></div>`;
-        }
-    }
-
-    renderParagraphChanges(paragraph) {
-        if (!paragraph.changes || (paragraph.changes.characters?.length === 0 && paragraph.changes.items?.length === 0)) {
-            return '';
-        }
-
-        const story = this.state.currentStory;
-        const changes = [];
-
-        paragraph.changes.characters?.forEach(charId => {
-            const character = story?.characters.find(c => c.id === charId);
-            if (character) {
-                changes.push(`<span class="change-badge character">👤 ${character.name}</span>`);
-            }
-        });
-
-        paragraph.changes.items?.forEach(itemId => {
-            const item = story?.items.find(i => i.id === itemId);
-            if (item) {
-                changes.push(`<span class="change-badge item">🎒 ${item.name}</span>`);
-            }
-        });
-
-        if (changes.length === 0) {
-            return '';
-        }
-
-        return `
-            <div class="paragraph-changes">
-                <div class="paragraph-changes-label">涉及修改：</div>
-                <div class="paragraph-changes-list">${changes.join('')}</div>
-            </div>
-        `;
-    }
-
-    renderChangesTracker() {
-        const container = document.getElementById('changes-content');
-        const story = this.state.currentStory;
-
-        if (!this.state.selectedChapter || !story) {
-            container.innerHTML = '';
-            return;
-        }
-
-        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
-        if (!chapter) return;
-
-        const paragraphs = chapter.paragraphs || [];
-        const allChanges = [];
-
-        paragraphs.forEach((paragraph, index) => {
-            if (!paragraph.changes) return;
-
-            paragraph.changes.characters?.forEach(charId => {
-                const character = story.characters.find(c => c.id === charId);
-                if (character) {
-                    allChanges.push({
-                        type: 'character',
-                        name: character.name,
-                        id: charId,
-                        paragraphIndex: index,
-                        paragraphId: paragraph.id
-                    });
-                }
-            });
-
-            paragraph.changes.items?.forEach(itemId => {
-                const item = story.items.find(i => i.id === itemId);
-                if (item) {
-                    allChanges.push({
-                        type: 'item',
-                        name: item.name,
-                        id: itemId,
-                        paragraphIndex: index,
-                        paragraphId: paragraph.id
-                    });
-                }
-            });
-        });
-
-        if (allChanges.length === 0) {
-            container.innerHTML = '<div style="text-align:center;color:var(--secondary-color);font-size:0.8rem;padding:20px;">暂无修改记录</div>';
-            return;
-        }
-
-        container.innerHTML = allChanges.map(change => `
-            <div class="change-item" data-change-type="${change.type}" data-change-id="${change.id}" data-paragraph-id="${change.paragraphId}">
-                <div class="change-item-header ${change.type}">
-                    <span class="type-icon">${change.type === 'character' ? '👤' : '🎒'}</span>
-                    <span class="change-item-name">${change.name}</span>
-                </div>
-                <div class="change-item-paragraph">段落 ${change.paragraphIndex + 1}</div>
-            </div>
-        `).join('');
-    }
-
-    handleChapterEdit() {
-        if (!this.state.selectedChapter) return;
-        const content = document.getElementById('chapter-content').value;
-        this.state.updateChapter(this.state.selectedChapter, { content });
+        this.uiRenderer.renderParagraphs();
     }
 
     // Character management
     addCharacter() {
         if (!this.state.currentStory) {
-            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
+            this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
             return;
         }
         const character = this.state.addCharacter({ name: i18n.t('messages.noCharacters') });
         this.state.selectCharacter(character.id);
-        this.renderCharacters();
-        this.renderCharacterEditor(character.id);
-    }
-
-    renderCharacters() {
-        const container = document.getElementById('characters');
-        const story = this.state.currentStory;
-        if (!story) return;
-
-        container.innerHTML = story.characters.map(character => `
-            <div class="list-item ${this.state.selectedCharacter === character.id ? 'active' : ''}"
-                 data-character-id="${character.id}">
-                <div class="list-item-header">
-                    <span class="list-item-title">${character.name}</span>
-                    <div class="list-item-actions">
-                        <button class="btn btn-sm btn-delete" data-action="delete-character" data-character-id="${character.id}">删除</button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-        container.querySelectorAll('.list-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('btn-delete')) {
-                    const characterId = item.dataset.characterId;
-                    this.state.selectCharacter(characterId);
-                    this.renderCharacters();
-                    this.renderCharacterEditor(characterId);
-                }
-            });
-        });
-
-        container.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const characterId = btn.dataset.characterId;
-                if (confirm(i18n.t('messages.confirmDeleteCharacter'))) {
-                    this.state.deleteCharacter(characterId);
-                    this.renderCharacters();
-                    if (this.state.selectedCharacter === characterId) {
-                        this.state.selectCharacter(null);
-                        this.renderCharacterEditor(null);
-                    }
-                }
-            });
-        });
-
-        if (story.characters.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-text">${i18n.t('messages.noCharacters')}</div></div>`;
-        }
-    }
-
-    renderCharacterEditor(characterId) {
-        const contentPanel = document.getElementById('character-editor-content');
-        const placeholderPanel = document.getElementById('character-editor-placeholder');
-        const story = this.state.currentStory;
-
-        if (!characterId || !story) {
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-            this.clearCharacterForm();
-            return;
-        }
-
-        const character = story.characters.find(c => c.id === characterId);
-        if (character) {
-            contentPanel.classList.remove('hidden');
-            placeholderPanel.classList.remove('active');
-
-            document.getElementById('char-name').value = character.name;
-            document.getElementById('char-description').value = character.description || '';
-            document.getElementById('char-notes').value = character.notes || '';
-            this.renderAttributes(character.attributes);
-            this.renderAbilities(character.abilities);
-        } else {
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-            this.clearCharacterForm();
-        }
-    }
-
-    clearCharacterForm() {
-        document.getElementById('char-name').value = '';
-        document.getElementById('char-description').value = '';
-        document.getElementById('char-notes').value = '';
-        document.getElementById('char-attributes').innerHTML = '';
-        document.getElementById('char-abilities').innerHTML = '';
+        this.uiRenderer.renderCharacters();
+        this.uiRenderer.renderCharacterEditor(character.id);
     }
 
     saveCharacter(e) {
@@ -766,7 +180,6 @@ class App {
         const description = document.getElementById('char-description').value;
         const notes = document.getElementById('char-notes').value;
 
-        // 收集属性
         const attributes = { current: {} };
         document.querySelectorAll('#char-attributes .attribute-entry').forEach(entry => {
             const attrName = entry.querySelector('.attr-name').value.trim();
@@ -776,7 +189,6 @@ class App {
             }
         });
 
-        // 收集能力
         const abilities = [];
         document.querySelectorAll('#char-abilities .ability-entry').forEach(entry => {
             const abilityName = entry.querySelector('.ability-name').value.trim();
@@ -792,8 +204,8 @@ class App {
         });
 
         this.state.updateCharacter(characterId, { name, description, notes, attributes, abilities });
-        this.showToast(i18n.t('messages.characterSaved'), 'success');
-        this.renderCharacters();
+        this.notificationManager.showSuccess(i18n.t('messages.characterSaved'));
+        this.uiRenderer.renderCharacters();
     }
 
     addAttribute() {
@@ -809,27 +221,6 @@ class App {
 
         entry.querySelector('.btn-delete').addEventListener('click', () => {
             entry.remove();
-        });
-    }
-
-    renderAttributes(attributes) {
-        const container = document.getElementById('char-attributes');
-        container.innerHTML = '';
-        if (!attributes) return;
-
-        Object.entries(attributes.current || {}).forEach(([key, value]) => {
-            const entry = document.createElement('div');
-            entry.className = 'attribute-entry';
-            entry.innerHTML = `
-                <input type="text" class="input-field attr-name" value="${key}" placeholder="${i18n.t('placeholders.attributeName')}">
-                <input type="text" class="input-field attr-value value-input" value="${value}" placeholder="${i18n.t('placeholders.attributeValue')}">
-                <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
-            `;
-            container.appendChild(entry);
-
-            entry.querySelector('.btn-delete').addEventListener('click', () => {
-                entry.remove();
-            });
         });
     }
 
@@ -852,124 +243,16 @@ class App {
         });
     }
 
-    renderAbilities(abilities) {
-        const container = document.getElementById('char-abilities');
-        container.innerHTML = '';
-        if (!abilities) return;
-
-        abilities.forEach(ability => {
-            const entry = document.createElement('div');
-            entry.className = 'ability-entry';
-            entry.innerHTML = `
-                <div class="ability-header">
-                    <input type="text" class="input-field ability-name" value="${ability.name}" placeholder="${i18n.t('placeholders.abilityName')}">
-                    <input type="number" class="input-field ability-level" placeholder="${i18n.t('placeholders.abilityLevel')}" min="1" value="${ability.level}">
-                    <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
-                </div>
-                <input type="text" class="input-field ability-desc" value="${ability.description || ''}" placeholder="${i18n.t('placeholders.abilityDesc')}">
-            `;
-            container.appendChild(entry);
-
-            entry.querySelector('.btn-delete').addEventListener('click', () => {
-                entry.remove();
-            });
-        });
-    }
-
     // Item management
     addItem() {
         if (!this.state.currentStory) {
-            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
+            this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
             return;
         }
         const item = this.state.addItem({ name: i18n.t('messages.noItems') });
         this.state.selectItem(item.id);
-        this.renderItems();
-        this.renderItemEditor(item.id);
-    }
-
-    renderItems() {
-        const container = document.getElementById('items');
-        const story = this.state.currentStory;
-        if (!story) return;
-
-        container.innerHTML = story.items.map(item => `
-            <div class="list-item ${this.state.selectedItem === item.id ? 'active' : ''}"
-                 data-item-id="${item.id}">
-                <div class="list-item-header">
-                    <span class="list-item-title">${item.name}</span>
-                    <span class="tag">${Constants.ITEM_TYPES[item.type] || item.type}</span>
-                    <div class="list-item-actions">
-                        <button class="btn btn-sm btn-delete" data-action="delete-item" data-item-id="${item.id}">删除</button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-        container.querySelectorAll('.list-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('btn-delete')) {
-                    const itemId = item.dataset.itemId;
-                    this.state.selectItem(itemId);
-                    this.renderItems();
-                    this.renderItemEditor(itemId);
-                }
-            });
-        });
-
-        container.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const itemId = btn.dataset.itemId;
-                if (confirm(i18n.t('messages.confirmDeleteItem'))) {
-                    this.state.deleteItem(itemId);
-                    this.renderItems();
-                    if (this.state.selectedItem === itemId) {
-                        this.state.selectItem(null);
-                        this.renderItemEditor(null);
-                    }
-                }
-            });
-        });
-
-        if (story.items.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎒</div><div class="empty-state-text">${i18n.t('messages.noItems')}</div></div>`;
-        }
-    }
-
-    renderItemEditor(itemId) {
-        const contentPanel = document.getElementById('item-editor-content');
-        const placeholderPanel = document.getElementById('item-editor-placeholder');
-        const story = this.state.currentStory;
-
-        if (!itemId || !story) {
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-            this.clearItemForm();
-            return;
-        }
-
-        const item = story.items.find(i => i.id === itemId);
-        if (item) {
-            contentPanel.classList.remove('hidden');
-            placeholderPanel.classList.remove('active');
-
-            document.getElementById('item-name').value = item.name;
-            document.getElementById('item-type').value = item.type;
-            document.getElementById('item-description').value = item.description || '';
-            this.renderItemProperties(item.properties);
-        } else {
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-            this.clearItemForm();
-        }
-    }
-
-    clearItemForm() {
-        document.getElementById('item-name').value = '';
-        document.getElementById('item-type').value = 'other';
-        document.getElementById('item-description').value = '';
-        document.getElementById('item-properties').innerHTML = '';
+        this.uiRenderer.renderItems();
+        this.uiRenderer.renderItemEditor(item.id);
     }
 
     saveItem(e) {
@@ -982,8 +265,8 @@ class App {
         const description = document.getElementById('item-description').value;
 
         this.state.updateItem(itemId, { name, type, description });
-        this.showToast(i18n.t('messages.itemSaved'), 'success');
-        this.renderItems();
+        this.notificationManager.showSuccess(i18n.t('messages.itemSaved'));
+        this.uiRenderer.renderItems();
     }
 
     addProperty() {
@@ -1002,125 +285,15 @@ class App {
         });
     }
 
-    renderItemProperties(properties) {
-        const container = document.getElementById('item-properties');
-        container.innerHTML = '';
-        if (!properties) return;
-
-        Object.entries(properties.current || {}).forEach(([key, value]) => {
-            const entry = document.createElement('div');
-            entry.className = 'property-entry';
-            entry.innerHTML = `
-                <input type="text" class="input-field prop-name" value="${key}" placeholder="${i18n.t('placeholders.propertyName')}">
-                <input type="text" class="input-field prop-value value-input" value="${value}" placeholder="${i18n.t('placeholders.propertyValue')}">
-                <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
-            `;
-            container.appendChild(entry);
-
-            entry.querySelector('.btn-delete').addEventListener('click', () => {
-                entry.remove();
-            });
-        });
-    }
-
     // Setting management
     addSetting() {
         if (!this.state.currentStory) {
-            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
+            this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
             return;
         }
         const setting = this.state.addSetting({ name: i18n.t('messages.noSettings') });
         this.state.selectSetting(setting.id);
-        this.renderSettings();
-    }
-
-    renderSettings() {
-        const container = document.getElementById('settings');
-        const story = this.state.currentStory;
-        if (!story) return;
-
-        // Update parent dropdown
-        const parentSelect = document.getElementById('setting-parent');
-        parentSelect.innerHTML = '<option value="">无父级</option>' +
-            story.settings.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-
-        container.innerHTML = story.settings.map(setting => `
-            <div class="list-item ${this.state.selectedSetting === setting.id ? 'active' : ''}"
-                 data-setting-id="${setting.id}">
-                <div class="list-item-header">
-                    <span class="list-item-title">${setting.name}</span>
-                    <span class="tag">${Constants.SETTING_TYPES[setting.type] || setting.type}</span>
-                    <div class="list-item-actions">
-                        <button class="btn btn-sm btn-delete" data-action="delete-setting" data-setting-id="${setting.id}">删除</button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-        container.querySelectorAll('.list-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('btn-delete')) {
-                    const settingId = item.dataset.settingId;
-                    this.state.selectSetting(settingId);
-                    this.renderSettings();
-                    this.renderSettingEditor(settingId);
-                }
-            });
-        });
-
-        container.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const settingId = btn.dataset.settingId;
-                if (confirm(i18n.t('messages.confirmDeleteSetting'))) {
-                    this.state.deleteSetting(settingId);
-                    this.renderSettings();
-                    if (this.state.selectedSetting === settingId) {
-                        this.state.selectSetting(null);
-                        this.renderSettingEditor(null);
-                    }
-                }
-            });
-        });
-
-        if (story.settings.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏰</div><div class="empty-state-text">${i18n.t('messages.noSettings')}</div></div>`;
-    }
-    }
-
-    renderSettingEditor(settingId) {
-        const contentPanel = document.getElementById('setting-editor-content');
-        const placeholderPanel = document.getElementById('setting-editor-placeholder');
-        const story = this.state.currentStory;
-
-        if (!settingId || !story) {
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-            this.clearSettingForm();
-            return;
-        }
-
-        const setting = story.settings.find(s => s.id === settingId);
-        if (setting) {
-            contentPanel.classList.remove('hidden');
-            placeholderPanel.classList.remove('active');
-
-            document.getElementById('setting-name').value = setting.name;
-            document.getElementById('setting-type').value = setting.type;
-            document.getElementById('setting-parent').value = setting.parentId || '';
-            document.getElementById('setting-description').value = setting.description || '';
-        } else {
-            contentPanel.classList.add('hidden');
-            placeholderPanel.classList.add('active');
-            this.clearSettingForm();
-        }
-    }
-
-    clearSettingForm() {
-        document.getElementById('setting-name').value = '';
-        document.getElementById('setting-type').value = 'location';
-        document.getElementById('setting-parent').value = '';
-        document.getElementById('setting-description').value = '';
+        this.uiRenderer.renderSettings();
     }
 
     saveSetting(e) {
@@ -1134,26 +307,15 @@ class App {
         const description = document.getElementById('setting-description').value;
 
         this.state.updateSetting(settingId, { name, type, parentId, description });
-        this.showToast(i18n.t('messages.settingSaved'), 'success');
-        this.renderSettings();
+        this.notificationManager.showSuccess(i18n.t('messages.settingSaved'));
+        this.uiRenderer.renderSettings();
     }
 
     // Prompt generation
-    renderPromptOptions() {
-        const story = this.state.currentStory;
-        if (!story) return;
-
-        const chapterSelect = document.getElementById('prompt-chapter');
-        chapterSelect.innerHTML = story.chapters
-            .sort((a, b) => a.order - b.order)
-            .map(ch => `<option value="${ch.id}">${ch.order}. ${ch.title}</option>`)
-            .join('');
-    }
-
     generatePrompt() {
         const story = this.state.currentStory;
         if (!story) {
-            this.showToast(i18n.t('messages.noStoryLoaded'), 'error');
+            this.notificationManager.showError(i18n.t('messages.noStoryLoaded'));
             return;
         }
 
@@ -1173,9 +335,8 @@ class App {
         const prompt = document.getElementById('generated-prompt');
         try {
             await navigator.clipboard.writeText(prompt.value);
-            this.showToast(i18n.t('buttons.copyPrompt'), 'success');
+            this.notificationManager.showSuccess(i18n.t('buttons.copyPrompt'));
         } catch (err) {
-            // Fallback for older browsers
             const textarea = prompt;
             textarea.select();
             textarea.setSelectionRange(0, 99999);
@@ -1183,25 +344,20 @@ class App {
                 document.execCommand('copy');
             } catch (e) {
                 console.error('Copy failed:', e);
-                this.showToast('复制失败', 'error');
+                this.notificationManager.showError('复制失败');
                 return;
             }
-            this.showToast(i18n.t('buttons.copyPrompt'), 'success');
+            this.notificationManager.showSuccess(i18n.t('buttons.copyPrompt'));
         }
     }
 
     // Theme management
     loadTheme() {
-        const theme = localStorage.getItem(Constants.STORAGE_KEYS.THEME) || 'light';
-        if (theme === 'dark') {
-            document.body.classList.add('dark');
-        }
+        this.themeManager.loadTheme();
     }
 
     toggleTheme() {
-        document.body.classList.toggle('dark');
-        const theme = document.body.classList.contains('dark') ? 'dark' : 'light';
-        localStorage.setItem(Constants.STORAGE_KEYS.THEME, theme);
+        this.themeManager.toggleTheme();
     }
 
     // Utility methods
@@ -1218,54 +374,33 @@ class App {
     showWelcomeMessage() {
         document.getElementById('story-title').textContent = i18n.t('brand.name');
 
-        // Try to load from localStorage
         if (this.state.loadFromLocalStorage()) {
-            this.showToast(i18n.t('status.saved'), 'success');
+            this.notificationManager.showSuccess(i18n.t('status.saved'));
         }
 
-        // Restore current view from localStorage
-        this.loadViewFromStorage();
+        this.viewManager.loadViewFromStorage();
 
         this.updateUndoRedoButtons();
     }
 
-    loadViewFromStorage() {
-        const savedView = localStorage.getItem(Constants.STORAGE_KEYS.CURRENT_VIEW);
-        if (savedView) {
-            this.switchView(savedView);
-        }
-    }
-
-    saveViewToStorage() {
-        localStorage.setItem(Constants.STORAGE_KEYS.CURRENT_VIEW, this.currentView);
-    }
-
     // Undo/Redo handlers
     handleUndo() {
-        if (this.state.undo()) {
-            this.showToast(i18n.t('buttons.undo'), 'success');
-            this.refreshCurrentView();
-        }
+        this.eventManager.handleUndo();
     }
 
     handleRedo() {
-        if (this.state.redo()) {
-            this.showToast(i18n.t('buttons.redo'), 'success');
-            this.refreshCurrentView();
-        }
+        this.eventManager.handleRedo();
     }
 
     onStateRestored() {
         console.log('onStateRestored - currentStory:', this.state.currentStory);
 
-        // Update story title
         const story = this.state.currentStory;
         if (story) {
             document.getElementById('story-title').textContent = story.metadata.title;
 
             console.log('onStateRestored - selectedChapter:', this.state.selectedChapter, 'chapters:', story.chapters.map(c => ({id: c.id, title: c.title})));
 
-            // Validate selected items exist in current story
             if (this.state.selectedChapter && !story.chapters.find(c => c.id === this.state.selectedChapter)) {
                 console.log('Selected chapter not found, clearing');
                 this.state.selectedChapter = null;
@@ -1283,30 +418,9 @@ class App {
             console.error('Story is undefined after undo/redo!');
         }
 
-        this.refreshCurrentView();
+        this.viewManager.refreshCurrentView();
         this.updateUndoRedoButtons();
         this.updateSaveStatus();
-    }
-
-    refreshCurrentView() {
-        switch (this.currentView) {
-            case 'story':
-                this.renderChapters();
-                this.renderChapterEditor(this.state.selectedChapter);
-                break;
-            case 'character':
-                this.renderCharacters();
-                this.renderCharacterEditor(this.state.selectedCharacter);
-                break;
-            case 'item':
-                this.renderItems();
-                this.renderItemEditor(this.state.selectedItem);
-                break;
-            case 'setting':
-                this.renderSettings();
-                this.renderSettingEditor(this.state.selectedSetting);
-                break;
-        }
     }
 
     updateUndoRedoButtons() {
@@ -1323,18 +437,6 @@ class App {
             redoBtn.disabled = !status.canRedo;
             redoBtn.title = status.canRedo ? `重做 (${status.redoCount}) - Ctrl+Y` : '无重做操作';
         }
-    }
-
-    showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
     }
 
     // Search functionality
