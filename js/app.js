@@ -1,6 +1,13 @@
-// Main Application Entry Point
-
+/**
+ * Main Application Entry Point
+ * 
+ * The App class serves as the central coordinator for the BailuStory application.
+ * It initializes and manages all subsystems through dedicated manager classes.
+ */
 class App {
+    /**
+     * Create a new App instance
+     */
     constructor() {
         this.state = appState;
 
@@ -16,6 +23,9 @@ class App {
         this.init();
     }
 
+    /**
+     * Initialize the application
+     */
     async init() {
         await this.initI18n();
         this.bindEvents();
@@ -24,6 +34,9 @@ class App {
         this.showWelcomeMessage();
     }
 
+    /**
+     * Initialize internationalization
+     */
     async initI18n() {
         await i18n.init();
         this.initLanguageSelector();
@@ -35,47 +48,74 @@ class App {
         });
     }
 
+    /**
+     * Initialize language selector dropdown
+     */
     initLanguageSelector() {
         const langSelector = document.getElementById('lang-selector');
         if (langSelector) {
             langSelector.value = i18n.getCurrentLanguage();
             langSelector.addEventListener('change', async (e) => {
-                console.log('Language changed to:', e.target.value);
                 await i18n.setLanguage(e.target.value);
-                console.log('Current language after change:', i18n.getCurrentLanguage());
             });
         }
     }
 
+    /**
+     * Setup keyboard shortcuts via EventManager
+     */
     setupKeyboardShortcuts() {
         this.eventManager.setupKeyboardShortcuts();
     }
 
+    /**
+     * Bind all UI events via EventManager
+     */
     bindEvents() {
         this.eventManager.bindEvents();
     }
 
     // Story management (delegated to managers)
+    
+    /**
+     * Handle story export
+     */
     handleExport() {
         this.exportImportManager.handleExport();
     }
 
+    /**
+     * Handle story import
+     */
     handleImport() {
         this.exportImportManager.handleImport();
     }
 
+    /**
+     * Show new story modal
+     */
     showNewStoryModal() {
         this.modalManager.showNewStoryModal();
     }
 
+    /**
+     * Hide current modal
+     */
     hideModal() {
         this.modalManager.hideModal();
     }
 
+    /**
+     * Handle modal form submission
+     * @param {Event} e - Submit event
+     */
     handleModalSubmit(e) {
         this.modalManager.handleModalSubmit(e);
     }
 
+    /**
+     * Called when a story is loaded
+     */
     onStoryLoaded() {
         const story = this.state.currentStory;
         document.getElementById('story-title').textContent = story.metadata.title;
@@ -111,6 +151,9 @@ class App {
         }
     }
 
+    /**
+     * Update the story title in the header
+     */
     updateStoryTitle() {
         const story = this.state.currentStory;
         const titleEl = document.getElementById('story-title');
@@ -122,6 +165,10 @@ class App {
     }
 
     // Chapter management
+    
+    /**
+     * Add a new chapter
+     */
     addChapter() {
         if (!this.state.currentStory) {
             this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
@@ -134,6 +181,10 @@ class App {
     }
 
     // Paragraph management
+    
+    /**
+     * Handle adding a new paragraph
+     */
     handleNewParagraph() {
         if (!this.state.selectedChapter) {
             this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
@@ -160,6 +211,10 @@ class App {
     }
 
     // Character management
+    
+    /**
+     * Add a new character
+     */
     addCharacter() {
         if (!this.state.currentStory) {
             this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
@@ -171,6 +226,10 @@ class App {
         this.uiRenderer.renderCharacterEditor(character.id);
     }
 
+    /**
+     * Save character form data
+     * @param {Event} e - Form submit event
+     */
     saveCharacter(e) {
         e.preventDefault();
         if (!this.state.selectedCharacter) return;
@@ -208,6 +267,9 @@ class App {
         this.uiRenderer.renderCharacters();
     }
 
+    /**
+     * Add an attribute entry to the character form
+     */
     addAttribute() {
         const container = document.getElementById('char-attributes');
         const entry = document.createElement('div');
@@ -224,6 +286,9 @@ class App {
         });
     }
 
+    /**
+     * Add an ability entry to the character form
+     */
     addAbility() {
         const container = document.getElementById('char-abilities');
         const entry = document.createElement('div');
@@ -244,6 +309,10 @@ class App {
     }
 
     // Item management
+    
+    /**
+     * Add a new item
+     */
     addItem() {
         if (!this.state.currentStory) {
             this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
@@ -255,6 +324,10 @@ class App {
         this.uiRenderer.renderItemEditor(item.id);
     }
 
+    /**
+     * Save item form data
+     * @param {Event} e - Form submit event
+     */
     saveItem(e) {
         e.preventDefault();
         if (!this.state.selectedItem) return;
@@ -269,6 +342,9 @@ class App {
         this.uiRenderer.renderItems();
     }
 
+    /**
+     * Add a property entry to the item form
+     */
     addProperty() {
         const container = document.getElementById('item-properties');
         const entry = document.createElement('div');
@@ -286,6 +362,10 @@ class App {
     }
 
     // Setting management
+    
+    /**
+     * Add a new setting
+     */
     addSetting() {
         if (!this.state.currentStory) {
             this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
@@ -296,6 +376,10 @@ class App {
         this.uiRenderer.renderSettings();
     }
 
+    /**
+     * Save setting form data
+     * @param {Event} e - Form submit event
+     */
     saveSetting(e) {
         e.preventDefault();
         if (!this.state.selectedSetting) return;
@@ -312,6 +396,10 @@ class App {
     }
 
     // Prompt generation
+    
+    /**
+     * Generate AI prompt from story context
+     */
     generatePrompt() {
         const story = this.state.currentStory;
         if (!story) {
@@ -331,6 +419,9 @@ class App {
         document.getElementById('generated-prompt').value = prompt;
     }
 
+    /**
+     * Copy generated prompt to clipboard
+     */
     async copyPrompt() {
         const prompt = document.getElementById('generated-prompt');
         try {
@@ -343,7 +434,6 @@ class App {
             try {
                 document.execCommand('copy');
             } catch (e) {
-                console.error('Copy failed:', e);
                 this.notificationManager.showError('复制失败');
                 return;
             }
@@ -352,15 +442,26 @@ class App {
     }
 
     // Theme management
+    
+    /**
+     * Load theme from storage
+     */
     loadTheme() {
         this.themeManager.loadTheme();
     }
 
+    /**
+     * Toggle between light and dark theme
+     */
     toggleTheme() {
         this.themeManager.toggleTheme();
     }
 
     // Utility methods
+    
+    /**
+     * Update save status indicator
+     */
     updateSaveStatus() {
         const statusEl = document.getElementById('save-status');
         statusEl.textContent = i18n.t('status.unsaved');
@@ -371,6 +472,9 @@ class App {
         }, 2000);
     }
 
+    /**
+     * Show welcome message and restore previous state
+     */
     showWelcomeMessage() {
         document.getElementById('story-title').textContent = i18n.t('brand.name');
 
@@ -379,30 +483,34 @@ class App {
         }
 
         this.viewManager.loadViewFromStorage();
-
         this.updateUndoRedoButtons();
     }
 
     // Undo/Redo handlers
+    
+    /**
+     * Handle undo action
+     */
     handleUndo() {
         this.eventManager.handleUndo();
     }
 
+    /**
+     * Handle redo action
+     */
     handleRedo() {
         this.eventManager.handleRedo();
     }
 
+    /**
+     * Called when state is restored via undo/redo
+     */
     onStateRestored() {
-        console.log('onStateRestored - currentStory:', this.state.currentStory);
-
         const story = this.state.currentStory;
         if (story) {
             document.getElementById('story-title').textContent = story.metadata.title;
 
-            console.log('onStateRestored - selectedChapter:', this.state.selectedChapter, 'chapters:', story.chapters.map(c => ({id: c.id, title: c.title})));
-
             if (this.state.selectedChapter && !story.chapters.find(c => c.id === this.state.selectedChapter)) {
-                console.log('Selected chapter not found, clearing');
                 this.state.selectedChapter = null;
             }
             if (this.state.selectedCharacter && !story.characters.find(c => c.id === this.state.selectedCharacter)) {
@@ -414,8 +522,6 @@ class App {
             if (this.state.selectedSetting && !story.settings.find(s => s.id === this.state.selectedSetting)) {
                 this.state.selectedSetting = null;
             }
-        } else {
-            console.error('Story is undefined after undo/redo!');
         }
 
         this.viewManager.refreshCurrentView();
@@ -423,6 +529,9 @@ class App {
         this.updateSaveStatus();
     }
 
+    /**
+     * Update undo/redo button states
+     */
     updateUndoRedoButtons() {
         const status = this.state.getHistoryStatus();
         const undoBtn = document.getElementById('undo-btn');
@@ -440,6 +549,13 @@ class App {
     }
 
     // Search functionality
+    
+    /**
+     * Search items by type and query
+     * @param {string} type - Search type: 'character', 'item', or 'setting'
+     * @param {string} query - Search query string
+     * @returns {Array} Matching items
+     */
     searchItems(type, query) {
         const story = this.state.currentStory;
         if (!story || !query) return [];
