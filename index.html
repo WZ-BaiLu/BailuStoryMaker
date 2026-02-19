@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白鹿故事 - AI 辅助小说编写工具</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/themes.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>🦌 白鹿故事</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="story">
+                    <span>📖</span> 故事
+                </button>
+                <button class="nav-item" data-view="character">
+                    <span>👤</span> 角色
+                </button>
+                <button class="nav-item" data-view="item">
+                    <span>🎒</span> 道具
+                </button>
+                <button class="nav-item" data-view="setting">
+                    <span>🏰</span> 设定
+                </button>
+                <button class="nav-item" data-view="prompt">
+                    <span>✨</span> 提示词
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="new-story-btn" class="btn btn-primary">新建故事</button>
+                <div id="save-status" class="save-status"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h2 id="story-title">未加载故事</h2>
+                </div>
+                <div class="header-right">
+                    <button id="save-btn" class="btn btn-secondary">保存</button>
+                    <button id="load-btn" class="btn btn-secondary">加载</button>
+                    <button id="export-btn" class="btn btn-secondary">导出</button>
+                    <input type="file" id="import-input" accept=".json" style="display: none;">
+                    <button id="import-btn" class="btn btn-secondary">导入</button>
+                    <button id="theme-toggle" class="btn btn-secondary">🌙</button>
+                </div>
+            </header>
+
+            <!-- Views -->
+            <div id="views-container">
+                <!-- Story View -->
+                <div id="story-view" class="view active">
+                    <div class="story-container">
+                        <div class="chapter-list">
+                            <h3>章节</h3>
+                            <button id="add-chapter-btn" class="btn btn-sm">+ 添加章节</button>
+                            <div id="chapters" class="chapters-list"></div>
+                        </div>
+                        <div class="chapter-editor" id="chapter-editor-panel">
+                            <div id="chapter-editor-placeholder" class="editor-placeholder active">
+                                <div class="placeholder-content">
+                                    <div class="placeholder-icon">📝</div>
+                                    <p>请从左侧选择一个章节或创建新章节</p>
+                                </div>
+                            </div>
+                            <div id="chapter-editor-content" class="chapter-editor-content hidden">
+                                <input type="text" id="chapter-title" class="input-field" placeholder="章节标题">
+                                <textarea id="chapter-content" class="editor" placeholder="开始编写你的故事..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Character View -->
+                <div id="character-view" class="view">
+                    <div class="character-container">
+                        <div class="character-list">
+                            <h3>角色列表</h3>
+                            <button id="add-character-btn" class="btn btn-sm">+ 添加角色</button>
+                            <div id="characters" class="characters-list"></div>
+                        </div>
+                        <div class="character-editor" id="character-editor-panel">
+                            <div id="character-editor-placeholder" class="editor-placeholder active">
+                                <div class="placeholder-content">
+                                    <div class="placeholder-icon">👤</div>
+                                    <p>请从左侧选择一个角色或创建新角色</p>
+                                </div>
+                            </div>
+                            <div id="character-editor-content" class="character-editor-content hidden">
+                                <h3>角色详情</h3>
+                                <form id="character-form" class="editor-form">
+                                    <input type="text" id="char-name" class="input-field" placeholder="角色名称">
+                                    <textarea id="char-description" class="input-field" placeholder="角色描述"></textarea>
+                                    <div class="attributes-section">
+                                        <h4>属性</h4>
+                                        <div id="char-attributes"></div>
+                                        <button type="button" id="add-attr-btn" class="btn btn-sm">+ 添加属性</button>
+                                    </div>
+                                    <div class="abilities-section">
+                                        <h4>能力</h4>
+                                        <div id="char-abilities"></div>
+                                        <button type="button" id="add-ability-btn" class="btn btn-sm">+ 添加能力</button>
+                                    </div>
+                                    <textarea id="char-notes" class="input-field" placeholder="备注"></textarea>
+                                    <button type="submit" class="btn btn-primary">保存角色</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Item View -->
+                <div id="item-view" class="view">
+                    <div class="item-container">
+                        <div class="item-list">
+                            <h3>道具列表</h3>
+                            <button id="add-item-btn" class="btn btn-sm">+ 添加道具</button>
+                            <div id="items" class="items-list"></div>
+                        </div>
+                        <div class="item-editor" id="item-editor-panel">
+                            <div id="item-editor-placeholder" class="editor-placeholder active">
+                                <div class="placeholder-content">
+                                    <div class="placeholder-icon">🎒</div>
+                                    <p>请从左侧选择一个道具或创建新道具</p>
+                                </div>
+                            </div>
+                            <div id="item-editor-content" class="item-editor-content hidden">
+                                <h3>道具详情</h3>
+                                <form id="item-form" class="editor-form">
+                                    <input type="text" id="item-name" class="input-field" placeholder="道具名称">
+                                    <select id="item-type" class="input-field">
+                                        <option value="other">其他</option>
+                                        <option value="weapon">武器</option>
+                                        <option value="armor">护甲</option>
+                                        <option value="tool">工具</option>
+                                        <option value="quest">任务物品</option>
+                                    </select>
+                                    <textarea id="item-description" class="input-field" placeholder="道具描述"></textarea>
+                                    <div class="properties-section">
+                                        <h4>属性</h4>
+                                        <div id="item-properties"></div>
+                                        <button type="button" id="add-prop-btn" class="btn btn-sm">+ 添加属性</button>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">保存道具</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Setting View -->
+                <div id="setting-view" class="view">
+                    <div class="setting-container">
+                        <div class="setting-list">
+                            <h3>设定列表</h3>
+                            <button id="add-setting-btn" class="btn btn-sm">+ 添加设定</button>
+                            <div id="settings" class="settings-list"></div>
+                        </div>
+                        <div class="setting-editor" id="setting-editor-panel">
+                            <div id="setting-editor-placeholder" class="editor-placeholder active">
+                                <div class="placeholder-content">
+                                    <div class="placeholder-icon">🏰</div>
+                                    <p>请从左侧选择一个设定或创建新设定</p>
+                                </div>
+                            </div>
+                            <div id="setting-editor-content" class="setting-editor-content hidden">
+                                <h3>设定详情</h3>
+                                <form id="setting-form" class="editor-form">
+                                    <input type="text" id="setting-name" class="input-field" placeholder="设定名称">
+                                    <select id="setting-type" class="input-field">
+                                        <option value="location">地点</option>
+                                        <option value="region">区域</option>
+                                        <option value="world">世界</option>
+                                    </select>
+                                    <select id="setting-parent" class="input-field">
+                                        <option value="">无父级</option>
+                                    </select>
+                                    <textarea id="setting-description" class="input-field" placeholder="设定描述"></textarea>
+                                    <button type="submit" class="btn btn-primary">保存设定</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prompt View -->
+                <div id="prompt-view" class="view">
+                    <div class="prompt-container">
+                        <div class="prompt-controls">
+                            <h3>提示词生成</h3>
+                            <label>
+                                选择章节:
+                                <select id="prompt-chapter" class="input-field"></select>
+                            </label>
+                            <label>
+                                模板:
+                                <select id="prompt-template" class="input-field">
+                                    <option value="default">默认模板</option>
+                                    <option value="character-focus">角色聚焦</option>
+                                    <option value="scene-setup">场景设定</option>
+                                </select>
+                            </label>
+                            <button id="generate-prompt-btn" class="btn btn-primary">生成提示词</button>
+                        </div>
+                        <div class="prompt-preview">
+                            <h4>生成的提示词</h4>
+                            <textarea id="generated-prompt" class="prompt-output" readonly></textarea>
+                            <button id="copy-prompt-btn" class="btn btn-secondary">复制到剪贴板</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for new story -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3 id="modal-title">新建故事</h3>
+            <form id="modal-form">
+                <input type="text" id="modal-input" class="input-field" placeholder="输入名称" required>
+                <button type="submit" class="btn btn-primary">确认</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/utils/constants.js"></script>
+    <script src="js/utils/validators.js"></script>
+    <script src="js/utils/formatters.js"></script>
+    <script src="js/modules/FileManager.js"></script>
+    <script src="js/modules/ContextBuilder.js"></script>
+    <script src="js/modules/MemoryManager.js"></script>
+    <script src="js/modules/PromptGenerator.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,300 @@
+// Application State Management
+
+class AppState {
+    constructor() {
+        this.currentStory = null;
+        this.selectedChapter = null;
+        this.selectedCharacter = null;
+        this.selectedItem = null;
+        this.selectedSetting = null;
+        this.autoSaveTimer = null;
+        this.listeners = [];
+    }
+
+    // Load story
+    loadStory(storyData) {
+        try {
+            this.currentStory = storyData;
+            this.selectedChapter = null;
+            this.selectedCharacter = null;
+            this.selectedItem = null;
+            this.selectedSetting = null;
+            this.notify('storyLoaded', storyData);
+            return true;
+        } catch (error) {
+            console.error('Load story failed:', error);
+            return false;
+        }
+    }
+
+    // Create new story
+    createStory(title) {
+        const newStory = {
+            ...Constants.DEFAULT_STORY,
+            metadata: {
+                id: Formatters.generateId('story'),
+                title: title,
+                createdAt: Formatters.formatDate(),
+                updatedAt: Formatters.formatDate(),
+                author: ''
+            }
+        };
+        return newStory;
+    }
+
+    // Save current story
+    saveStory() {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        this.currentStory.metadata.updatedAt = Formatters.formatDate();
+        this.notify('storySaved', this.currentStory);
+        return this.currentStory;
+    }
+
+    // Chapter management
+    addChapter(title) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const chapter = {
+            id: Formatters.generateId('chapter'),
+            title: title || '新章节',
+            order: this.currentStory.chapters.length + 1,
+            content: '',
+            createdAt: Formatters.formatDate(),
+            updatedAt: Formatters.formatDate()
+        };
+
+        this.currentStory.chapters.push(chapter);
+        this.notify('chapterAdded', chapter);
+        return chapter;
+    }
+
+    updateChapter(chapterId, updates) {
+        if (!this.currentStory) return;
+
+        const chapter = this.currentStory.chapters.find(c => c.id === chapterId);
+        if (chapter) {
+            Object.assign(chapter, updates, { updatedAt: Formatters.formatDate() });
+            this.notify('chapterUpdated', chapter);
+        }
+    }
+
+    deleteChapter(chapterId) {
+        if (!this.currentStory) return;
+
+        const index = this.currentStory.chapters.findIndex(c => c.id === chapterId);
+        if (index !== -1) {
+            this.currentStory.chapters.splice(index, 1);
+            // Reorder chapters
+            this.currentStory.chapters.forEach((ch, i) => ch.order = i + 1);
+            this.notify('chapterDeleted', chapterId);
+        }
+    }
+
+    selectChapter(chapterId) {
+        this.selectedChapter = chapterId;
+        this.notify('chapterSelected', chapterId);
+    }
+
+    // Character management
+    addCharacter(characterData) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const character = {
+            id: Formatters.generateId('char'),
+            name: characterData.name || '新角色',
+            description: characterData.description || '',
+            attributes: characterData.attributes || { base: {}, current: {} },
+            abilities: characterData.abilities || [],
+            notes: characterData.notes || ''
+        };
+
+        this.currentStory.characters.push(character);
+        this.notify('characterAdded', character);
+        return character;
+    }
+
+    updateCharacter(characterId, updates) {
+        if (!this.currentStory) return;
+
+        const character = this.currentStory.characters.find(c => c.id === characterId);
+        if (character) {
+            Object.assign(character, updates);
+            this.notify('characterUpdated', character);
+        }
+    }
+
+    deleteCharacter(characterId) {
+        if (!this.currentStory) return;
+
+        const index = this.currentStory.characters.findIndex(c => c.id === characterId);
+        if (index !== -1) {
+            this.currentStory.characters.splice(index, 1);
+            this.notify('characterDeleted', characterId);
+        }
+    }
+
+    selectCharacter(characterId) {
+        this.selectedCharacter = characterId;
+        this.notify('characterSelected', characterId);
+    }
+
+    // Item management
+    addItem(itemData) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const item = {
+            id: Formatters.generateId('item'),
+            name: itemData.name || '新道具',
+            type: itemData.type || 'other',
+            description: itemData.description || '',
+            properties: itemData.properties || { base: {}, current: {} },
+            owner: itemData.owner || null,
+            changeHistory: []
+        };
+
+        this.currentStory.items.push(item);
+        this.notify('itemAdded', item);
+        return item;
+    }
+
+    updateItem(itemId, updates) {
+        if (!this.currentStory) return;
+
+        const item = this.currentStory.items.find(i => i.id === itemId);
+        if (item) {
+            Object.assign(item, updates);
+            this.notify('itemUpdated', item);
+        }
+    }
+
+    deleteItem(itemId) {
+        if (!this.currentStory) return;
+
+        const index = this.currentStory.items.findIndex(i => i.id === itemId);
+        if (index !== -1) {
+            this.currentStory.items.splice(index, 1);
+            this.notify('itemDeleted', itemId);
+        }
+    }
+
+    selectItem(itemId) {
+        this.selectedItem = itemId;
+        this.notify('itemSelected', itemId);
+    }
+
+    // Setting management
+    addSetting(settingData) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const setting = {
+            id: Formatters.generateId('setting'),
+            name: settingData.name || '新设定',
+            type: settingData.type || 'location',
+            parentId: settingData.parentId || null,
+            description: settingData.description || '',
+            details: settingData.details || {}
+        };
+
+        this.currentStory.settings.push(setting);
+        this.notify('settingAdded', setting);
+        return setting;
+    }
+
+    updateSetting(settingId, updates) {
+        if (!this.currentStory) return;
+
+        const setting = this.currentStory.settings.find(s => s.id === settingId);
+        if (setting) {
+            Object.assign(setting, updates);
+            this.notify('settingUpdated', setting);
+        }
+    }
+
+    deleteSetting(settingId) {
+        if (!this.currentStory) return;
+
+        const index = this.currentStory.settings.findIndex(s => s.id === settingId);
+        if (index !== -1) {
+            this.currentStory.settings.splice(index, 1);
+            this.notify('settingDeleted', settingId);
+        }
+    }
+
+    selectSetting(settingId) {
+        this.selectedSetting = settingId;
+        this.notify('settingSelected', settingId);
+    }
+
+    // Auto-save
+    enableAutoSave(interval = 300000) {
+        this.disableAutoSave();
+        this.autoSaveTimer = setInterval(() => {
+            if (this.currentStory) {
+                this.saveStory();
+                // Also save to localStorage
+                FileManager.saveToLocalStorage(Constants.STORAGE_KEYS.CURRENT_STORY, this.currentStory);
+            }
+        }, interval);
+    }
+
+    disableAutoSave() {
+        if (this.autoSaveTimer) {
+            clearInterval(this.autoSaveTimer);
+            this.autoSaveTimer = null;
+        }
+    }
+
+    // Manual save to localStorage
+    saveToLocalStorage() {
+        if (this.currentStory) {
+            return FileManager.saveToLocalStorage(Constants.STORAGE_KEYS.CURRENT_STORY, this.currentStory);
+        }
+        return false;
+    }
+
+    // Load from localStorage
+    loadFromLocalStorage() {
+        const data = FileManager.loadFromLocalStorage(Constants.STORAGE_KEYS.CURRENT_STORY);
+        if (data) {
+            this.loadStory(data);
+            return true;
+        }
+        return false;
+    }
+
+    // Event listeners
+    on(event, callback) {
+        this.listeners.push({ event, callback });
+    }
+
+    notify(event, data) {
+        this.listeners
+            .filter(l => l.event === event)
+            .forEach(l => l.callback(data));
+    }
+
+    // Get current state
+    getState() {
+        return {
+            currentStory: this.currentStory,
+            selectedChapter: this.selectedChapter,
+            selectedCharacter: this.selectedCharacter,
+            selectedItem: this.selectedItem,
+            selectedSetting: this.selectedSetting
+        };
+    }
+}
+
+// Initialize global state
+const appState = new AppState();

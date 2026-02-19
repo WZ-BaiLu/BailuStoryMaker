@@ -1,0 +1,115 @@
+{
+  "metadata": {
+    "id": "story-1234567890",
+    "title": "示例故事",
+    "createdAt": "2026-02-19T00:00:00.000Z",
+    "updatedAt": "2026-02-19T00:00:00.000Z",
+    "author": ""
+  },
+  "settings": {
+    "theme": "light",
+    "autoSave": true,
+    "autoSaveInterval": 300
+  },
+  "chapters": [
+    {
+      "id": "chapter-1234567891",
+      "title": "第一章：开始",
+      "order": 1,
+      "content": "这是一个示例故事的开头。你可以在这里编写你的小说内容，管理角色、道具和设定。\n\n这个工具可以帮助你追踪故事中的各种元素，并生成适合AI辅助写作的提示词。",
+      "createdAt": "2026-02-19T00:00:00.000Z",
+      "updatedAt": "2026-02-19T00:00:00.000Z"
+    }
+  ],
+  "characters": [
+    {
+      "id": "char-1234567892",
+      "name": "张三",
+      "description": "主角，年轻勇敢的冒险者",
+      "attributes": {
+        "base": {
+          "力量": 50,
+          "敏捷": 60,
+          "智力": 70
+        },
+        "current": {
+          "力量": 55,
+          "敏捷": 62,
+          "智力": 75
+        }
+      },
+      "abilities": [
+        {
+          "name": "剑术",
+          "description": "精通各种剑术技巧",
+          "level": 3,
+          "acquiredAt": "chapter-1234567891",
+          "evolutionHistory": []
+        }
+      ],
+      "notes": "正在寻找失落的宝剑"
+    }
+  ],
+  "items": [
+    {
+      "id": "item-1234567893",
+      "name": "古剑",
+      "description": "一把神秘的古代宝剑，据说拥有神奇的力量",
+      "type": "weapon",
+      "properties": {
+        "base": {
+          "攻击力": 100,
+          "耐久度": 100
+        },
+        "current": {
+          "攻击力": 100,
+          "耐久度": 95
+        }
+      },
+      "owner": "char-1234567892",
+      "changeHistory": [
+        {
+          "chapter": "chapter-1234567891",
+          "changes": "被张三发现",
+          "timestamp": "2026-02-19T00:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "id": "setting-1234567894",
+      "name": "神秘大陆",
+      "type": "world",
+      "parentId": null,
+      "description": "一个充满魔法和冒险的奇幻世界",
+      "details": {
+        "magic_level": "high",
+        "technology_level": "medieval"
+      }
+    },
+    {
+      "id": "setting-1234567895",
+      "name": "新手村",
+      "type": "location",
+      "parentId": "setting-1234567894",
+      "description": "张三的家乡，一个宁静的小村庄",
+      "details": {
+        "population": 500,
+        "specialties": "农业"
+      }
+    }
+  ],
+  "timeline": [
+    {
+      "chapter": "chapter-1234567891",
+      "events": [
+        {
+          "type": "plot-event",
+          "description": "张三在新手村附近发现了古剑",
+          "timestamp": "2026-02-19T00:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}
