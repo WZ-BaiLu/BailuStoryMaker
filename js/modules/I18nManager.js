@@ -61,8 +61,6 @@ class I18nManager {
           },
           "buttons": {
             "newStory": "新建故事",
-            "save": "保存",
-            "load": "加载",
             "export": "导出",
             "import": "导入",
             "undo": "撤销",
@@ -158,7 +156,6 @@ class I18nManager {
           },
           "messages": {
             "saveSuccess": "保存成功！",
-            "loadSuccess": "加载成功！",
             "storyCreated": "故事创建成功！",
             "characterSaved": "角色保存成功！",
             "itemSaved": "道具保存成功！",
@@ -209,8 +206,6 @@ class I18nManager {
           },
           "buttons": {
             "newStory": "New Story",
-            "save": "Save",
-            "load": "Load",
             "export": "Export",
             "import": "Import",
             "undo": "Undo",
@@ -306,7 +301,6 @@ class I18nManager {
           },
           "messages": {
             "saveSuccess": "Saved successfully!",
-            "loadSuccess": "Loaded successfully!",
             "storyCreated": "Story created successfully!",
             "characterSaved": "Character saved successfully!",
             "itemSaved": "Item saved successfully!",

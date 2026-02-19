@@ -14,8 +14,6 @@
   },
   "buttons": {
     "newStory": "New Story",
-    "save": "Save",
-    "load": "Load",
     "export": "Export",
     "import": "Import",
     "undo": "Undo",
@@ -111,7 +109,6 @@
   },
   "messages": {
     "saveSuccess": "Saved successfully!",
-    "loadSuccess": "Loaded successfully!",
     "storyCreated": "Story created successfully!",
     "characterSaved": "Character saved successfully!",
     "itemSaved": "Item saved successfully!",

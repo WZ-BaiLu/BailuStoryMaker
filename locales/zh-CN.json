@@ -14,8 +14,6 @@
   },
   "buttons": {
     "newStory": "新建故事",
-    "save": "保存",
-    "load": "加载",
     "export": "导出",
     "import": "导入",
     "undo": "撤销",
@@ -111,7 +109,6 @@
   },
   "messages": {
     "saveSuccess": "保存成功！",
-    "loadSuccess": "加载成功！",
     "storyCreated": "故事创建成功！",
     "characterSaved": "角色保存成功！",
     "itemSaved": "道具保存成功！",

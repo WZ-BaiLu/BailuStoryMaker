@@ -41,22 +41,22 @@ class App {
 
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + S: Save
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            // Ctrl/Cmd + E: Export
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                 e.preventDefault();
-                this.handleSave();
+                this.handleExport();
+            }
+
+            // Ctrl/Cmd + I: Import
+            if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                e.preventDefault();
+                this.handleImport();
             }
 
             // Ctrl/Cmd + N: New story
             if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
                 e.preventDefault();
                 this.showNewStoryModal();
-            }
-
-            // Ctrl/Cmd + O: Open (Load)
-            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-                e.preventDefault();
-                this.handleLoad();
             }
 
             // Ctrl/Cmd + Z: Undo
@@ -94,8 +94,6 @@ class App {
         // Header buttons
         document.getElementById('undo-btn').addEventListener('click', () => this.handleUndo());
         document.getElementById('redo-btn').addEventListener('click', () => this.handleRedo());
-        document.getElementById('save-btn').addEventListener('click', () => this.handleSave());
-        document.getElementById('load-btn').addEventListener('click', () => this.handleLoad());
         document.getElementById('export-btn').addEventListener('click', () => this.handleExport());
         document.getElementById('import-btn').addEventListener('click', () => this.handleImport());
         document.getElementById('theme-toggle').addEventListener('click', () => this.toggleTheme());
@@ -189,7 +187,7 @@ class App {
     }
 
     // Story management
-    handleSave() {
+    handleExport() {
         try {
             const story = this.state.saveStory();
             const filename = `${story.metadata.title}.json`;
@@ -198,14 +196,6 @@ class App {
         } catch (error) {
             this.showToast(error.message, 'error');
         }
-    }
-
-    handleLoad() {
-        document.getElementById('import-input').click();
-    }
-
-    handleExport() {
-        this.handleSave();
     }
 
     handleImport() {
