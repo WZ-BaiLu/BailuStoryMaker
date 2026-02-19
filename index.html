@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/ai-assistant.css">
 </head>
 <body>
     <div id="app">
@@ -77,7 +78,10 @@
                                 </div>
                             </div>
                             <div id="chapter-editor-content" class="chapter-editor-content hidden">
-                                <input type="text" id="chapter-title" class="input-field" data-i18n-placeholder="story.chapterTitle" placeholder="章节标题">
+                                <div class="editor-header">
+                                    <input type="text" id="chapter-title" class="input-field" data-i18n-placeholder="story.chapterTitle" placeholder="章节标题">
+                                    <button id="show-ai-panel-btn" class="btn btn-sm" title="显示AI助手">🤖</button>
+                                </div>
                                 <div class="paragraphs-container">
                                     <div id="paragraphs-list" class="paragraphs-list"></div>
                                     <div class="paragraph-input-area">
@@ -86,6 +90,41 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- AI Assistant Panel -->
+                        <aside class="ai-assistant-panel" id="ai-assistant-panel" hidden>
+                            <!-- Collapsed Mode - External Buttons -->
+                            <div class="ai-panel-collapsed-actions" id="ai-panel-collapsed-actions">
+                                <button class="ai-panel-button ai-expand-btn" id="ai-expand-button" title="展开">◀</button>
+                                <button class="ai-panel-button" id="ai-collapsed-settings-button" title="设置">⚙️</button>
+                            </div>
+                            <div class="ai-panel-header" id="ai-panel-header">
+                                <div class="ai-panel-title">
+                                    <span>🤖</span> <span data-i18n="ai.title">AI助手</span>
+                                </div>
+                                <div class="ai-panel-actions">
+                                    <button class="ai-panel-button ai-expand-btn hidden" id="ai-expand-button-header" title="展开">◀</button>
+                                    <button class="ai-panel-button ai-collapse-btn" id="ai-collapse-button" title="折叠">▶</button>
+                                    <button class="ai-panel-button" id="ai-settings-button" title="设置">⚙️</button>
+                                    <button class="ai-panel-button" id="ai-clear-history" title="清空历史">🗑️</button>
+                                </div>
+                            </div>
+                            <div class="ai-panel-content" id="ai-panel-content">
+                                <div class="ai-chat-area" id="ai-chat-area">
+                                    <!-- Chat messages will be rendered here -->
+                                </div>
+                                <div class="ai-input-area">
+                                    <textarea id="ai-input" placeholder="输入消息... (Shift+Enter换行, Enter发送)" rows="3"></textarea>
+                                    <div class="ai-input-footer">
+                                        <button id="ai-send-button" data-i18n="ai.send">发送</button>
+                                        <span id="ai-character-counter">0/4000</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ai-loading-indicator hidden" id="ai-loading-indicator">
+                                <span class="ai-loading-dots">AI正在思考</span>
+                            </div>
+                            <div class="ai-resize-handle" id="ai-resize-handle"></div>
+                        </aside>
                         <div class="changes-tracker" id="changes-tracker">
                             <h4 data-i18n="story.changesTracker">修改追踪</h4>
                             <div id="changes-content" class="changes-content"></div>
@@ -235,8 +274,75 @@
         </main>
     </div>
 
+    <!-- AI Assistant Mobile Elements -->
+    <button id="ai-mobile-button" class="hidden">🤖</button>
+    <div id="ai-drawer-backdrop" class="hidden"></div>
+
     <!-- Modal for new story -->
     <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3 id="modal-title" data-i18n="modal.newStory">新建故事</h3>
+            <form id="modal-form">
+                <input type="text" id="modal-input" class="input-field" data-i18n-placeholder="placeholder.inputName" placeholder="输入名称" required>
+                <button type="submit" class="btn btn-primary" data-i18n="buttons.confirm">确认</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Configuration Modal -->
+    <div id="ai-config-modal" class="modal hidden">
+        <div class="modal-content ai-config-modal-content">
+            <span class="modal-close ai-config-close">&times;</span>
+            <h3 data-i18n="ai.configTitle">AI配置</h3>
+            <form id="ai-config-form" class="ai-config-form">
+                <div class="form-group">
+                    <label data-i18n="ai.provider">提供商:</label>
+                    <select id="ai-provider" class="input-field">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="ai.apiKey">API密钥:</label>
+                    <div class="password-input-group">
+                        <input type="password" id="ai-api-key" class="input-field" required>
+                        <button type="button" class="btn-toggle-password" id="ai-toggle-key">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group" id="ai-endpoint-group" style="display: none;">
+                    <label data-i18n="ai.endpoint">端点URL:</label>
+                    <input type="url" id="ai-endpoint" class="input-field" placeholder="https://api.example.com/v1/chat/completions">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="ai.model">模型:</label>
+                    <input type="text" id="ai-model" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="ai.temperature">温度: <span id="ai-temp-value">0.7</span></label>
+                    <input type="range" id="ai-temperature" class="input-range" min="0" max="2" step="0.1" value="0.7">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="ai.maxTokens">最大Token数:</label>
+                    <input type="number" id="ai-max-tokens" class="input-field" min="1" max="8000" value="2000">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="ai.historyLimit">历史记录限制:</label>
+                    <input type="number" id="ai-history-limit" class="input-field" min="5" max="100" value="20">
+                </div>
+                <div class="ai-config-buttons">
+                    <button type="button" class="btn btn-secondary" id="ai-test-connection" data-i18n="ai.testConnection">测试连接</button>
+                    <button type="button" class="btn btn-secondary" id="ai-reset-config" data-i18n="ai.resetDefaults">重置默认</button>
+                    <button type="button" class="btn btn-secondary" id="ai-clear-key" data-i18n="ai.clearKey">清除密钥</button>
+                </div>
+                <div class="ai-config-footer">
+                    <button type="button" class="btn btn-secondary ai-config-cancel" data-i18n="buttons.cancel">取消</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="buttons.save">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
         <div class="modal-content">
             <span class="modal-close">&times;</span>
             <h3 id="modal-title" data-i18n="modal.newStory">新建故事</h3>
@@ -265,6 +371,11 @@
     <script src="js/managers/ViewManager.js"></script>
     <script src="js/managers/EventManager.js"></script>
     <script src="js/managers/UIRenderer.js"></script>
+    <script src="js/managers/AIConfigManager.js"></script>
+    <!-- AI Services -->
+    <script src="js/services/AIService.js"></script>
+    <!-- AI Manager (must be loaded after AIConfigManager and AIService) -->
+    <script src="js/managers/AIManager.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

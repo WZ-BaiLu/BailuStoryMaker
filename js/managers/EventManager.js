@@ -91,6 +91,7 @@ class EventManager {
         this.bindImportEvent();
         this.bindNewStoryEvent();
         this.bindModalEvents();
+        this.bindAIConfigEvents();
         this.bindStoryViewEvents();
         this.bindCharacterViewEvents();
         this.bindItemViewEvents();
@@ -153,10 +154,113 @@ class EventManager {
     }
 
     /**
+     * Bind AI config modal events
+     */
+    bindAIConfigEvents() {
+        // Close button
+        const aiCloseBtn = document.querySelector('.ai-config-close');
+        if (aiCloseBtn) {
+            aiCloseBtn.addEventListener('click', () => {
+                this.app.modalManager.hideAIConfigModal();
+            });
+        }
+
+        // Cancel button
+        const aiCancelBtn = document.querySelector('.ai-config-cancel');
+        if (aiCancelBtn) {
+            aiCancelBtn.addEventListener('click', () => {
+                this.app.modalManager.hideAIConfigModal();
+            });
+        }
+
+        // Form submit
+        const aiConfigForm = document.getElementById('ai-config-form');
+        if (aiConfigForm) {
+            aiConfigForm.addEventListener('submit', (e) => {
+                this.app.modalManager.handleAIConfigSubmit(e);
+            });
+        }
+
+        // Provider change
+        const aiProvider = document.getElementById('ai-provider');
+        if (aiProvider) {
+            aiProvider.addEventListener('change', (e) => {
+                this.app.modalManager.toggleEndpointField(e.target.value);
+            });
+        }
+
+        // Temperature slider
+        const aiTemp = document.getElementById('ai-temperature');
+        if (aiTemp) {
+            aiTemp.addEventListener('input', (e) => {
+                document.getElementById('ai-temp-value').textContent = e.target.value;
+            });
+        }
+
+        // Toggle password visibility
+        const aiToggleKey = document.getElementById('ai-toggle-key');
+        if (aiToggleKey) {
+            aiToggleKey.addEventListener('click', () => {
+                const apiKeyInput = document.getElementById('ai-api-key');
+                if (apiKeyInput.type === 'password') {
+                    apiKeyInput.type = 'text';
+                    aiToggleKey.textContent = '🙈';
+                } else {
+                    apiKeyInput.type = 'password';
+                    aiToggleKey.textContent = '👁️';
+                }
+            });
+        }
+
+        // Test connection
+        const aiTestBtn = document.getElementById('ai-test-connection');
+        if (aiTestBtn) {
+            aiTestBtn.addEventListener('click', () => {
+                this.app.modalManager.handleTestConnection();
+            });
+        }
+
+        // Reset defaults
+        const aiResetBtn = document.getElementById('ai-reset-config');
+        if (aiResetBtn) {
+            aiResetBtn.addEventListener('click', () => {
+                this.app.modalManager.handleResetAIConfig();
+            });
+        }
+
+        // Clear key
+        const aiClearKeyBtn = document.getElementById('ai-clear-key');
+        if (aiClearKeyBtn) {
+            aiClearKeyBtn.addEventListener('click', () => {
+                this.app.modalManager.handleClearAIKey();
+            });
+        }
+
+        // Escape key to close AI config modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const aiModal = document.getElementById('ai-config-modal');
+                if (aiModal && !aiModal.classList.contains('hidden')) {
+                    this.app.modalManager.hideAIConfigModal();
+                }
+            }
+        });
+    }
+
+    /**
      * Bind story view events
      */
     bindStoryViewEvents() {
         document.getElementById('add-chapter-btn').addEventListener('click', () => this.app.addChapter());
+
+        // Show AI panel button
+        const showAIPanelBtn = document.getElementById('show-ai-panel-btn');
+        if (showAIPanelBtn) {
+            showAIPanelBtn.addEventListener('click', () => {
+                this.app.viewManager.showAIAssistantPanel();
+            });
+        }
+
         const newParagraphInput = document.getElementById('new-paragraph-input');
         newParagraphInput.addEventListener('keydown', (e) => {
             // Enter (without Shift or Ctrl) to submit

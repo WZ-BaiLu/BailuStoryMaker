@@ -31,6 +31,9 @@ class ViewManager {
 
         this.currentView = viewName;
 
+        // Handle AI panel visibility based on view
+        this.handleAIPanelVisibility(viewName);
+
         // Save view to localStorage
         this.saveViewToStorage();
 
@@ -102,4 +105,52 @@ class ViewManager {
     getCurrentView() {
         return this.currentView;
     }
+
+    /**
+     * Handle AI panel visibility based on current view
+     * @param {string} viewName - The current view name
+     */
+    handleAIPanelVisibility(viewName) {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (!aiPanel) return;
+
+        // Show AI panel only in story view when a chapter is selected
+        if (viewName === 'story' && this.state.selectedChapter) {
+            aiPanel.classList.remove('hidden');
+            this.app.aiManager.loadHistory(this.state.selectedChapter);
+        } else {
+            aiPanel.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Show AI assistant panel
+     */
+    showAIAssistantPanel() {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (aiPanel) {
+            aiPanel.classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Hide AI assistant panel
+     */
+    hideAIAssistantPanel() {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (aiPanel) {
+            aiPanel.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Toggle AI assistant panel visibility
+     */
+    toggleAIAssistantPanel() {
+        const aiPanel = document.getElementById('ai-assistant-panel');
+        if (aiPanel) {
+            aiPanel.classList.toggle('hidden');
+        }
+    }
 }
+

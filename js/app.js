@@ -20,6 +20,17 @@ class App {
         this.eventManager = new EventManager(this, this.state);
         this.uiRenderer = new UIRenderer(this, this.state);
 
+        // Initialize AI components
+        this.aiConfigManager = new AIConfigManager();
+        this.aiService = new AIService();
+        this.aiManager = new AIManager(
+            this,
+            this.state,
+            this.aiConfigManager,
+            this.aiService,
+            this.notificationManager
+        );
+
         this.init();
     }
 
@@ -31,6 +42,7 @@ class App {
         this.bindEvents();
         this.loadTheme();
         this.setupKeyboardShortcuts();
+        this.aiManager.initialize();
         this.showWelcomeMessage();
     }
 
@@ -127,6 +139,7 @@ class App {
         // Restore selected items in editors
         if (this.state.selectedChapter) {
             this.uiRenderer.renderChapterEditor(this.state.selectedChapter);
+            this.aiManager.setCurrentChapter(this.state.selectedChapter);
         }
         if (this.state.selectedCharacter) {
             this.uiRenderer.renderCharacterEditor(this.state.selectedCharacter);
@@ -149,6 +162,9 @@ class App {
             const interval = (story.settings.autoSaveInterval || 300) * 1000;
             this.state.enableAutoSave(interval);
         }
+
+        // Refresh AI panel
+        this.aiManager.refresh();
     }
 
     /**
@@ -178,6 +194,8 @@ class App {
         this.state.selectChapter(chapter.id);
         this.uiRenderer.renderChapters();
         this.uiRenderer.renderChapterEditor(chapter.id);
+        this.aiManager.setCurrentChapter(chapter.id);
+        this.viewManager.handleAIPanelVisibility('story');
     }
 
     // Paragraph management
@@ -525,6 +543,7 @@ class App {
         }
 
         this.viewManager.refreshCurrentView();
+        this.aiManager.refresh();
         this.updateUndoRedoButtons();
         this.updateSaveStatus();
     }

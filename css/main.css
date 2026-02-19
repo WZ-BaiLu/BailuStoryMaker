@@ -330,6 +330,19 @@ body.dark {
     overflow-y: auto;
 }
 
+.editor-header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--light-border);
+    background: var(--light-bg);
+}
+
+.editor-header .input-field {
+    flex: 1;
+}
+
 /* Form sections */
 .attributes-section,
 .abilities-section,
