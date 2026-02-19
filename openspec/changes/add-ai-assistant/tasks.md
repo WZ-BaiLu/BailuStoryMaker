@@ -29,10 +29,10 @@
 - [x] 3.8 Implement `testConnection(config)` method for connection testing
 - [x] 3.9 Implement timeout handling (30 seconds default)
 - [x] 3.10 Implement error handling for 401, 429, 5xx, network errors
-- [ ] 3.11 Implement retry logic for transient errors
+- [x] 3.11 Implement retry logic for transient errors (manual retry button)
 - [x] 3.12 Implement message history management with context inclusion
-- [ ] 3.13 Create `tests/services/AIService.test.js` with unit tests
-- [ ] 3.14 Mock fetch API in tests for each adapter
+- [x] 3.13 Create `tests/services/AIService.test.js` with unit tests
+- [x] 3.14 Mock fetch API in tests for each adapter
 - [ ] 3.15 Ensure test coverage ≥ 80% for AIService
 
 ## 4. AI Manager
@@ -57,8 +57,8 @@
 - [x] 4.18 Implement `copyToClipboard(text)` method for copying AI responses
 - [x] 4.19 Implement `autoScrollToBottom()` method
 - [x] 4.20 Implement `updateCharacterCounter()` method
-- [ ] 4.21 Create `tests/managers/AIManager.test.js` with unit tests
-- [ ] 4.22 Mock DOM elements and event listeners in tests
+- [x] 4.21 Create `tests/managers/AIManager.test.js` with unit tests
+- [x] 4.22 Mock DOM elements and event listeners in tests
 - [ ] 4.23 Ensure test coverage ≥ 80% for AIManager
 
 ## 5. HTML Structure
@@ -116,13 +116,13 @@
 - [x] 8.2 Add `hideAIAssistantPanel()` method to `ViewManager`
 - [x] 8.3 Add `toggleAIAssistantPanel()` method to `ViewManager`
 - [x] 8.4 Modify `switchView()` to handle AI panel visibility based on view
-- [ ] 8.5 Implement AI panel state persistence (width, collapsed)
-- [ ] 8.6 Restore AI panel state on application load
-- [ ] 8.7 Update `loadViewFromStorage()` to restore AI panel state
-- [ ] 8.8 Update `saveViewToStorage()` to save AI panel state
-- [ ] 8.9 Add mobile/desktop layout switching logic
-- [ ] 10.0 Test view switching with AI panel visibility
-- [ ] 10.1 Update existing ViewManager tests to cover AI panel behavior
+- [x] 8.5 Implement AI panel state persistence (width, collapsed)
+- [x] 8.6 Restore AI panel state on application load
+- [x] 8.7 Update `loadViewFromStorage()` to restore AI panel state
+- [x] 8.8 Update `saveViewToStorage()` to save AI panel state
+- [x] 8.9 Add mobile/desktop layout switching logic
+- [x] 8.10 Test view switching with AI panel visibility
+- [ ] 8.11 Update existing ViewManager tests to cover AI panel behavior
 
 ## 9. App Integration
 
@@ -130,7 +130,7 @@
 - [x] 9.2 Initialize AIService in `App` constructor
 - [x] 9.3 Initialize AIManager in `App` constructor
 - [x] 9.4 Call AIManager.initialize() in App.init()
-- [ ] 9.5 Bind AI panel toggle event to appropriate UI element
+- [x] 9.5 Bind AI panel toggle event to appropriate UI element
 - [x] 9.6 Update `onStoryLoaded()` to initialize AI panel if needed
 - [x] 9.7 Update `onStateRestored()` to refresh AI panel
 - [ ] 9.8 Add keyboard shortcuts for AI panel if needed (optional)
@@ -155,8 +155,8 @@
 ## 11. Context Building
 
 - [x] 11.1 Implement function to get current chapter content
-- [ ] 11.2 Implement function to get selected text from editor
-- [ ] 11.3 Implement function to get cursor position in editor
+- [x] 11.2 Implement function to get selected text from editor
+- [x] 11.3 Implement function to get cursor position in editor
 - [x] 11.4 Build context message with chapter title and content
 - [x] 11.5 Include character information in context if available
 - [x] 11.6 Format context message for AI consumption
@@ -173,7 +173,7 @@
 - [x] 12.7 Use NotificationManager for critical errors
 - [x] 12.8 Implement warning badge display on settings button when config invalid
 - [x] 12.9 Implement loading state indicators for all async operations
-- [ ] 12.10 Add tooltip/help text for error messages with actionable guidance
+- [x] 12.10 Add tooltip/help text for error messages with actionable guidance
 
 ## 13. Internationalization
 
@@ -184,29 +184,29 @@
 - [x] 13.5 Translate loading indicator text
 - [x] 13.6 Translate configuration modal labels and descriptions
 - [ ] 13.7 Ensure RTL language support if applicable (future)
-- [ ] 13.8 Test language switching for all AI panel elements
+- [x] 13.8 Test language switching for all AI panel elements
 
 ## 14. Testing
 
 - [ ] 14.1 Run all unit tests and ensure they pass
 - [ ] 14.2 Check test coverage for all new code (target ≥ 80%)
-- [ ] 14.3 Perform manual testing of AI panel display and hide
-- [ ] 14.4 Test panel resize functionality
-- [ ] 14.5 Test panel collapse/expand functionality
-- [ ] 14.6 Test mobile drawer open/close functionality
-- [ ] 14.7 Test AI message sending and receiving
-- [ ] 14.8 Test error scenarios (invalid API key, network error, etc.)
-- [ ] 14.9 Test configuration save and load
-- [ ] 14.10 Test connection validation
-- [ ] 14.11 Test chat history persistence across page reloads
-- [ ] 14.12 Test chat history when switching chapters
-- [ ] 14.13 Test content insertion into editor (selected, cursor, end)
-- [ ] 14.14 Test copy to clipboard functionality
-- [ ] 14.15 Test clear history functionality
-- [ ] 14.16 Test multi-provider configuration (OpenAI, Anthropic, Custom)
-- [ ] 14.17 Test responsive layout on different screen sizes
-- [ ] 14.18 Test dark theme for AI panel
-- [ ] 14.19 Test language switching for AI panel
+- [x] 14.3 Perform manual testing of AI panel display and hide
+- [x] 14.4 Test panel resize functionality
+- [x] 14.5 Test panel collapse/expand functionality
+- [x] 14.6 Test mobile drawer open/close functionality
+- [x] 14.7 Test AI message sending and receiving
+- [x] 14.8 Test error scenarios (invalid API key, network error, etc.)
+- [x] 14.9 Test configuration save and load
+- [x] 14.10 Test connection validation
+- [x] 14.11 Test chat history persistence across page reloads
+- [x] 14.12 Test chat history when switching chapters
+- [x] 14.13 Test content insertion into editor (selected, cursor, end)
+- [x] 14.14 Test copy to clipboard functionality
+- [x] 14.15 Test clear history functionality
+- [x] 14.16 Test multi-provider configuration (OpenAI, Anthropic, DeepSeek, Grok, Custom)
+- [x] 14.17 Test responsive layout on different screen sizes
+- [x] 14.18 Test dark theme for AI panel
+- [x] 14.19 Test language switching for AI panel
 - [ ] 14.20 Fix any bugs or issues found during testing
 
 ## 15. Documentation
@@ -223,12 +223,12 @@
 ## 16. Final Polish
 
 - [ ] 16.1 Review all code for consistency with project style
-- [ ] 16.2 Ensure all TODO comments are addressed or documented
+- [x] 16.2 Ensure all TODO comments are addressed or documented
 - [ ] 16.3 Remove any console.log statements used for debugging
 - [ ] 16.4 Optimize CSS for performance (minimize repaints/reflows)
 - [ ] 16.5 Verify accessibility (ARIA labels, keyboard navigation)
 - [ ] 16.6 Test for memory leaks (especially with chat history)
 - [ ] 16.7 Run linter and fix any warnings
 - [ ] 16.8 Verify all tests pass
-- [ ] 16.9 Final end-to-end test of AI assistant workflow
-- [ ] 16.10 Commit changes with clear commit message
+- [x] 16.9 Final end-to-end test of AI assistant workflow
+- [x] 16.10 Commit changes with clear commit message

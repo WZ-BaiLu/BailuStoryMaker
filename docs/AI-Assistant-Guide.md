@@ -6,7 +6,7 @@
 
 ## 主要特性
 
-- **多供应商支持**：OpenAI、Anthropic、自定义 API 端点
+- **多供应商支持**：OpenAI、Anthropic、DeepSeek、Grok、自定义 API 端点
 - **实时对话**：与 AI 进行连续对话，上下文自动保留
 - **内容插入**：一键将 AI 生成的内容插入到编辑器
 - **历史记录**：自动保存对话历史，支持清除和重新生成
@@ -68,6 +68,34 @@
 - Claude 3 Haiku
 
 **获取 API 密钥**：访问 [Anthropic Console](https://console.anthropic.com/)
+
+### DeepSeek
+
+**API 基础地址**：`https://api.deepseek.com/v1`
+
+**支持模型**：
+- DeepSeek-V3
+- DeepSeek-Coder
+
+**获取 API 密钥**：访问 [DeepSeek Platform](https://platform.deepseek.com/)
+
+**注意事项**：
+- 最大 token 限制为 8192
+- 支持 OpenAI 兼容的 API 格式
+
+### Grok (xAI)
+
+**API 基础地址**：`https://api.x.ai/v1`
+
+**支持模型**：
+- Grok-1
+- Grok-1.5
+
+**获取 API 密钥**：访问 [xAI Platform](https://console.x.ai/)
+
+**注意事项**：
+- 支持 OpenAI 兼容的 API 格式
+- 需要注册 xAI 账号
 
 ### 自定义端点
 
@@ -174,6 +202,7 @@ AI 助手会记住最近的对话历史（默认保留最近 20 条消息），�
 
 - **验证事实**：AI 可能产生幻觉，重要事实需人工核实
 - **保持风格一致**：明确指定风格要求
+- **注意提供商限制**：不同提供商的 token 限制和功能特性不同，例如 DeepSeek 最大 8192 tokens
 - **逐步完善**：不要一次性要求太多，分步进行
 - **人工编辑**：AI 生成的内容需要人工润色和调整
 

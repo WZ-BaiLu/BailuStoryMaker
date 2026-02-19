@@ -25,6 +25,27 @@
 ### VR-4: View Refresh
 - 应提供刷新当前视图的方法
 - 当状态变化时（如撤销/重做）应刷新当前视图
+- 如果 AI 面板可见，刷新时应同时刷新 AI 面板内容
+
+### VR-5: AI Assistant Panel Visibility Control
+- 系统应根据当前视图和选择状态控制 AI 助手面板的可见性
+- 在 story 视图且选择了章节时应显示 AI 面板
+- 在 story 视图但未选择章节时应隐藏 AI 面板
+- 切换到非 story 视图时应隐藏 AI 面板并保存隐藏状态
+
+### VR-6: AI Assistant Panel State Persistence
+- AI 面板状态应持久化到 localStorage
+- 包括：可见性状态、宽度、折叠状态
+- 加载 AI 面板时应恢复保存的状态，无保存时使用默认值
+
+### VR-7: AI Assistant Panel Toggle
+- 应提供切换 AI 面板可见性的方法
+- 切换时同时更新 localStorage 中的状态
+
+### VR-8: Responsive Layout Management
+- 屏幕宽度 < 768px 时，AI 面板切换为底部抽屉模式
+- 屏幕宽度 >= 768px 时，AI 面板切换为侧边栏模式
+- 根据屏幕宽度变化自动切换布局模式
 
 ## API
 
@@ -36,6 +57,12 @@ class ViewManager {
     loadViewFromStorage(): void;
     saveViewToStorage(): void;
     getCurrentView(): string;
+
+    // AI Panel methods
+    showAIAssistantPanel(): void;
+    hideAIAssistantPanel(): void;
+    toggleAIAssistantPanel(): void;
+    checkResponsiveLayout(): void;
 }
 ```
 
