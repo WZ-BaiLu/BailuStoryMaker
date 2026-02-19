@@ -5,13 +5,13 @@ Breakdown of implementation tasks for the undo/redo functionality.
 
 ## Phase 1: Core History System
 
-### Task 1.1: History Manager Module
+### Task 1.1: History Manager Module [x]
 - Create HistoryManager class
 - Implement state snapshot functionality
 - Maintain undo and redo stacks
 - Configure maximum history size (default: 50)
 
-### Task 1.2: State Change Tracking
+### Task 1.2: State Change Tracking [x]
 - Integrate HistoryManager with AppState
 - Capture state before each modification
 - Push to undo stack on changes
@@ -19,14 +19,14 @@ Breakdown of implementation tasks for the undo/redo functionality.
 
 ## Phase 2: Undo/Redo Operations
 
-### Task 2.1: Undo Implementation
+### Task 2.1: Undo Implementation [x]
 - Implement undo() method
 - Pop from undo stack
 - Push current state to redo stack
 - Restore previous state
 - Update UI
 
-### Task 2.2: Redo Implementation
+### Task 2.2: Redo Implementation [x]
 - Implement redo() method
 - Pop from redo stack
 - Push current state to undo stack
@@ -35,31 +35,31 @@ Breakdown of implementation tasks for the undo/redo functionality.
 
 ## Phase 3: UI Integration
 
-### Task 3.1: Keyboard Shortcuts
+### Task 3.1: Keyboard Shortcuts [x]
 - Implement Ctrl/Cmd+Z for undo
 - Implement Ctrl/Cmd+Y for redo (or Ctrl/Cmd+Shift+Z)
 - Prevent default browser behavior when triggered
 
-### Task 3.2: Visual Indicators
+### Task 3.2: Visual Indicators [x]
 - Add undo/redo buttons to header
 - Disable buttons when unavailable
 - Show current history position
 - Add tooltips for keyboard shortcuts
 
-### Task 3.3: History Viewer (Optional)
+### Task 3.3: History Viewer (Optional) [x]
 - Display recent history items
 - Allow selective undo from history list
 - Show timestamp and description of each action
 
 ## Phase 4: Testing & Optimization
 
-### Task 4.1: Testing
+### Task 4.1: Testing [x]
 - Test undo after various actions (chapter edits, character changes, etc.)
 - Test redo functionality
 - Test history stack limits
 - Test keyboard shortcuts
 
-### Task 4.2: Optimization
+### Task 4.2: Optimization [x]
 - Ensure deep copying doesn't cause performance issues
 - Limit memory usage with stack size limit
 - Clear history on story load/new story

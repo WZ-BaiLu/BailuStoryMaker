@@ -328,3 +328,28 @@
     padding: 4px 8px;
     font-size: 0.8rem;
 }
+
+/* Language selector */
+.lang-selector {
+    padding: 8px 12px;
+    background-color: var(--light-bg);
+    border: 1px solid var(--light-border);
+    border-radius: 4px;
+    color: var(--dark-text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+    transition: var(--transition);
+}
+
+.lang-selector:hover {
+    border-color: var(--primary-color);
+}
+
+.lang-selector:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(26, 179, 148, 0.2);
+}
+

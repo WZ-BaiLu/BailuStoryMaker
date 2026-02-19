@@ -7,11 +7,36 @@ class App {
         this.init();
     }
 
-    init() {
+    async init() {
+        await this.initI18n();
         this.bindEvents();
         this.loadTheme();
         this.setupKeyboardShortcuts();
         this.showWelcomeMessage();
+    }
+
+    async initI18n() {
+        await i18n.init();
+        this.initLanguageSelector();
+        i18n.applyTranslations();
+        i18n.onLanguageChange(() => {
+            i18n.applyTranslations();
+            this.updateStoryTitle();
+            // Re-render current view to update dynamic content
+            this.refreshCurrentView();
+        });
+    }
+
+    initLanguageSelector() {
+        const langSelector = document.getElementById('lang-selector');
+        if (langSelector) {
+            langSelector.value = i18n.getCurrentLanguage();
+            langSelector.addEventListener('change', async (e) => {
+                console.log('Language changed to:', e.target.value);
+                await i18n.setLanguage(e.target.value);
+                console.log('Current language after change:', i18n.getCurrentLanguage());
+            });
+        }
     }
 
     setupKeyboardShortcuts() {
@@ -166,7 +191,7 @@ class App {
             const story = this.state.saveStory();
             const filename = `${story.metadata.title}.json`;
             FileManager.saveAsJSON(story, filename);
-            this.showToast('保存成功！', 'success');
+            this.showToast(i18n.t('status.saved'), 'success');
         } catch (error) {
             this.showToast(error.message, 'error');
         }
@@ -191,7 +216,7 @@ class App {
         try {
             const story = await FileManager.loadFromJSON(file);
             this.state.loadStory(story);
-            this.showToast('加载成功！', 'success');
+            this.showToast(i18n.t('status.saved'), 'success');
         } catch (error) {
             this.showToast(error.message, 'error');
         }
@@ -200,8 +225,8 @@ class App {
     }
 
     showNewStoryModal() {
-        document.getElementById('modal-title').textContent = '新建故事';
-        document.getElementById('modal-input').placeholder = '输入故事标题';
+        document.getElementById('modal-title').textContent = i18n.t('modal.newStory');
+        document.getElementById('modal-input').placeholder = i18n.t('placeholder.inputName');
         document.getElementById('modal-input').value = '';
         document.getElementById('modal').classList.remove('hidden');
     }
@@ -218,7 +243,7 @@ class App {
         const newStory = this.state.createStory(title);
         this.state.loadStory(newStory);
         this.hideModal();
-        this.showToast('故事创建成功！', 'success');
+        this.showToast(i18n.t('status.saved'), 'success');
     }
 
     onStoryLoaded() {
@@ -237,13 +262,23 @@ class App {
         }
     }
 
+    updateStoryTitle() {
+        const story = this.state.currentStory;
+        const titleEl = document.getElementById('story-title');
+        if (story) {
+            titleEl.textContent = story.metadata.title;
+        } else {
+            titleEl.textContent = i18n.t('header.noStoryLoaded');
+        }
+    }
+
     // Chapter management
     addChapter() {
         if (!this.state.currentStory) {
-            this.showToast('请先创建或加载一个故事', 'error');
+            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
             return;
         }
-        const chapter = this.state.addChapter('新章节');
+        const chapter = this.state.addChapter(i18n.t('messages.noChapters'));
         this.state.selectChapter(chapter.id);
         this.renderChapters();
         this.renderChapterEditor(chapter.id);
@@ -284,7 +319,7 @@ class App {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const chapterId = btn.dataset.chapterId;
-                if (confirm('确定要删除这个章节吗？')) {
+                if (confirm(i18n.t('messages.confirmDeleteChapter'))) {
                     this.state.deleteChapter(chapterId);
                     this.renderChapters();
                     if (this.state.selectedChapter === chapterId) {
@@ -296,7 +331,7 @@ class App {
         });
 
         if (story.chapters.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📖</div><div class="empty-state-text">暂无章节</div></div>';
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📖</div><div class="empty-state-text">${i18n.t('messages.noChapters')}</div></div>`;
         }
     }
 
@@ -346,10 +381,10 @@ class App {
     // Character management
     addCharacter() {
         if (!this.state.currentStory) {
-            this.showToast('请先创建或加载一个故事', 'error');
+            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
             return;
         }
-        const character = this.state.addCharacter({ name: '新角色' });
+        const character = this.state.addCharacter({ name: i18n.t('messages.noCharacters') });
         this.state.selectCharacter(character.id);
         this.renderCharacters();
         this.renderCharacterEditor(character.id);
@@ -387,7 +422,7 @@ class App {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const characterId = btn.dataset.characterId;
-                if (confirm('确定要删除这个角色吗？')) {
+                if (confirm(i18n.t('messages.confirmDeleteCharacter'))) {
                     this.state.deleteCharacter(characterId);
                     this.renderCharacters();
                     if (this.state.selectedCharacter === characterId) {
@@ -399,7 +434,7 @@ class App {
         });
 
         if (story.characters.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-text">暂无角色</div></div>';
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-text">${i18n.t('messages.noCharacters')}</div></div>`;
         }
     }
 
@@ -450,7 +485,7 @@ class App {
         const notes = document.getElementById('char-notes').value;
 
         this.state.updateCharacter(characterId, { name, description, notes });
-        this.showToast('角色保存成功！', 'success');
+        this.showToast(i18n.t('messages.characterSaved'), 'success');
         this.renderCharacters();
     }
 
@@ -459,9 +494,9 @@ class App {
         const entry = document.createElement('div');
         entry.className = 'attribute-entry';
         entry.innerHTML = `
-            <input type="text" class="input-field attr-name" placeholder="属性名">
-            <input type="text" class="input-field attr-value value-input" placeholder="属性值">
-            <button type="button" class="btn btn-delete">删除</button>
+            <input type="text" class="input-field attr-name" placeholder="${i18n.t('placeholders.attributeName')}">
+            <input type="text" class="input-field attr-value value-input" placeholder="${i18n.t('placeholders.attributeValue')}">
+            <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
         `;
         container.appendChild(entry);
 
@@ -479,9 +514,9 @@ class App {
             const entry = document.createElement('div');
             entry.className = 'attribute-entry';
             entry.innerHTML = `
-                <input type="text" class="input-field attr-name" value="${key}" placeholder="属性名">
-                <input type="text" class="input-field attr-value value-input" value="${value}" placeholder="属性值">
-                <button type="button" class="btn btn-delete">删除</button>
+                <input type="text" class="input-field attr-name" value="${key}" placeholder="${i18n.t('placeholders.attributeName')}">
+                <input type="text" class="input-field attr-value value-input" value="${value}" placeholder="${i18n.t('placeholders.attributeValue')}">
+                <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
             `;
             container.appendChild(entry);
 
@@ -497,11 +532,11 @@ class App {
         entry.className = 'ability-entry';
         entry.innerHTML = `
             <div class="ability-header">
-                <input type="text" class="input-field ability-name" placeholder="能力名称">
-                <input type="number" class="input-field ability-level" placeholder="等级" min="1" value="1">
-                <button type="button" class="btn btn-delete">删除</button>
+                <input type="text" class="input-field ability-name" placeholder="${i18n.t('placeholders.abilityName')}">
+                <input type="number" class="input-field ability-level" placeholder="${i18n.t('placeholders.abilityLevel')}" min="1" value="1">
+                <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
             </div>
-            <input type="text" class="input-field ability-desc" placeholder="能力描述">
+            <input type="text" class="input-field ability-desc" placeholder="${i18n.t('placeholders.abilityDesc')}">
         `;
         container.appendChild(entry);
 
@@ -520,11 +555,11 @@ class App {
             entry.className = 'ability-entry';
             entry.innerHTML = `
                 <div class="ability-header">
-                    <input type="text" class="input-field ability-name" value="${ability.name}" placeholder="能力名称">
-                    <input type="number" class="input-field ability-level" placeholder="等级" min="1" value="${ability.level}">
-                    <button type="button" class="btn btn-delete">删除</button>
+                    <input type="text" class="input-field ability-name" value="${ability.name}" placeholder="${i18n.t('placeholders.abilityName')}">
+                    <input type="number" class="input-field ability-level" placeholder="${i18n.t('placeholders.abilityLevel')}" min="1" value="${ability.level}">
+                    <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
                 </div>
-                <input type="text" class="input-field ability-desc" value="${ability.description || ''}" placeholder="能力描述">
+                <input type="text" class="input-field ability-desc" value="${ability.description || ''}" placeholder="${i18n.t('placeholders.abilityDesc')}">
             `;
             container.appendChild(entry);
 
@@ -537,10 +572,10 @@ class App {
     // Item management
     addItem() {
         if (!this.state.currentStory) {
-            this.showToast('请先创建或加载一个故事', 'error');
+            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
             return;
         }
-        const item = this.state.addItem({ name: '新道具' });
+        const item = this.state.addItem({ name: i18n.t('messages.noItems') });
         this.state.selectItem(item.id);
         this.renderItems();
         this.renderItemEditor(item.id);
@@ -579,7 +614,7 @@ class App {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const itemId = btn.dataset.itemId;
-                if (confirm('确定要删除这个道具吗？')) {
+                if (confirm(i18n.t('messages.confirmDeleteItem'))) {
                     this.state.deleteItem(itemId);
                     this.renderItems();
                     if (this.state.selectedItem === itemId) {
@@ -591,7 +626,7 @@ class App {
         });
 
         if (story.items.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎒</div><div class="empty-state-text">暂无道具</div></div>';
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎒</div><div class="empty-state-text">${i18n.t('messages.noItems')}</div></div>`;
         }
     }
 
@@ -640,7 +675,7 @@ class App {
         const description = document.getElementById('item-description').value;
 
         this.state.updateItem(itemId, { name, type, description });
-        this.showToast('道具保存成功！', 'success');
+        this.showToast(i18n.t('messages.itemSaved'), 'success');
         this.renderItems();
     }
 
@@ -649,9 +684,9 @@ class App {
         const entry = document.createElement('div');
         entry.className = 'property-entry';
         entry.innerHTML = `
-            <input type="text" class="input-field prop-name" placeholder="属性名">
-            <input type="text" class="input-field prop-value value-input" placeholder="属性值">
-            <button type="button" class="btn btn-delete">删除</button>
+            <input type="text" class="input-field prop-name" placeholder="${i18n.t('placeholders.propertyName')}">
+            <input type="text" class="input-field prop-value value-input" placeholder="${i18n.t('placeholders.propertyValue')}">
+            <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
         `;
         container.appendChild(entry);
 
@@ -669,9 +704,9 @@ class App {
             const entry = document.createElement('div');
             entry.className = 'property-entry';
             entry.innerHTML = `
-                <input type="text" class="input-field prop-name" value="${key}" placeholder="属性名">
-                <input type="text" class="input-field prop-value value-input" value="${value}" placeholder="属性值">
-                <button type="button" class="btn btn-delete">删除</button>
+                <input type="text" class="input-field prop-name" value="${key}" placeholder="${i18n.t('placeholders.propertyName')}">
+                <input type="text" class="input-field prop-value value-input" value="${value}" placeholder="${i18n.t('placeholders.propertyValue')}">
+                <button type="button" class="btn btn-delete">${i18n.t('placeholders.delete')}</button>
             `;
             container.appendChild(entry);
 
@@ -684,10 +719,10 @@ class App {
     // Setting management
     addSetting() {
         if (!this.state.currentStory) {
-            this.showToast('请先创建或加载一个故事', 'error');
+            this.showToast(i18n.t('messages.createOrLoadStory'), 'error');
             return;
         }
-        const setting = this.state.addSetting({ name: '新设定' });
+        const setting = this.state.addSetting({ name: i18n.t('messages.noSettings') });
         this.state.selectSetting(setting.id);
         this.renderSettings();
     }
@@ -730,7 +765,7 @@ class App {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const settingId = btn.dataset.settingId;
-                if (confirm('确定要删除这个设定吗？')) {
+                if (confirm(i18n.t('messages.confirmDeleteSetting'))) {
                     this.state.deleteSetting(settingId);
                     this.renderSettings();
                     if (this.state.selectedSetting === settingId) {
@@ -742,8 +777,8 @@ class App {
         });
 
         if (story.settings.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏰</div><div class="empty-state-text">暂无设定</div></div>';
-        }
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏰</div><div class="empty-state-text">${i18n.t('messages.noSettings')}</div></div>`;
+    }
     }
 
     renderSettingEditor(settingId) {
@@ -792,7 +827,7 @@ class App {
         const description = document.getElementById('setting-description').value;
 
         this.state.updateSetting(settingId, { name, type, parentId, description });
-        this.showToast('设定保存成功！', 'success');
+        this.showToast(i18n.t('messages.settingSaved'), 'success');
         this.renderSettings();
     }
 
@@ -811,7 +846,7 @@ class App {
     generatePrompt() {
         const story = this.state.currentStory;
         if (!story) {
-            this.showToast('请先加载一个故事', 'error');
+            this.showToast(i18n.t('messages.noStoryLoaded'), 'error');
             return;
         }
 
@@ -827,11 +862,16 @@ class App {
         document.getElementById('generated-prompt').value = prompt;
     }
 
-    copyPrompt() {
+    async copyPrompt() {
         const prompt = document.getElementById('generated-prompt');
-        prompt.select();
-        document.execCommand('copy');
-        this.showToast('提示词已复制到剪贴板', 'success');
+        try {
+            await navigator.clipboard.writeText(prompt.value);
+            this.showToast(i18n.t('buttons.copyPrompt'), 'success');
+        } catch (err) {
+            prompt.select();
+            document.execCommand('copy');
+            this.showToast(i18n.t('buttons.copyPrompt'), 'success');
+        }
     }
 
     // Theme management
@@ -851,20 +891,20 @@ class App {
     // Utility methods
     updateSaveStatus() {
         const statusEl = document.getElementById('save-status');
-        statusEl.textContent = '已修改';
+        statusEl.textContent = i18n.t('status.unsaved');
         statusEl.style.color = 'var(--warning-color)';
         setTimeout(() => {
-            statusEl.textContent = '已保存';
+            statusEl.textContent = i18n.t('status.saved');
             statusEl.style.color = 'var(--success-color)';
         }, 2000);
     }
 
     showWelcomeMessage() {
-        document.getElementById('story-title').textContent = '欢迎使用白鹿故事';
+        document.getElementById('story-title').textContent = i18n.t('brand.name');
 
         // Try to load from localStorage
         if (this.state.loadFromLocalStorage()) {
-            this.showToast('已恢复上次的故事', 'success');
+            this.showToast(i18n.t('status.saved'), 'success');
         }
 
         this.updateUndoRedoButtons();
@@ -873,14 +913,14 @@ class App {
     // Undo/Redo handlers
     handleUndo() {
         if (this.state.undo()) {
-            this.showToast('已撤销', 'success');
+            this.showToast(i18n.t('buttons.undo'), 'success');
             this.refreshCurrentView();
         }
     }
 
     handleRedo() {
         if (this.state.redo()) {
-            this.showToast('已重做', 'success');
+            this.showToast(i18n.t('buttons.redo'), 'success');
             this.refreshCurrentView();
         }
     }

@@ -1,0 +1,146 @@
+{
+  "app": {
+    "title": "🦌 BailuStoryMaker - AI 辅助小说编写工具"
+  },
+  "brand": {
+    "name": "🦌 白鹿故事"
+  },
+  "nav": {
+    "story": "故事",
+    "character": "角色",
+    "item": "道具",
+    "setting": "设定",
+    "prompt": "提示词"
+  },
+  "buttons": {
+    "newStory": "新建故事",
+    "save": "保存",
+    "load": "加载",
+    "export": "导出",
+    "import": "导入",
+    "undo": "撤销",
+    "redo": "重做",
+    "addChapter": "添加章节",
+    "addCharacter": "添加角色",
+    "addItem": "添加道具",
+    "addSetting": "添加设定",
+    "saveCharacter": "保存角色",
+    "saveItem": "保存道具",
+    "saveSetting": "保存设定",
+    "generatePrompt": "生成提示词",
+    "copyPrompt": "复制到剪贴板",
+    "confirm": "确认",
+    "cancel": "取消"
+  },
+  "header": {
+    "noStoryLoaded": "未加载故事"
+  },
+  "story": {
+    "chapters": "章节",
+    "chapterTitle": "章节标题",
+    "chapterContent": "开始编写你的故事...",
+    "selectChapter": "请从左侧选择一个章节或创建新章节"
+  },
+  "character": {
+    "list": "角色列表",
+    "details": "角色详情",
+    "name": "角色名称",
+    "description": "角色描述",
+    "attributes": "属性",
+    "abilities": "能力",
+    "addAttribute": "添加属性",
+    "addAbility": "添加能力",
+    "notes": "备注",
+    "selectCharacter": "请从左侧选择一个角色或创建新角色"
+  },
+  "item": {
+    "list": "道具列表",
+    "details": "道具详情",
+    "name": "道具名称",
+    "type": "类型",
+    "description": "道具描述",
+    "properties": "属性",
+    "addProperty": "添加属性",
+    "selectItem": "请从左侧选择一个道具或创建新道具",
+    "typeOther": "其他",
+    "typeWeapon": "武器",
+    "typeArmor": "护甲",
+    "typeTool": "工具",
+    "typeQuest": "任务物品"
+  },
+  "setting": {
+    "list": "设定列表",
+    "details": "设定详情",
+    "name": "设定名称",
+    "type": "类型",
+    "description": "设定描述",
+    "selectSetting": "请从左侧选择一个设定或创建新设定",
+    "noParent": "无父级",
+    "typeLocation": "地点",
+    "typeRegion": "区域",
+    "typeWorld": "世界"
+  },
+  "prompt": {
+    "title": "提示词生成",
+    "selectChapter": "选择章节",
+    "template": "模板",
+    "generated": "生成的提示词",
+    "templateDefault": "默认模板",
+    "templateCharacter": "角色聚焦",
+    "templateScene": "场景设定"
+  },
+  "modal": {
+    "newStory": "新建故事",
+    "enterName": "输入名称"
+  },
+  "status": {
+    "saved": "已保存",
+    "unsaved": "未保存",
+    "saving": "保存中..."
+  },
+  "placeholder": {
+    "chapter": "请从左侧选择一个章节或创建新章节",
+    "character": "请从左侧选择一个角色或创建新角色",
+    "item": "请从左侧选择一个道具或创建新道具",
+    "setting": "请从左侧选择一个设定或创建新设定",
+    "inputName": "输入名称"
+  },
+  "language": {
+    "zhCN": "简体中文",
+    "enUS": "English"
+  },
+  "messages": {
+    "saveSuccess": "保存成功！",
+    "loadSuccess": "加载成功！",
+    "storyCreated": "故事创建成功！",
+    "characterSaved": "角色保存成功！",
+    "itemSaved": "道具保存成功！",
+    "settingSaved": "设定保存成功！",
+    "promptCopied": "提示词已复制到剪贴板",
+    "undoSuccess": "已撤销",
+    "redoSuccess": "已重做",
+    "welcomeMessage": "欢迎使用白鹿故事",
+    "createOrLoadStory": "请先创建或加载一个故事",
+    "noStoryLoaded": "请先加载一个故事",
+    "storyRestored": "已恢复上次的故事",
+    "confirmDeleteChapter": "确定要删除这个章节吗？",
+    "confirmDeleteCharacter": "确定要删除这个角色吗？",
+    "confirmDeleteItem": "确定要删除这个道具吗？",
+    "confirmDeleteSetting": "确定要删除这个设定吗？",
+    "noChapters": "暂无章节",
+    "noCharacters": "暂无角色",
+    "noItems": "暂无道具",
+    "noSettings": "暂无设定",
+    "inputStoryTitle": "输入故事标题"
+  },
+  "placeholders": {
+    "attributeName": "属性名",
+    "attributeValue": "属性值",
+    "abilityName": "能力名称",
+    "abilityLevel": "等级",
+    "abilityDesc": "能力描述",
+    "propertyName": "属性名",
+    "propertyValue": "属性值",
+    "delete": "删除"
+  }
+}
