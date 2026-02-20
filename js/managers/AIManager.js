@@ -26,6 +26,7 @@ class AIManager {
         this.lastUserMessage = null;
         this.isRequestPending = false;
 
+        this.tools = {};  // AI tools registry
         this.elements = {};
     }
 
@@ -42,6 +43,9 @@ class AIManager {
         // Initialize input height
         this.autoResizeInput();
 
+        // Register AI tools
+        this.registerAITools();
+
         // Listen for configuration changes
         this.configManager.onChange(() => {
             this.updateWarningBadge();
@@ -51,6 +55,82 @@ class AIManager {
         window.addEventListener('resize', () => {
             this.checkResponsiveLayout();
         });
+    }
+
+    /**
+     * Register AI tools
+     */
+    registerAITools() {
+        // Register updateCharacterState tool
+        this.registerTool(
+            'updateCharacterState',
+            {
+                type: 'object',
+                description: 'Update character state based on story events',
+                properties: {
+                    characterId: {
+                        type: 'string',
+                        description: 'The ID of the character to update'
+                    },
+                    changes: {
+                        type: 'object',
+                        description: 'Character state changes',
+                        properties: {
+                            attributes: {
+                                type: 'object',
+                                description: 'Attribute changes (e.g., { health: "+10" })'
+                            },
+                            emotionalState: {
+                                type: 'string',
+                                description: 'Emotional state (e.g., happy, sad, angry, fear, neutral)'
+                            }
+                        }
+                    },
+                    paragraphId: {
+                        type: 'string',
+                        description: 'The paragraph ID where the change occurs'
+                    }
+                },
+                required: ['characterId', 'paragraphId']
+            },
+            (params) => this.updateCharacterState(params.characterId, params.changes, params.paragraphId)
+        );
+
+        // Register updateItemState tool
+        this.registerTool(
+            'updateItemState',
+            {
+                type: 'object',
+                description: 'Update item state (acquire, lose, transfer, or modify)',
+                properties: {
+                    itemId: {
+                        type: 'string',
+                        description: 'The ID of the item to update'
+                    },
+                    action: {
+                        type: 'string',
+                        enum: ['acquire', 'lose', 'transfer', 'modify'],
+                        description: 'The action to perform'
+                    },
+                    characterId: {
+                        type: 'string',
+                        description: 'The character ID (required for acquire, lose, transfer)'
+                    },
+                    location: {
+                        type: 'string',
+                        description: 'The location (optional)'
+                    },
+                    paragraphId: {
+                        type: 'string',
+                        description: 'The paragraph ID where the change occurs'
+                    }
+                },
+                required: ['itemId', 'action', 'paragraphId']
+            },
+            (params) => this.updateItemState(params.itemId, params.action, params.characterId, params.location, params.paragraphId)
+        );
+
+        console.log(`[AIManager] Registered ${Object.keys(this.tools).length} AI tools`);
     }
 
     /**
@@ -742,10 +822,79 @@ class AIManager {
         });
 
         if (mentionedCharacters.length > 0) {
-            context.characters = mentionedCharacters.map(c => c.name);
+            context.characters = mentionedCharacters.map(c => {
+                const charInfo = {
+                    id: c.id,
+                    name: c.name,
+                    description: c.description,
+                    attributes: c.attributes,
+                    abilities: c.abilities
+                };
+
+                // Add held items information
+                if (c.heldItems && c.heldItems.length > 0) {
+                    charInfo.heldItems = c.heldItems.map(itemId => {
+                        const item = this.state.currentStory.items.find(i => i.id === itemId);
+                        if (item) {
+                            return {
+                                id: item.id,
+                                name: item.name,
+                                type: item.type,
+                                description: item.description,
+                                properties: item.properties
+                            };
+                        }
+                        return null;
+                    }).filter(item => item !== null);
+                }
+
+                return charInfo;
+            });
         }
 
         return context;
+    }
+
+    /**
+     * Format held items for a character (for AI prompts)
+     * @param {string} characterId - Character ID
+     * @returns {string} Formatted held items string
+     */
+    formatHeldItems(characterId) {
+        const character = this.state.currentStory?.characters.find(c => c.id === characterId);
+        if (!character || !character.heldItems || character.heldItems.length === 0) {
+            return '  无';
+        }
+
+        const items = character.heldItems
+            .map(itemId => {
+                const item = this.state.currentStory.items.find(i => i.id === itemId);
+                if (!item) return null;
+
+                const itemTypes = {
+                    weapon: '武器',
+                    armor: '护甲',
+                    tool: '工具',
+                    quest: '任务物品',
+                    other: '其他'
+                };
+
+                let properties = '';
+                if (item.properties && item.properties.current) {
+                    const propList = Object.entries(item.properties.current)
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join(', ');
+                    if (propList) {
+                        properties = ` (${propList})`;
+                    }
+                }
+
+                return `  - ${item.name} [${itemTypes[item.type] || '其他'}]${properties}`;
+            })
+            .filter(item => item !== null)
+            .join('\n');
+
+        return items || '  无';
     }
 
     /**
@@ -849,5 +998,233 @@ class AIManager {
      */
     refresh() {
         this.updateWarningBadge();
+    }
+
+    // ==================== AI Tools Methods ====================
+
+    /**
+     * Register an AI tool
+     * @param {string} name - Tool name
+     * @param {Object} parameters - Tool parameter schema
+     * @param {Function} handler - Tool handler function
+     */
+    registerTool(name, parameters, handler) {
+        this.tools[name] = {
+            name,
+            parameters,
+            handler
+        };
+        console.log(`[AIManager] Registered tool: ${name}`);
+    }
+
+    /**
+     * Get all registered tools
+     * @returns {Array} Array of tool definitions
+     */
+    getTools() {
+        return Object.values(this.tools).map(tool => ({
+            type: 'function',
+            function: {
+                name: tool.name,
+                description: tool.parameters.description || '',
+                parameters: tool.parameters
+            }
+        }));
+    }
+
+    /**
+     * Execute a tool call
+     * @param {string} toolName - Tool name
+     * @param {Object} toolArgs - Tool arguments
+     * @returns {Promise<Object>} Tool execution result
+     */
+    async executeTool(toolName, toolArgs) {
+        const tool = this.tools[toolName];
+        if (!tool) {
+            return {
+                success: false,
+                error: `Tool not found: ${toolName}`
+            };
+        }
+
+        try {
+            const result = await tool.handler(toolArgs);
+            return {
+                success: true,
+                data: result
+            };
+        } catch (error) {
+            console.error(`[AIManager] Tool execution error:`, error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Update character state
+     * @param {string} characterId - Character ID
+     * @param {Object} changes - Character changes
+     * @param {string} paragraphId - Paragraph ID
+     * @returns {Promise<Object>} Update result
+     */
+    async updateCharacterState(characterId, changes, paragraphId) {
+        // Validate character ID
+        const character = this.state.currentStory?.characters.find(c => c.id === characterId);
+        if (!character) {
+            throw new Error(`Character not found: ${characterId}`);
+        }
+
+        // Validate paragraph ID
+        const paragraphIdToUse = paragraphId || this.state.selectedChapter;
+        if (!paragraphIdToUse) {
+            throw new Error('No paragraph ID specified and no chapter selected');
+        }
+
+        // Prepare character change record
+        const characterChange = {
+            characterId,
+            characterName: character.name,
+            changes: {},
+            type: 'modified'
+        };
+
+        // Update character attributes if provided
+        if (changes.attributes) {
+            Object.assign(character.attributes.current, changes.attributes);
+            characterChange.changes.attributes = changes.attributes;
+        }
+
+        // Update emotional state if provided
+        if (changes.emotionalState) {
+            character.emotionalState = changes.emotionalState;
+            characterChange.changes.emotionalState = changes.emotionalState;
+        }
+
+        // Update character
+        this.state.updateCharacter(characterId, character);
+
+        // Add change to paragraph
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (chapter && paragraphIdToUse) {
+            const paragraph = chapter.paragraphs?.find(p => p.id === paragraphIdToUse);
+            if (paragraph) {
+                if (!paragraph.changes) {
+                    paragraph.changes = { characters: [], items: [] };
+                }
+                if (!paragraph.changes.characters) {
+                    paragraph.changes.characters = [];
+                }
+                paragraph.changes.characters.push(characterChange);
+                this.state.updateParagraph(this.state.selectedChapter, paragraphIdToUse, { changes: paragraph.changes });
+            }
+        }
+
+        return {
+            characterId,
+            characterName: character.name,
+            changes: characterChange.changes,
+            message: `Updated ${character.name}: ${Object.keys(characterChange.changes).join(', ')}`
+        };
+    }
+
+    /**
+     * Update item state
+     * @param {string} itemId - Item ID
+     * @param {string} action - Action type (acquire, lose, transfer, modify)
+     * @param {string} characterId - Character ID (optional)
+     * @param {string} location - Location (optional)
+     * @param {string} paragraphId - Paragraph ID
+     * @returns {Promise<Object>} Update result
+     */
+    async updateItemState(itemId, action, characterId, location, paragraphId) {
+        // Validate item ID
+        const item = this.state.currentStory?.items.find(i => i.id === itemId);
+        if (!item) {
+            throw new Error(`Item not found: ${itemId}`);
+        }
+
+        // Validate action
+        const validActions = ['acquire', 'lose', 'transfer', 'modify'];
+        if (!validActions.includes(action)) {
+            throw new Error(`Invalid action: ${action}. Must be one of: ${validActions.join(', ')}`);
+        }
+
+        // Validate character ID for acquire/lose/transfer actions
+        if (['acquire', 'lose', 'transfer'].includes(action) && !characterId) {
+            throw new Error('Character ID is required for this action');
+        }
+
+        if (characterId) {
+            const character = this.state.currentStory?.characters.find(c => c.id === characterId);
+            if (!character) {
+                throw new Error(`Character not found: ${characterId}`);
+            }
+        }
+
+        // Validate paragraph ID
+        const paragraphIdToUse = paragraphId || this.state.selectedChapter;
+        if (!paragraphIdToUse) {
+            throw new Error('No paragraph ID specified and no chapter selected');
+        }
+
+        // Prepare item change record
+        const itemChange = {
+            itemId,
+            itemName: item.name,
+            action,
+            characterId: characterId || null,
+            location: location || null
+        };
+
+        // Update item state based on action
+        switch (action) {
+            case 'acquire':
+                item.owner = characterId;
+                itemChange.message = `${item.name} acquired`;
+                break;
+            case 'lose':
+                if (item.owner === characterId) {
+                    item.owner = null;
+                    itemChange.message = `${item.name} lost`;
+                }
+                break;
+            case 'transfer':
+                if (item.owner === characterId) {
+                    item.owner = characterId; // In transfer, characterId should be the new owner
+                    itemChange.message = `${item.name} transferred`;
+                }
+                break;
+            case 'modify':
+                itemChange.message = `${item.name} modified`;
+                break;
+        }
+
+        // Update item
+        this.state.updateItem(itemId, item);
+
+        // Add change to paragraph
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (chapter && paragraphIdToUse) {
+            const paragraph = chapter.paragraphs?.find(p => p.id === paragraphIdToUse);
+            if (paragraph) {
+                if (!paragraph.changes) {
+                    paragraph.changes = { characters: [], items: [] };
+                }
+                if (!paragraph.changes.items) {
+                    paragraph.changes.items = [];
+                }
+                paragraph.changes.items.push(itemChange);
+                this.state.updateParagraph(this.state.selectedChapter, paragraphIdToUse, { changes: paragraph.changes });
+            }
+        }
+
+        return {
+            itemId,
+            itemName: item.name,
+            action,
+            message: itemChange.message
+        };
     }
 }

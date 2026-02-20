@@ -47,7 +47,10 @@
           "evolutionHistory": []
         }
       ],
-      "notes": "正在寻找失落的宝剑"
+      "notes": "正在寻找失落的宝剑",
+      "heldItems": [
+        "item-1234567893"
+      ]
     }
   ],
   "items": [

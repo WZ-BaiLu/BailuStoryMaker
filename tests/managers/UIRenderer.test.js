@@ -126,6 +126,83 @@ class UIRenderer {
         if (!container) return;
         container.innerHTML = '<h2>Prompt Options</h2>';
     }
+
+    // Timeline methods
+    loadTimelineState() {
+        try {
+            return JSON.parse(localStorage.getItem('timeline.state') || '{}');
+        } catch {
+            return {};
+        }
+    }
+
+    saveTimelineState(state) {
+        try {
+            const currentState = this.loadTimelineState();
+            const newState = { ...currentState, ...state };
+            localStorage.setItem('timeline.state', JSON.stringify(newState));
+        } catch (error) {
+            console.error('Failed to save timeline state:', error);
+        }
+    }
+
+    renderTimelinePanel() {
+        const timelinePanel = document.getElementById('timeline-panel');
+        if (!timelinePanel) return;
+
+        const story = this.state.currentStory;
+        const chapterId = this.state.selectedChapter;
+
+        if (!chapterId || !story) {
+            timelinePanel.classList.add('hidden');
+            return;
+        }
+
+        timelinePanel.classList.remove('hidden');
+
+        const chapter = story.chapters.find(c => c.id === chapterId);
+        if (!chapter || !chapter.paragraphs || chapter.paragraphs.length === 0) {
+            return;
+        }
+    }
+
+    setTimelineFilter(filter) {
+        this.saveTimelineState({ filter });
+    }
+
+    toggleTimelinePanel() {
+        const timelinePanel = document.getElementById('timeline-panel');
+        if (!timelinePanel) return;
+
+        const state = this.loadTimelineState();
+        const isExpanded = !state.isExpanded;
+
+        if (isExpanded) {
+            timelinePanel.classList.remove('collapsed');
+        } else {
+            timelinePanel.classList.add('collapsed');
+        }
+
+        this.saveTimelineState({ isExpanded });
+    }
+
+    scrollToParagraph(paragraphId) {
+        const paragraphEl = document.querySelector(`[data-paragraph-id="${paragraphId}"]`);
+        if (paragraphEl) {
+            paragraphEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    highlightTimelineNode(paragraphId) {
+        const nodes = document.querySelectorAll('.timeline-node');
+        nodes.forEach(node => {
+            if (node.dataset.paragraphId === paragraphId) {
+                node.classList.add('active');
+            } else {
+                node.classList.remove('active');
+            }
+        });
+    }
 }
 
 // Mock i18n
@@ -150,7 +227,13 @@ describe('UIRenderer', () => {
             <div id="settings"></div>
             <div id="setting-editor"></div>
             <div id="prompts"></div>
+            <div id="timeline-panel"></div>
+            <div id="timeline-nodes"></div>
+            <div id="timeline-empty"></div>
+            <div id="paragraphs-list"></div>
         `;
+
+        localStorage.clear();
 
         mockApp = {};
 
@@ -279,6 +362,165 @@ describe('UIRenderer', () => {
             uiRenderer.renderPromptOptions();
             const container = document.getElementById('prompts');
             expect(container.innerHTML).toContain('Prompt Options');
+        });
+    });
+
+    // Timeline-related tests
+    describe('Timeline Panel', () => {
+        describe('loadTimelineState', () => {
+            it('should return empty object when no state in localStorage', () => {
+                const state = uiRenderer.loadTimelineState();
+                expect(state).toEqual({});
+            });
+
+            it('should return saved state from localStorage', () => {
+                const testState = { isExpanded: true, filter: 'characters' };
+                localStorage.setItem('timeline.state', JSON.stringify(testState));
+                const state = uiRenderer.loadTimelineState();
+                expect(state).toEqual(testState);
+            });
+
+            it('should handle corrupted localStorage gracefully', () => {
+                localStorage.setItem('timeline.state', 'invalid json');
+                const state = uiRenderer.loadTimelineState();
+                expect(state).toEqual({});
+            });
+        });
+
+        describe('saveTimelineState', () => {
+            it('should save state to localStorage', () => {
+                uiRenderer.saveTimelineState({ filter: 'items' });
+                const saved = JSON.parse(localStorage.getItem('timeline.state'));
+                expect(saved.filter).toBe('items');
+            });
+
+            it('should merge with existing state', () => {
+                localStorage.setItem('timeline.state', JSON.stringify({ isExpanded: true }));
+                uiRenderer.saveTimelineState({ filter: 'characters' });
+                const saved = JSON.parse(localStorage.getItem('timeline.state'));
+                expect(saved.isExpanded).toBe(true);
+                expect(saved.filter).toBe('characters');
+            });
+        });
+
+        describe('renderTimelinePanel', () => {
+            it('should hide timeline panel when no chapter selected', () => {
+                const panel = document.getElementById('timeline-panel');
+                uiRenderer.renderTimelinePanel();
+                expect(panel.classList.contains('hidden')).toBe(true);
+            });
+
+            it('should show timeline panel when chapter selected', () => {
+                mockState.selectedChapter = 'ch1';
+                mockState.currentStory.chapters[0].paragraphs = [{ id: 'p1', content: 'Test' }];
+                const panel = document.getElementById('timeline-panel');
+                uiRenderer.renderTimelinePanel();
+                expect(panel.classList.contains('hidden')).toBe(false);
+            });
+
+            it('should handle empty chapter gracefully', () => {
+                mockState.selectedChapter = 'ch1';
+                mockState.currentStory.chapters[0].paragraphs = [];
+                const panel = document.getElementById('timeline-panel');
+                uiRenderer.renderTimelinePanel();
+                expect(panel.classList.contains('hidden')).toBe(false);
+            });
+        });
+
+        describe('setTimelineFilter', () => {
+            it('should save filter to localStorage', () => {
+                uiRenderer.setTimelineFilter('characters');
+                const saved = JSON.parse(localStorage.getItem('timeline.state'));
+                expect(saved.filter).toBe('characters');
+            });
+
+            it('should save "all" filter', () => {
+                uiRenderer.setTimelineFilter('all');
+                const saved = JSON.parse(localStorage.getItem('timeline.state'));
+                expect(saved.filter).toBe('all');
+            });
+        });
+
+        describe('toggleTimelinePanel', () => {
+            it('should toggle panel collapsed state', () => {
+                const panel = document.getElementById('timeline-panel');
+                panel.classList.add('collapsed');
+
+                uiRenderer.toggleTimelinePanel();
+
+                expect(panel.classList.contains('collapsed')).toBe(false);
+                const saved = JSON.parse(localStorage.getItem('timeline.state'));
+                expect(saved.isExpanded).toBe(true);
+            });
+
+            it('should collapse expanded panel', () => {
+                const panel = document.getElementById('timeline-panel');
+                localStorage.setItem('timeline.state', JSON.stringify({ isExpanded: true }));
+
+                uiRenderer.toggleTimelinePanel();
+
+                expect(panel.classList.contains('collapsed')).toBe(true);
+                const saved = JSON.parse(localStorage.getItem('timeline.state'));
+                expect(saved.isExpanded).toBe(false);
+            });
+
+            it('should handle missing timeline panel element', () => {
+                document.body.innerHTML = '';
+                expect(() => uiRenderer.toggleTimelinePanel()).not.toThrow();
+            });
+        });
+
+        describe('scrollToParagraph', () => {
+            beforeEach(() => {
+                document.body.innerHTML = `
+                    <div id="paragraphs-list">
+                        <div class="paragraph-bubble" data-paragraph-id="p1">Paragraph 1</div>
+                        <div class="paragraph-bubble" data-paragraph-id="p2">Paragraph 2</div>
+                    </div>
+                `;
+            });
+
+            it('should scroll to paragraph element', () => {
+                const mockScrollIntoView = jest.fn();
+                document.querySelector('[data-paragraph-id="p1"]').scrollIntoView = mockScrollIntoView;
+
+                uiRenderer.scrollToParagraph('p1');
+
+                expect(mockScrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+            });
+
+            it('should handle non-existent paragraph', () => {
+                expect(() => uiRenderer.scrollToParagraph('p999')).not.toThrow();
+            });
+        });
+
+        describe('highlightTimelineNode', () => {
+            beforeEach(() => {
+                document.body.innerHTML = `
+                    <div class="timeline-node" data-paragraph-id="p1"></div>
+                    <div class="timeline-node" data-paragraph-id="p2"></div>
+                    <div class="timeline-node" data-paragraph-id="p3"></div>
+                `;
+            });
+
+            it('should highlight specified node', () => {
+                uiRenderer.highlightTimelineNode('p2');
+
+                const node2 = document.querySelector('[data-paragraph-id="p2"]');
+                expect(node2.classList.contains('active')).toBe(true);
+
+                const node1 = document.querySelector('[data-paragraph-id="p1"]');
+                expect(node1.classList.contains('active')).toBe(false);
+            });
+
+            it('should remove active class from other nodes', () => {
+                const node1 = document.querySelector('[data-paragraph-id="p1"]');
+                node1.classList.add('active');
+
+                uiRenderer.highlightTimelineNode('p2');
+
+                expect(node1.classList.contains('active')).toBe(false);
+            });
         });
     });
 });

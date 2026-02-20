@@ -255,44 +255,140 @@ class UIRenderer {
                     }
                 });
             }
+
+            // Timeline toggle
+            const timelineToggle = bubble.querySelector('.paragraph-timeline-toggle');
+            if (timelineToggle) {
+                timelineToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const timelineContent = bubble.querySelector(`.paragraph-timeline-content[data-paragraph-id="${paragraphId}"]`);
+                    if (timelineContent) {
+                        timelineContent.classList.toggle('collapsed');
+                        const arrow = timelineToggle.querySelector('.timeline-toggle-arrow');
+                        if (arrow) {
+                            arrow.textContent = timelineContent.classList.contains('collapsed') ? '▶' : '▼';
+                        }
+                    }
+                });
+            }
+
+            // Add change buttons
+            const addChangeBtns = bubble.querySelectorAll('.btn-add-change');
+            addChangeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const type = btn.dataset.type;
+                    this.showAddChangeModal(paragraphId, type);
+                });
+            });
+
+            // Edit change buttons
+            const editChangeBtns = bubble.querySelectorAll('.btn-edit-change');
+            editChangeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const type = btn.dataset.type;
+                    const changeParagraphId = btn.dataset.paragraphId;
+                    if (type === 'character') {
+                        this.showEditCharacterChangeModal(changeParagraphId, btn.dataset.characterId);
+                    } else if (type === 'item') {
+                        this.showEditItemChangeModal(changeParagraphId, btn.dataset.itemId);
+                    }
+                });
+            });
+
+            // Summarize state button
+            const summarizeBtn = bubble.querySelector('.btn-summarize-state');
+            if (summarizeBtn) {
+                summarizeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.summarizeParagraphState(paragraphId);
+                });
+            }
         });
     }
 
     /**
-     * Render paragraph changes (characters and items)
+     * Render paragraph timeline (characters and items changes)
      * @param {Object} paragraph - The paragraph object
-     * @returns {string} HTML string for changes
+     * @returns {string} HTML string for timeline
      */
     renderParagraphChanges(paragraph) {
-        if (!paragraph.changes || (paragraph.changes.characters?.length === 0 && paragraph.changes.items?.length === 0)) {
-            return '';
-        }
+        // Always show timeline for demo purposes
+        // Comment out the next line to only show timeline when there are changes
+        // if (!paragraph.changes || (paragraph.changes.characters?.length === 0 && paragraph.changes.items?.length === 0)) {
+        //     return '';
+        // }
 
         const story = this.state.currentStory;
         const changes = [];
 
-        paragraph.changes.characters?.forEach(charId => {
-            const character = story?.characters.find(c => c.id === charId);
-            if (character) {
-                changes.push(`<span class="change-badge character">👤 ${character.name}</span>`);
-            }
-        });
+        // Character changes
+        if (paragraph.changes && paragraph.changes.characters) {
+            paragraph.changes.characters.forEach(charChange => {
+                const character = story?.characters.find(c => c.id === charChange.characterId);
+                if (character) {
+                    const changeDetails = this.formatCharacterChange(charChange);
+                    changes.push(`
+                        <div class="timeline-change-item character" data-change-type="character" data-character-id="${charChange.characterId}">
+                            <span class="timeline-change-icon">👤</span>
+                            <div class="timeline-change-content">
+                                <div class="timeline-change-name">${character.name} <button class="btn-edit-change" data-type="character" data-paragraph-id="${paragraph.id}" data-character-id="${charChange.characterId}">✏️</button></div>
+                                <div class="timeline-change-detail">${changeDetails}</div>
+                            </div>
+                        </div>
+                    `);
+                }
+            });
+        }
 
-        paragraph.changes.items?.forEach(itemId => {
-            const item = story?.items.find(i => i.id === itemId);
-            if (item) {
-                changes.push(`<span class="change-badge item">🎒 ${item.name}</span>`);
-            }
-        });
+        // Item changes
+        if (paragraph.changes && paragraph.changes.items) {
+            paragraph.changes.items.forEach(itemChange => {
+                const item = story?.items.find(i => i.id === itemChange.itemId);
+                if (item) {
+                    const actionLabel = this.getItemActionLabel(itemChange.action);
+                    const changeDetails = this.formatItemChange(itemChange);
+                    changes.push(`
+                        <div class="timeline-change-item item" data-change-type="item" data-item-id="${itemChange.itemId}">
+                            <span class="timeline-change-icon">🎒</span>
+                            <div class="timeline-change-content">
+                                <div class="timeline-change-name">${item.name} <span class="timeline-change-action">${actionLabel}</span> <button class="btn-edit-change" data-type="item" data-paragraph-id="${paragraph.id}" data-item-id="${itemChange.itemId}">✏️</button></div>
+                                <div class="timeline-change-detail">${changeDetails}</div>
+                            </div>
+                        </div>
+                    `);
+                }
+            });
+        }
 
+        // Show empty message if no changes
         if (changes.length === 0) {
-            return '';
+            changes.push(`
+                <div class="timeline-empty-message">
+                    <span class="timeline-empty-icon">📝</span>
+                    <span class="timeline-empty-text">${i18n.t('timeline.empty')}</span>
+                </div>
+            `);
         }
 
         return `
-            <div class="paragraph-changes">
-                <div class="paragraph-changes-label">涉及修改：</div>
-                <div class="paragraph-changes-list">${changes.join('')}</div>
+            <div class="paragraph-timeline">
+                <div class="paragraph-timeline-toggle" data-paragraph-id="${paragraph.id}">
+                    <span class="timeline-toggle-icon">📊</span>
+                    <span class="timeline-toggle-label">${i18n.t('timeline.panelTitle')}</span>
+                    <span class="timeline-toggle-arrow">▶</span>
+                </div>
+                <div class="paragraph-timeline-content collapsed" data-paragraph-id="${paragraph.id}">
+                    <div class="timeline-actions">
+                        <button class="btn-add-change" data-paragraph-id="${paragraph.id}" data-type="character">👤 ${i18n.t('timeline.addCharacterChange')}</button>
+                        <button class="btn-add-change" data-paragraph-id="${paragraph.id}" data-type="item">🎒 ${i18n.t('timeline.addItemChange')}</button>
+                        <button class="btn-summarize-state" data-paragraph-id="${paragraph.id}">📋 ${i18n.t('timeline.summarizeState')}</button>
+                    </div>
+                    <div class="timeline-changes-list">
+                        ${changes.join('')}
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -771,5 +867,1082 @@ class UIRenderer {
             .sort((a, b) => a.order - b.order)
             .map(ch => `<option value="${ch.id}">${ch.order}. ${ch.title}</option>`)
             .join('');
+    }
+
+    // ==================== Timeline Panel Rendering ====================
+
+    /**
+     * Render the timeline panel
+     */
+    renderTimelinePanel() {
+        const timelinePanel = document.getElementById('timeline-panel');
+        if (!timelinePanel) return;
+
+        const story = this.state.currentStory;
+        const chapterId = this.state.selectedChapter;
+
+        if (!chapterId || !story) {
+            timelinePanel.classList.add('hidden');
+            return;
+        }
+
+        timelinePanel.classList.remove('hidden');
+
+        const chapter = story.chapters.find(c => c.id === chapterId);
+        if (!chapter || !chapter.paragraphs || chapter.paragraphs.length === 0) {
+            this.renderTimelineEmpty();
+            return;
+        }
+
+        this.renderTimelineNodes(chapter.paragraphs);
+        this.renderTimelineControls();
+    }
+
+    /**
+     * Render timeline nodes for paragraphs
+     * @param {Array} paragraphs - Array of paragraph objects
+     */
+    renderTimelineNodes(paragraphs) {
+        const nodesContainer = document.getElementById('timeline-nodes');
+        const emptyContainer = document.getElementById('timeline-empty');
+
+        if (!nodesContainer) return;
+
+        if (paragraphs.length === 0) {
+            this.renderTimelineEmpty();
+            return;
+        }
+
+        emptyContainer?.classList.add('hidden');
+        nodesContainer.classList.remove('hidden');
+
+        const filter = this.getTimelineFilter();
+        const story = this.state.currentStory;
+
+        nodesContainer.innerHTML = paragraphs.map((paragraph, index) => {
+            return this.renderTimelineNode(paragraph, index, filter, story);
+        }).join('');
+    }
+
+    /**
+     * Render a single timeline node
+     * @param {Object} paragraph - Paragraph object
+     * @param {number} index - Paragraph index
+     * @param {string} filter - Current filter ('all', 'characters', 'items')
+     * @param {Object} story - Story object
+     * @returns {string} HTML string for the node
+     */
+    renderTimelineNode(paragraph, index, filter, story) {
+        const changes = paragraph.changes || { characters: [], items: [] };
+
+        // Check if this paragraph has relevant changes based on filter
+        const hasCharacters = changes.characters && changes.characters.length > 0;
+        const hasItems = changes.items && changes.items.length > 0;
+
+        const shouldShow = filter === 'all' ||
+            (filter === 'characters' && hasCharacters) ||
+            (filter === 'items' && hasItems);
+
+        if (filter !== 'all' && !shouldShow) {
+            return '';
+        }
+
+        // Generate change items HTML
+        let changeItemsHtml = '';
+
+        if (filter === 'all' || filter === 'characters') {
+            changes.characters?.forEach(charChange => {
+                const character = story?.characters?.find(c => c.id === charChange.characterId);
+                const charName = character?.name || charChange.characterId;
+                changeItemsHtml += `
+                    <div class="timeline-change-item character">
+                        <span class="timeline-change-type-icon new">+</span>
+                        <span class="timeline-change-name">${charName}</span>
+                        <span class="timeline-change-detail">${this.formatCharacterChange(charChange)}</span>
+                    </div>
+                `;
+            });
+        }
+
+        if (filter === 'all' || filter === 'items') {
+            changes.items?.forEach(itemChange => {
+                const item = story?.items?.find(i => i.id === itemChange.itemId);
+                const itemName = item?.name || itemChange.itemId;
+                const actionIcon = this.getItemActionIcon(itemChange.action);
+                changeItemsHtml += `
+                    <div class="timeline-change-item item">
+                        <span class="timeline-change-type-icon ${itemChange.action}">${actionIcon}</span>
+                        <span class="timeline-change-name">${itemName}</span>
+                        <span class="timeline-change-detail">${this.formatItemChange(itemChange)}</span>
+                    </div>
+                `;
+            });
+        }
+
+        const isActive = this.selectedParagraph === paragraph.id;
+
+        return `
+            <div class="timeline-node ${isActive ? 'active' : ''}"
+                 data-paragraph-id="${paragraph.id}"
+                 data-paragraph-index="${index}">
+                <div class="timeline-node-header">
+                    <div class="timeline-node-number">${index + 1}</div>
+                    <div class="timeline-node-summary">
+                        ${hasCharacters || hasItems ? i18n.t('story.changesTracker') : i18n.t('timeline.empty')}
+                    </div>
+                </div>
+                ${changeItemsHtml ? `<div class="timeline-node-changes">${changeItemsHtml}</div>` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * Render timeline controls (collapse/expand buttons, filter)
+     */
+    renderTimelineControls() {
+        // Filter buttons are already in HTML, just need to update active state
+        const filter = this.getTimelineFilter();
+        const filterBtns = document.querySelectorAll('.timeline-filter-btn');
+        filterBtns.forEach(btn => {
+            if (btn.dataset.filter === filter) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    /**
+     * Render empty timeline state
+     */
+    renderTimelineEmpty() {
+        const nodesContainer = document.getElementById('timeline-nodes');
+        const emptyContainer = document.getElementById('timeline-empty');
+
+        if (nodesContainer) {
+            nodesContainer.classList.add('hidden');
+            nodesContainer.innerHTML = '';
+        }
+
+        if (emptyContainer) {
+            emptyContainer.classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Get current timeline filter from localStorage or default to 'all'
+     * @returns {string} Current filter
+     */
+    getTimelineFilter() {
+        try {
+            const state = JSON.parse(localStorage.getItem('timeline.state') || '{}');
+            return state.filter || 'all';
+        } catch {
+            return 'all';
+        }
+    }
+
+    /**
+     * Format character change for display
+     * @param {Object} charChange - Character change object
+     * @returns {string} Formatted change string
+     */
+    formatCharacterChange(charChange) {
+        const parts = [];
+
+        if (charChange.changes?.attributes) {
+            const attrChanges = Object.entries(charChange.changes.attributes)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(', ');
+            if (attrChanges) {
+                parts.push(attrChanges);
+            }
+        }
+
+        if (charChange.changes?.emotionalState) {
+            parts.push(i18n.t('timeline.characterEmotion') + ': ' + this.translateEmotion(charChange.changes.emotionalState));
+        }
+
+        return parts.join(' | ') || i18n.t('timeline.changeModified');
+    }
+
+    /**
+     * Format item change for display
+     * @param {Object} itemChange - Item change object
+     * @returns {string} Formatted change string
+     */
+    formatItemChange(itemChange) {
+        const actionMap = {
+            acquire: i18n.t('timeline.changeAcquire'),
+            lose: i18n.t('timeline.changeLose'),
+            transfer: i18n.t('timeline.changeTransfer'),
+            modify: i18n.t('timeline.changeModified')
+        };
+
+        let message = actionMap[itemChange.action] || itemChange.action;
+
+        if (itemChange.characterId) {
+            const character = this.state.currentStory?.characters?.find(c => c.id === itemChange.characterId);
+            const charName = character?.name || itemChange.characterId;
+            message += ` (${charName})`;
+        }
+
+        if (itemChange.location) {
+            message += ` [${itemChange.location}]`;
+        }
+
+        return message;
+    }
+
+    /**
+     * Get icon for item action
+     * @param {string} action - Action type
+     * @returns {string} Icon character
+     */
+    getItemActionIcon(action) {
+        const icons = {
+            acquire: '+',
+            lose: '-',
+            transfer: '→',
+            modify: '~'
+        };
+        return icons[action] || '~';
+    }
+
+    /**
+     * Get label for item action
+     * @param {string} action - Action type
+     * @returns {string} Action label
+     */
+    getItemActionLabel(action) {
+        const labels = {
+            acquire: i18n.t('timeline.changeAcquire'),
+            lose: i18n.t('timeline.changeLose'),
+            transfer: i18n.t('timeline.changeTransfer'),
+            modify: i18n.t('timeline.changeModified')
+        };
+        return labels[action] || action;
+    }
+
+    /**
+     * Translate emotion state
+     * @param {string} emotion - Emotion state
+     * @returns {string} Translated emotion
+     */
+    translateEmotion(emotion) {
+        const emotionMap = {
+            happy: i18n.t('timeline.emotionHappy'),
+            sad: i18n.t('timeline.emotionSad'),
+            angry: i18n.t('timeline.emotionAngry'),
+            fear: i18n.t('timeline.emotionFear'),
+            neutral: i18n.t('timeline.emotionNeutral')
+        };
+        return emotionMap[emotion] || emotion;
+    }
+
+    // ==================== Timeline State Management ====================
+
+    /**
+     * Load timeline state from localStorage
+     * @returns {Object} Timeline state
+     */
+    loadTimelineState() {
+        try {
+            return JSON.parse(localStorage.getItem('timeline.state') || '{}');
+        } catch {
+            return { isExpanded: true, filter: 'all' };
+        }
+    }
+
+    /**
+     * Save timeline state to localStorage
+     * @param {Object} state - State to save
+     */
+    saveTimelineState(state) {
+        try {
+            const currentState = this.loadTimelineState();
+            const newState = { ...currentState, ...state };
+            localStorage.setItem('timeline.state', JSON.stringify(newState));
+        } catch (error) {
+            console.error('Failed to save timeline state:', error);
+        }
+    }
+
+    // ==================== Timeline Interaction Methods ====================
+
+    /**
+     * Scroll to paragraph
+     * @param {string} paragraphId - Paragraph ID to scroll to
+     */
+    scrollToParagraph(paragraphId) {
+        const paragraphEl = document.querySelector(`[data-paragraph-id="${paragraphId}"]`);
+        if (!paragraphEl) return;
+
+        const paragraphsContainer = document.getElementById('paragraphs-list');
+        if (!paragraphsContainer) return;
+
+        // Scroll paragraph into view
+        paragraphEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Highlight the paragraph briefly
+        paragraphEl.classList.add('highlighted');
+        setTimeout(() => {
+            paragraphEl.classList.remove('highlighted');
+        }, 2000);
+    }
+
+    /**
+     * Highlight timeline node
+     * @param {string} paragraphId - Paragraph ID to highlight
+     */
+    highlightTimelineNode(paragraphId) {
+        const nodes = document.querySelectorAll('.timeline-node');
+        nodes.forEach(node => {
+            if (node.dataset.paragraphId === paragraphId) {
+                node.classList.add('active');
+            } else {
+                node.classList.remove('active');
+            }
+        });
+    }
+
+    /**
+     * Update active node based on scroll
+     */
+    updateActiveNodeOnScroll() {
+        const paragraphsContainer = document.getElementById('paragraphs-list');
+        if (!paragraphsContainer) return;
+
+        const containerRect = paragraphsContainer.getBoundingClientRect();
+        const paragraphs = paragraphsContainer.querySelectorAll('[data-paragraph-id]');
+
+        let activeParagraphId = null;
+        let minDistance = Infinity;
+
+        paragraphs.forEach(p => {
+            const rect = p.getBoundingClientRect();
+            const distance = Math.abs(rect.top - containerRect.top);
+
+            // Find the paragraph closest to the center of the viewport
+            if (distance < minDistance) {
+                minDistance = distance;
+                activeParagraphId = p.dataset.paragraphId;
+            }
+        });
+
+        if (activeParagraphId) {
+            this.selectedParagraph = activeParagraphId;
+            this.highlightTimelineNode(activeParagraphId);
+        }
+    }
+
+    /**
+     * Toggle timeline panel expansion
+     */
+    toggleTimelinePanel() {
+        const timelinePanel = document.getElementById('timeline-panel');
+        if (!timelinePanel) return;
+
+        const state = this.loadTimelineState();
+        const isExpanded = !state.isExpanded;
+
+        if (isExpanded) {
+            timelinePanel.classList.remove('collapsed');
+        } else {
+            timelinePanel.classList.add('collapsed');
+        }
+
+        this.saveTimelineState({ isExpanded });
+    }
+
+    /**
+     * Set timeline filter
+     * @param {string} filter - Filter to set ('all', 'characters', 'items')
+     */
+    setTimelineFilter(filter) {
+        this.saveTimelineState({ filter });
+        this.renderTimelinePanel();
+    }
+
+    // ==================== Change Edit Methods ====================
+
+    /**
+     * Show modal to add character change
+     * @param {string} paragraphId - Paragraph ID
+     */
+    showAddCharacterChangeModal(paragraphId) {
+        const story = this.state.currentStory;
+        if (!story) return;
+
+        // Get available characters
+        const characters = story.characters.map(c => `
+            <option value="${c.id}">${c.name}</option>
+        `).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay" id="change-modal">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>${i18n.t('timeline.addCharacterChange')}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.selectCharacter')}</label>
+                            <select id="change-character-select" class="input-field">
+                                <option value="">${i18n.t('timeline.selectCharacter')}</option>
+                                ${characters}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.attributeName')}</label>
+                            <input type="text" id="change-attr-name" class="input-field" placeholder="${i18n.t('placeholders.attributeName')}">
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.attributeValue')}</label>
+                            <input type="text" id="change-attr-value" class="input-field" placeholder="${i18n.t('placeholders.attributeValue')}">
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.emotionalState')}</label>
+                            <select id="change-emotion" class="input-field">
+                                <option value="">${i18n.t('timeline.noChange')}</option>
+                                <option value="happy">${i18n.t('timeline.emotionHappy')}</option>
+                                <option value="sad">${i18n.t('timeline.emotionSad')}</option>
+                                <option value="angry">${i18n.t('timeline.emotionAngry')}</option>
+                                <option value="fear">${i18n.t('timeline.emotionFear')}</option>
+                                <option value="neutral">${i18n.t('timeline.emotionNeutral')}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">${i18n.t('buttons.cancel')}</button>
+                        <button class="btn btn-primary" id="save-character-change">${i18n.t('buttons.save')}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Bind save button
+        const saveBtn = document.getElementById('save-character-change');
+        saveBtn.addEventListener('click', () => {
+            const characterId = document.getElementById('change-character-select').value;
+            const attrName = document.getElementById('change-attr-name').value.trim();
+            const attrValue = document.getElementById('change-attr-value').value.trim();
+            const emotion = document.getElementById('change-emotion').value;
+
+            if (!characterId) {
+                this.app.notificationManager.showError(i18n.t('timeline.pleaseSelectCharacter'));
+                return;
+            }
+
+            this.addCharacterChange(paragraphId, characterId, attrName, attrValue, emotion);
+            document.getElementById('change-modal').remove();
+        });
+    }
+
+    /**
+     * Show modal to add item change
+     * @param {string} paragraphId - Paragraph ID
+     */
+    showAddItemChangeModal(paragraphId) {
+        const story = this.state.currentStory;
+        if (!story) return;
+
+        // Get available items
+        const items = story.items.map(i => `
+            <option value="${i.id}">${i.name}</option>
+        `).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay" id="change-modal">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>${i18n.t('timeline.addItemChange')}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.selectItem')}</label>
+                            <select id="change-item-select" class="input-field">
+                                <option value="">${i18n.t('timeline.selectItem')}</option>
+                                ${items}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.action')}</label>
+                            <select id="change-item-action" class="input-field">
+                                <option value="acquire">${i18n.t('timeline.changeAcquire')}</option>
+                                <option value="lose">${i18n.t('timeline.changeLose')}</option>
+                                <option value="transfer">${i18n.t('timeline.changeTransfer')}</option>
+                                <option value="modify">${i18n.t('timeline.changeModified')}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.propertyName')}</label>
+                            <input type="text" id="change-prop-name" class="input-field" placeholder="${i18n.t('placeholders.propertyName')}">
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.propertyValue')}</label>
+                            <input type="text" id="change-prop-value" class="input-field" placeholder="${i18n.t('placeholders.propertyValue')}">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">${i18n.t('buttons.cancel')}</button>
+                        <button class="btn btn-primary" id="save-item-change">${i18n.t('buttons.save')}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Bind save button
+        const saveBtn = document.getElementById('save-item-change');
+        saveBtn.addEventListener('click', () => {
+            const itemId = document.getElementById('change-item-select').value;
+            const action = document.getElementById('change-item-action').value;
+            const propName = document.getElementById('change-prop-name').value.trim();
+            const propValue = document.getElementById('change-prop-value').value.trim();
+
+            if (!itemId) {
+                this.app.notificationManager.showError(i18n.t('timeline.pleaseSelectItem'));
+                return;
+            }
+
+            this.addItemChange(paragraphId, itemId, action, propName, propValue);
+            document.getElementById('change-modal').remove();
+        });
+    }
+
+    /**
+     * Show modal to edit existing character change
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} characterId - Character ID
+     */
+    showEditCharacterChangeModal(paragraphId, characterId) {
+        const story = this.state.currentStory;
+        if (!story) return;
+
+        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph || !paragraph.changes) return;
+
+        const charChange = paragraph.changes.characters?.find(c => c.characterId === characterId);
+        if (!charChange) {
+            this.showAddCharacterChangeModal(paragraphId);
+            return;
+        }
+
+        const character = story.characters.find(c => c.id === characterId);
+        const attrName = charChange.changes?.attributes ? Object.keys(charChange.changes.attributes)[0] || '' : '';
+        const attrValue = charChange.changes?.attributes?.[attrName] || '';
+        const emotion = charChange.changes?.emotionalState || '';
+
+        const modalHtml = `
+            <div class="modal-overlay" id="change-modal">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>${i18n.t('timeline.editCharacterChange')} - ${character?.name || characterId}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.attributeName')}</label>
+                            <input type="text" id="change-attr-name" class="input-field" value="${attrName}" placeholder="${i18n.t('placeholders.attributeName')}">
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.attributeValue')}</label>
+                            <input type="text" id="change-attr-value" class="input-field" value="${attrValue}" placeholder="${i18n.t('placeholders.attributeValue')}">
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.emotionalState')}</label>
+                            <select id="change-emotion" class="input-field">
+                                <option value="">${i18n.t('timeline.noChange')}</option>
+                                <option value="happy" ${emotion === 'happy' ? 'selected' : ''}>${i18n.t('timeline.emotionHappy')}</option>
+                                <option value="sad" ${emotion === 'sad' ? 'selected' : ''}>${i18n.t('timeline.emotionSad')}</option>
+                                <option value="angry" ${emotion === 'angry' ? 'selected' : ''}>${i18n.t('timeline.emotionAngry')}</option>
+                                <option value="fear" ${emotion === 'fear' ? 'selected' : ''}>${i18n.t('timeline.emotionFear')}</option>
+                                <option value="neutral" ${emotion === 'neutral' ? 'selected' : ''}>${i18n.t('timeline.emotionNeutral')}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" id="delete-character-change">${i18n.t('timeline.deleteChange')}</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">${i18n.t('buttons.cancel')}</button>
+                        <button class="btn btn-primary" id="save-character-change">${i18n.t('buttons.save')}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Bind save button
+        const saveBtn = document.getElementById('save-character-change');
+        saveBtn.addEventListener('click', () => {
+            const newAttrName = document.getElementById('change-attr-name').value.trim();
+            const newAttrValue = document.getElementById('change-attr-value').value.trim();
+            const newEmotion = document.getElementById('change-emotion').value;
+
+            this.updateCharacterChange(paragraphId, characterId, newAttrName, newAttrValue, newEmotion);
+            document.getElementById('change-modal').remove();
+        });
+
+        // Bind delete button
+        const deleteBtn = document.getElementById('delete-character-change');
+        deleteBtn.addEventListener('click', () => {
+            if (confirm(i18n.t('timeline.confirmDeleteChange'))) {
+                this.deleteCharacterChange(paragraphId, characterId);
+                document.getElementById('change-modal').remove();
+            }
+        });
+    }
+
+    /**
+     * Show modal to edit existing item change
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} itemId - Item ID
+     */
+    showEditItemChangeModal(paragraphId, itemId) {
+        const story = this.state.currentStory;
+        if (!story) return;
+
+        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph || !paragraph.changes) return;
+
+        const itemChange = paragraph.changes.items?.find(i => i.itemId === itemId);
+        if (!itemChange) {
+            this.showAddItemChangeModal(paragraphId);
+            return;
+        }
+
+        const item = story.items.find(i => i.id === itemId);
+        const propName = itemChange.changes?.properties ? Object.keys(itemChange.changes.properties)[0] || '' : '';
+        const propValue = itemChange.changes?.properties?.[propName] || '';
+
+        const modalHtml = `
+            <div class="modal-overlay" id="change-modal">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>${i18n.t('timeline.editItemChange')} - ${item?.name || itemId}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.action')}</label>
+                            <select id="change-item-action" class="input-field">
+                                <option value="acquire" ${itemChange.action === 'acquire' ? 'selected' : ''}>${i18n.t('timeline.changeAcquire')}</option>
+                                <option value="lose" ${itemChange.action === 'lose' ? 'selected' : ''}>${i18n.t('timeline.changeLose')}</option>
+                                <option value="transfer" ${itemChange.action === 'transfer' ? 'selected' : ''}>${i18n.t('timeline.changeTransfer')}</option>
+                                <option value="modify" ${itemChange.action === 'modify' ? 'selected' : ''}>${i18n.t('timeline.changeModified')}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.propertyName')}</label>
+                            <input type="text" id="change-prop-name" class="input-field" value="${propName}" placeholder="${i18n.t('placeholders.propertyName')}">
+                        </div>
+                        <div class="form-group">
+                            <label>${i18n.t('timeline.propertyValue')}</label>
+                            <input type="text" id="change-prop-value" class="input-field" value="${propValue}" placeholder="${i18n.t('placeholders.propertyValue')}">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" id="delete-item-change">${i18n.t('timeline.deleteChange')}</button>
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">${i18n.t('buttons.cancel')}</button>
+                        <button class="btn btn-primary" id="save-item-change">${i18n.t('buttons.save')}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Bind save button
+        const saveBtn = document.getElementById('save-item-change');
+        saveBtn.addEventListener('click', () => {
+            const action = document.getElementById('change-item-action').value;
+            const propName = document.getElementById('change-prop-name').value.trim();
+            const propValue = document.getElementById('change-prop-value').value.trim();
+
+            this.updateItemChange(paragraphId, itemId, action, propName, propValue);
+            document.getElementById('change-modal').remove();
+        });
+
+        // Bind delete button
+        const deleteBtn = document.getElementById('delete-item-change');
+        deleteBtn.addEventListener('click', () => {
+            if (confirm(i18n.t('timeline.confirmDeleteChange'))) {
+                this.deleteItemChange(paragraphId, itemId);
+                document.getElementById('change-modal').remove();
+            }
+        });
+    }
+
+    /**
+     * Add character change to paragraph
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} characterId - Character ID
+     * @param {string} attrName - Attribute name
+     * @param {string} attrValue - Attribute value
+     * @param {string} emotion - Emotional state
+     */
+    addCharacterChange(paragraphId, characterId, attrName, attrValue, emotion) {
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph) return;
+
+        if (!paragraph.changes) {
+            paragraph.changes = { characters: [], items: [] };
+        }
+
+        // Check if character change already exists
+        const existingChange = paragraph.changes.characters.find(c => c.characterId === characterId);
+        if (existingChange) {
+            this.app.notificationManager.showError(i18n.t('timeline.characterChangeExists'));
+            return;
+        }
+
+        const charChange = {
+            characterId,
+            changes: {}
+        };
+
+        if (attrName && attrValue) {
+            charChange.changes.attributes = { [attrName]: attrValue };
+        }
+
+        if (emotion) {
+            charChange.changes.emotionalState = emotion;
+        }
+
+        paragraph.changes.characters.push(charChange);
+        this.state.saveToLocalStorage();
+        this.renderParagraphs();
+        this.app.notificationManager.showSuccess(i18n.t('timeline.characterChangeAdded'));
+    }
+
+    /**
+     * Update character change in paragraph
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} characterId - Character ID
+     * @param {string} attrName - Attribute name
+     * @param {string} attrValue - Attribute value
+     * @param {string} emotion - Emotional state
+     */
+    updateCharacterChange(paragraphId, characterId, attrName, attrValue, emotion) {
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph || !paragraph.changes) return;
+
+        const charChange = paragraph.changes.characters.find(c => c.characterId === characterId);
+        if (!charChange) return;
+
+        charChange.changes = {};
+
+        if (attrName && attrValue) {
+            charChange.changes.attributes = { [attrName]: attrValue };
+        }
+
+        if (emotion) {
+            charChange.changes.emotionalState = emotion;
+        }
+
+        this.state.saveToLocalStorage();
+        this.renderParagraphs();
+        this.app.notificationManager.showSuccess(i18n.t('timeline.characterChangeUpdated'));
+    }
+
+    /**
+     * Delete character change from paragraph
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} characterId - Character ID
+     */
+    deleteCharacterChange(paragraphId, characterId) {
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph || !paragraph.changes) return;
+
+        paragraph.changes.characters = paragraph.changes.characters.filter(c => c.characterId !== characterId);
+        this.state.saveToLocalStorage();
+        this.renderParagraphs();
+        this.app.notificationManager.showSuccess(i18n.t('timeline.characterChangeDeleted'));
+    }
+
+    /**
+     * Add item change to paragraph
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} itemId - Item ID
+     * @param {string} action - Action type
+     * @param {string} propName - Property name
+     * @param {string} propValue - Property value
+     */
+    addItemChange(paragraphId, itemId, action, propName, propValue) {
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph) return;
+
+        if (!paragraph.changes) {
+            paragraph.changes = { characters: [], items: [] };
+        }
+
+        // Check if item change already exists
+        const existingChange = paragraph.changes.items.find(i => i.itemId === itemId);
+        if (existingChange) {
+            this.app.notificationManager.showError(i18n.t('timeline.itemChangeExists'));
+            return;
+        }
+
+        const itemChange = {
+            itemId,
+            action,
+            changes: {}
+        };
+
+        if (propName && propValue) {
+            itemChange.changes.properties = { [propName]: propValue };
+        }
+
+        paragraph.changes.items.push(itemChange);
+        this.state.saveToLocalStorage();
+        this.renderParagraphs();
+        this.app.notificationManager.showSuccess(i18n.t('timeline.itemChangeAdded'));
+    }
+
+    /**
+     * Update item change in paragraph
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} itemId - Item ID
+     * @param {string} action - Action type
+     * @param {string} propName - Property name
+     * @param {string} propValue - Property value
+     */
+    updateItemChange(paragraphId, itemId, action, propName, propValue) {
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph || !paragraph.changes) return;
+
+        const itemChange = paragraph.changes.items.find(i => i.itemId === itemId);
+        if (!itemChange) return;
+
+        itemChange.action = action;
+        itemChange.changes = {};
+
+        if (propName && propValue) {
+            itemChange.changes.properties = { [propName]: propValue };
+        }
+
+        this.state.saveToLocalStorage();
+        this.renderParagraphs();
+        this.app.notificationManager.showSuccess(i18n.t('timeline.itemChangeUpdated'));
+    }
+
+    /**
+     * Delete item change from paragraph
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} itemId - Item ID
+     */
+    deleteItemChange(paragraphId, itemId) {
+        const chapter = this.state.currentStory?.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph || !paragraph.changes) return;
+
+        paragraph.changes.items = paragraph.changes.items.filter(i => i.itemId !== itemId);
+        this.state.saveToLocalStorage();
+        this.renderParagraphs();
+        this.app.notificationManager.showSuccess(i18n.t('timeline.itemChangeDeleted'));
+    }
+
+    /**
+     * Summarize character and item states at a specific paragraph
+     * @param {string} paragraphId - Paragraph ID
+     */
+    summarizeParagraphState(paragraphId) {
+        const story = this.state.currentStory;
+        if (!story) return;
+
+        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) return;
+
+        const paragraphIndex = chapter.paragraphs.findIndex(p => p.id === paragraphId);
+        if (paragraphIndex === -1) return;
+
+        // Get characters in this paragraph
+        const presentCharacterIds = new Set();
+        const presentItemIds = new Set();
+
+        for (let i = 0; i <= paragraphIndex; i++) {
+            const p = chapter.paragraphs[i];
+            if (p.changes?.characters) {
+                p.changes.characters.forEach(charChange => {
+                    presentCharacterIds.add(charChange.characterId);
+                });
+            }
+            if (p.changes?.items) {
+                p.changes.items.forEach(itemChange => {
+                    presentItemIds.add(itemChange.itemId);
+                });
+            }
+        }
+
+        // Calculate state up to this paragraph
+        const characterStates = {};
+        const itemStates = {};
+
+        // Initialize with base states (only for present characters)
+        story.characters.forEach(char => {
+            if (presentCharacterIds.has(char.id)) {
+                characterStates[char.id] = {
+                    name: char.name,
+                    attributes: { ...char.attributes.current },
+                    emotionalState: char.emotionalState || 'neutral',
+                    heldItems: char.heldItems || []
+                };
+            }
+        });
+
+        story.items.forEach(item => {
+            // Only show items held by present characters
+            if (item.owner && presentCharacterIds.has(item.owner)) {
+                itemStates[item.id] = {
+                    name: item.name,
+                    action: 'none',
+                    properties: { ...item.properties.current },
+                    owner: item.owner
+                };
+            }
+        });
+
+        // Apply changes up to this paragraph
+        for (let i = 0; i <= paragraphIndex; i++) {
+            const p = chapter.paragraphs[i];
+            if (!p.changes) continue;
+
+            // Apply character changes
+            p.changes.characters?.forEach(charChange => {
+                if (!characterStates[charChange.characterId]) return;
+
+                if (charChange.changes?.attributes) {
+                    characterStates[charChange.characterId].attributes = {
+                        ...characterStates[charChange.characterId].attributes,
+                        ...charChange.changes.attributes
+                    };
+                }
+                if (charChange.changes?.emotionalState) {
+                    characterStates[charChange.characterId].emotionalState = charChange.changes.emotionalState;
+                }
+            });
+
+            // Apply item changes
+            p.changes.items?.forEach(itemChange => {
+                if (!itemStates[itemChange.itemId]) return;
+
+                itemStates[itemChange.itemId].action = itemChange.action;
+                if (itemChange.changes?.properties) {
+                    itemStates[itemChange.itemId].properties = {
+                        ...itemStates[itemChange.itemId].properties,
+                        ...itemChange.changes.properties
+                    };
+                }
+            });
+        }
+
+        // Generate summary
+        const summaryHtml = `
+            <div class="modal-overlay" id="state-summary-modal">
+                <div class="modal modal-lg">
+                    <div class="modal-header">
+                        <h3>${i18n.t('timeline.stateSummaryTitle')}</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <h4>${i18n.t('timeline.characterStates')}</h4>
+                        <div class="state-summary-section">
+                            ${Object.values(characterStates).length === 0
+                                ? `<div class="state-summary-empty">${i18n.t('timeline.noCharactersInParagraph')}</div>`
+                                : Object.values(characterStates).map(char => `
+                                    <div class="state-summary-item">
+                                        <div class="state-summary-name">${char.name}</div>
+                                        <div class="state-summary-details">
+                                            <div class="state-summary-emotion">${i18n.t('timeline.emotionalState')}: ${this.translateEmotion(char.emotionalState)}</div>
+                                            ${Object.entries(char.attributes).map(([key, value]) => `
+                                                <div class="state-summary-attr">${key}: ${value}</div>
+                                            `).join('')}
+                                            ${char.heldItems && char.heldItems.length > 0 ? `
+                                                <div class="state-summary-held-items">
+                                                    <div class="state-summary-label">${i18n.t('character.heldItems')}:</div>
+                                                    ${char.heldItems.map(itemId => {
+                                                        const item = itemStates[itemId];
+                                                        return item ? `
+                                                            <div class="state-summary-item-name">${item.name}</div>
+                                                        ` : '';
+                                                    }).join('')}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')
+                            }
+                        </div>
+
+                        <h4>${i18n.t('timeline.itemStates')}</h4>
+                        <div class="state-summary-section">
+                            ${Object.values(itemStates).length === 0
+                                ? `<div class="state-summary-empty">${i18n.t('timeline.noItemsInParagraph')}</div>`
+                                : Object.values(itemStates).map(item => {
+                                    const actionLabel = item.action !== 'none' ? ` (${this.getItemActionLabel(item.action)})` : '';
+                                    return `
+                                        <div class="state-summary-item">
+                                            <div class="state-summary-name">${item.name}${actionLabel}</div>
+                                            <div class="state-summary-details">
+                                                ${Object.entries(item.properties).map(([key, value]) => `
+                                                    <div class="state-summary-attr">${key}: ${value}</div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')
+                            }
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">${i18n.t('buttons.confirm')}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', summaryHtml);
+    }
+
+    /**
+     * Show add change modal (redirects to specific type)
+     * @param {string} paragraphId - Paragraph ID
+     * @param {string} type - Type of change ('character' or 'item')
+     */
+    showAddChangeModal(paragraphId, type) {
+        if (type === 'character') {
+            this.showAddCharacterChangeModal(paragraphId);
+        } else if (type === 'item') {
+            this.showAddItemChangeModal(paragraphId);
+        }
     }
 }
