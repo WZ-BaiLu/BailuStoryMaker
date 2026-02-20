@@ -207,7 +207,8 @@ class AppState {
             description: characterData.description || '',
             attributes: characterData.attributes || { base: {}, current: {} },
             abilities: characterData.abilities || [],
-            notes: characterData.notes || ''
+            notes: characterData.notes || '',
+            heldItems: characterData.heldItems || []
         };
 
         this.currentStory.characters.push(character);
@@ -248,6 +249,190 @@ class AppState {
         this.saveToLocalStorage();
     }
 
+    // Get items held by a character
+    getHeldItems(characterId) {
+        if (!this.currentStory) return [];
+
+        const character = this.currentStory.characters.find(c => c.id === characterId);
+        if (!character) return [];
+
+        // Initialize heldItems if not present (for backward compatibility)
+        if (!character.heldItems) {
+            character.heldItems = [];
+        }
+
+        return character.heldItems;
+    }
+
+    // Add an item to a character's inventory
+    addItemToCharacter(characterId, itemId) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const character = this.currentStory.characters.find(c => c.id === characterId);
+        if (!character) {
+            throw new Error('角色不存在');
+        }
+
+        const item = this.currentStory.items.find(i => i.id === itemId);
+        if (!item) {
+            throw new Error('道具不存在');
+        }
+
+        // Initialize heldItems if not present
+        if (!character.heldItems) {
+            character.heldItems = [];
+        }
+
+        // If item is already held by this character, do nothing
+        if (character.heldItems.includes(itemId)) {
+            return;
+        }
+
+        // If item is held by another character, remove it from their inventory
+        if (item.owner && item.owner !== characterId) {
+            this.removeItemFromCharacter(item.owner, itemId);
+        }
+
+        // Add item to character's heldItems
+        character.heldItems.push(itemId);
+
+        // Update item's owner
+        item.owner = characterId;
+
+        this.notify('characterItemAdded', { characterId, itemId });
+        this.saveToLocalStorage();
+    }
+
+    // Remove an item from a character's inventory
+    removeItemFromCharacter(characterId, itemId) {
+        if (!this.currentStory) return;
+
+        const character = this.currentStory.characters.find(c => c.id === characterId);
+        if (!character || !character.heldItems) return;
+
+        const index = character.heldItems.indexOf(itemId);
+        if (index === -1) return;
+
+        // Remove from character's heldItems
+        character.heldItems.splice(index, 1);
+
+        // Update item's owner to null
+        const item = this.currentStory.items.find(i => i.id === itemId);
+        if (item) {
+            item.owner = null;
+        }
+
+        this.notify('characterItemRemoved', { characterId, itemId });
+        this.saveToLocalStorage();
+    }
+
+    // Transfer an item from one character to another
+    transferItem(itemId, fromCharacterId, toCharacterId) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const item = this.currentStory.items.find(i => i.id === itemId);
+        if (!item) {
+            throw new Error('道具不存在');
+        }
+
+        // If transferring to the same character, do nothing
+        if (fromCharacterId === toCharacterId) return;
+
+        this.saveStateBeforeChange('转移道具');
+
+        // Remove from source character
+        this.removeItemFromCharacter(fromCharacterId, itemId);
+
+        // Add to destination character
+        this.addItemToCharacter(toCharacterId, itemId);
+
+        this.notify('itemTransferred', { itemId, fromCharacterId, toCharacterId });
+    }
+
+    // Validate consistency between item.owner and character.heldItems
+    validateItemsConsistency() {
+        if (!this.currentStory) return { isConsistent: true, issues: [] };
+
+        const issues = [];
+
+        // Check each item
+        this.currentStory.items.forEach(item => {
+            if (item.owner) {
+                const character = this.currentStory.characters.find(c => c.id === item.owner);
+                if (!character) {
+                    issues.push({
+                        itemId: item.id,
+                        issue: `道具 ${item.name} 的 owner ${item.owner} 指向不存在的角色`
+                    });
+                } else if (!character.heldItems || !character.heldItems.includes(item.id)) {
+                    issues.push({
+                        itemId: item.id,
+                        issue: `道具 ${item.name} 的 owner 指向 ${character.name}，但不在其 heldItems 中`
+                    });
+                }
+            }
+        });
+
+        // Check each character's heldItems
+        this.currentStory.characters.forEach(character => {
+            if (character.heldItems) {
+                character.heldItems.forEach(itemId => {
+                    const item = this.currentStory.items.find(i => i.id === itemId);
+                    if (!item) {
+                        issues.push({
+                            itemId: itemId,
+                            issue: `角色 ${character.name} 的 heldItems 包含不存在的道具 ${itemId}`
+                        });
+                    } else if (item.owner !== character.id) {
+                        issues.push({
+                            itemId: itemId,
+                            issue: `道具 ${item.name} 在 ${character.name} 的 heldItems 中，但 owner 指向其他角色`
+                        });
+                    }
+                });
+            }
+        });
+
+        return {
+            isConsistent: issues.length === 0,
+            issues
+        };
+    }
+
+    // Repair inconsistent item-owner relationships
+    repairItemsConsistency() {
+        if (!this.currentStory) return;
+
+        this.saveStateBeforeChange('修复数据一致性');
+
+        // Rebuild heldItems arrays based on item.owner
+        this.currentStory.characters.forEach(character => {
+            character.heldItems = [];
+        });
+
+        this.currentStory.items.forEach(item => {
+            if (item.owner) {
+                const character = this.currentStory.characters.find(c => c.id === item.owner);
+                if (character) {
+                    if (!character.heldItems) {
+                        character.heldItems = [];
+                    }
+                    character.heldItems.push(item.id);
+                } else {
+                    // Owner doesn't exist, reset owner
+                    item.owner = null;
+                }
+            }
+        });
+
+        this.notify('dataRepaired', {});
+        this.saveToLocalStorage();
+    }
+
     // Item management
     addItem(itemData) {
         if (!this.currentStory) {
@@ -278,6 +463,36 @@ class AppState {
 
         const item = this.currentStory.items.find(i => i.id === itemId);
         if (item) {
+            // If owner is being changed, update heldItems
+            if (updates.hasOwnProperty('owner')) {
+                const oldOwner = item.owner;
+                const newOwner = updates.owner;
+
+                // Remove from old owner's heldItems
+                if (oldOwner) {
+                    const oldCharacter = this.currentStory.characters.find(c => c.id === oldOwner);
+                    if (oldCharacter && oldCharacter.heldItems) {
+                        const index = oldCharacter.heldItems.indexOf(itemId);
+                        if (index !== -1) {
+                            oldCharacter.heldItems.splice(index, 1);
+                        }
+                    }
+                }
+
+                // Add to new owner's heldItems
+                if (newOwner) {
+                    const newCharacter = this.currentStory.characters.find(c => c.id === newOwner);
+                    if (newCharacter) {
+                        if (!newCharacter.heldItems) {
+                            newCharacter.heldItems = [];
+                        }
+                        if (!newCharacter.heldItems.includes(itemId)) {
+                            newCharacter.heldItems.push(itemId);
+                        }
+                    }
+                }
+            }
+
             Object.assign(item, updates);
             this.notify('itemUpdated', item);
             // Auto-save to localStorage when content changes
@@ -442,6 +657,173 @@ class AppState {
             selectedItem: this.selectedItem,
             selectedSetting: this.selectedSetting
         };
+    }
+
+    // Add character to paragraph (for console convenience)
+    addCharacterToParagraph(paragraphId, characterId) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        const chapter = this.currentStory.chapters.find(c => c.id === this.selectedChapter);
+        if (!chapter) {
+            throw new Error('当前章节不存在');
+        }
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph) {
+            throw new Error('段落不存在');
+        }
+
+        const character = this.currentStory.characters.find(c => c.id === characterId);
+        if (!character) {
+            throw new Error('角色不存在');
+        }
+
+        this.saveStateBeforeChange('添加段落角色');
+
+        // Initialize changes object if not present
+        if (!paragraph.changes) {
+            paragraph.changes = { characters: [], items: [], settings: [] };
+        }
+
+        // Add character to paragraph if not already present
+        if (!paragraph.changes.characters.includes(characterId)) {
+            paragraph.changes.characters.push(characterId);
+        }
+
+        this.notify('paragraphUpdated', { chapterId: this.selectedChapter, paragraph });
+        this.saveToLocalStorage();
+    }
+
+    // Remove character from paragraph
+    removeCharacterFromParagraph(paragraphId, characterId) {
+        if (!this.currentStory) return;
+
+        const chapter = this.currentStory.chapters.find(c => c.id === this.selectedChapter);
+        if (!chapter || !chapter.paragraphs) return;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph || !paragraph.changes || !paragraph.changes.characters) return;
+
+        this.saveStateBeforeChange('移除段落角色');
+
+        const index = paragraph.changes.characters.indexOf(characterId);
+        if (index !== -1) {
+            paragraph.changes.characters.splice(index, 1);
+            this.notify('paragraphUpdated', { chapterId: this.selectedChapter, paragraph });
+            this.saveToLocalStorage();
+        }
+    }
+
+    // Convenience method: give item to character in paragraph
+    giveItemToCharacter(paragraphId, characterId, itemId) {
+        this.addCharacterToParagraph(paragraphId, characterId);
+        this.addItemToCharacter(characterId, itemId);
+    }
+
+    // Convenience method: create item and give to character
+    createAndGiveItem(paragraphId, characterId, itemData) {
+        const item = this.addItem(itemData);
+        this.addCharacterToParagraph(paragraphId, characterId);
+        this.addItemToCharacter(characterId, item.id);
+        return item;
+    }
+
+    // Get paragraph info (for console convenience)
+    getParagraphInfo(paragraphId) {
+        if (!this.currentStory) return null;
+
+        const chapter = this.currentStory.chapters.find(c => c.id === this.selectedChapter);
+        if (!chapter) return null;
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph) return null;
+
+        const info = {
+            id: paragraph.id,
+            content: paragraph.content,
+            changes: paragraph.changes || { characters: [], items: [], settings: [] },
+            characters: [],
+            items: []
+        };
+
+        // Resolve character details
+        if (paragraph.changes && paragraph.changes.characters) {
+            info.characters = paragraph.changes.characters
+                .map(charId => this.currentStory.characters.find(c => c.id === charId))
+                .filter(c => c)
+                .map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    heldItems: c.heldItems || []
+                }));
+        }
+
+        // Resolve item details
+        if (paragraph.changes && paragraph.changes.items) {
+            info.items = paragraph.changes.items
+                .map(itemId => this.currentStory.items.find(i => i.id === itemId))
+                .filter(i => i)
+                .map(i => ({
+                    id: i.id,
+                    name: i.name,
+                    owner: i.owner
+                }));
+        }
+
+        return info;
+    }
+
+    // Console helper: list all paragraphs in current chapter
+    listParagraphs() {
+        if (!this.currentStory) return [];
+
+        const chapter = this.currentStory.chapters.find(c => c.id === this.selectedChapter);
+        if (!chapter) return [];
+
+        return chapter.paragraphs.map(p => ({
+            id: p.id,
+            content: p.content.substring(0, 50) + (p.content.length > 50 ? '...' : ''),
+            characters: (p.changes && p.changes.characters) || []
+        }));
+    }
+
+    // Console helper: list all characters
+    listCharacters() {
+        if (!this.currentStory) return [];
+
+        return this.currentStory.characters.map(c => ({
+            id: c.id,
+            name: c.name,
+            heldItems: c.heldItems || []
+        }));
+    }
+
+    // Console helper: list all items
+    listItems() {
+        if (!this.currentStory) return [];
+
+        return this.currentStory.items.map(i => ({
+            id: i.id,
+            name: i.name,
+            type: i.type,
+            owner: i.owner
+        }));
+    }
+
+    // Console helper: find character by name
+    findCharacterByName(name) {
+        if (!this.currentStory) return null;
+
+        return this.currentStory.characters.find(c => c.name === name);
+    }
+
+    // Console helper: find item by name
+    findItemByName(name) {
+        if (!this.currentStory) return null;
+
+        return this.currentStory.items.find(i => i.name === name);
     }
 
     // Undo/Redo support
