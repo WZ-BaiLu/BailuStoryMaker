@@ -75,6 +75,168 @@
 - 超过 2000 字符时改变计数器颜色
 - 最大限制 4000 字符，超过时阻止发送
 
+### AAR-15: AI Character State Update Tool
+The system SHALL provide an AI tool to update character states based on story content.
+
+#### Scenario: AI updates character attribute
+- **WHEN** AI invokes `updateCharacterState` tool
+- **THEN** system updates specified character's attributes
+- **AND** records change in paragraph's `changes.characters` array
+- **AND** notifies user of update
+
+#### Scenario: AI updates character emotional state
+- **WHEN** AI invokes `updateCharacterState` tool with emotional state
+- **THEN** system updates character's emotional state
+- **AND** records change in paragraph's `changes.characters` array
+
+#### Scenario: AI updates multiple characters
+- **WHEN** AI invokes `updateCharacterState` tool for multiple characters
+- **THEN** system updates each character's state
+- **AND** records all changes in paragraph's `changes.characters` array
+
+### AAR-16: AI Item State Update Tool
+The system SHALL provide an AI tool to update item states based on story content.
+
+#### Scenario: AI records item acquisition
+- **WHEN** AI invokes `updateItemState` tool with "acquire" action
+- **THEN** system records item being acquired by a character
+- **AND** adds to change to paragraph's `changes.items` array
+
+#### Scenario: AI records item loss
+- **WHEN** AI invokes `updateItemState` tool with "lose" action
+- **THEN** system records item being lost by a character
+- **AND** adds change to paragraph's `changes.items` array
+
+#### Scenario: AI records item transfer
+- **WHEN** AI invokes `updateItemState` tool with "transfer" action
+- **THEN** system records item transfer between characters or locations
+- **AND** adds change to paragraph's `changes.items` array
+
+### AAR-17: AI Tool Parameter Validation
+The system SHALL validate AI tool parameters before applying changes.
+
+#### Scenario: Validate character ID
+- **WHEN** AI invokes `updateCharacterState` with an invalid character ID
+- **THEN** system returns an error
+- **AND** does not apply any changes
+
+#### Scenario: Validate item ID
+- **WHEN** AI invokes `updateItemState` with an invalid item ID
+- **THEN** system returns an error
+- **AND** does not apply any changes
+
+#### Scenario: Validate paragraph ID
+- **WHEN** AI invokes state update tools without specifying a paragraph ID
+- **THEN** system uses current selected paragraph
+- **AND** if no paragraph is selected, returns an error
+
+### AAR-18: AI State Change Notification
+The system SHALL notify users when AI makes state changes.
+
+#### Scenario: Notify on character state update
+- **WHEN** AI successfully updates character state
+- **THEN** system displays a success notification
+- **AND** shows summary of changes (e.g., "Updated health of Character A: +10")
+
+#### Scenario: Notify on item state update
+- **WHEN** AI successfully updates item state
+- **THEN** system displays a success notification
+- **AND** shows summary of changes (e.g., "Character A acquired Sword")
+
+#### Scenario: Notify on validation error
+- **WHEN** AI tool validation fails
+- **THEN** system displays an error notification
+- **AND** provides details about validation failure
+
+### AAR-18: Character Information in Prompts
+The system SHALL include character information in AI prompts, including held items.
+
+#### Scenario: Include character attributes and abilities
+- **WHEN** generating AI prompt for a paragraph
+- **THEN** system includes character's name, description
+- **AND** includes character's current attributes
+- **AND** includes character's abilities and their levels
+
+#### Scenario: Include character held items
+- **WHEN** generating AI prompt for a paragraph
+- **THEN** system includes character's held items
+- **AND** lists item names, types, and key properties
+- **AND** indicates which items are available to character
+
+#### Scenario: Include character emotional state
+- **WHEN** generating AI prompt for a paragraph
+- **THEN** system includes character's current emotional state
+- **AND** provides context for character behavior
+
+#### Scenario: Include multiple characters
+- **WHEN** multiple characters are present in a paragraph
+- **THEN** system includes information for each character
+- **AND** organizes information by character ID
+- **AND** shows each character's held items separately
+
+### AAR-19: Props Information in Prompts
+The system SHALL include props information in AI prompts, focusing on items held by present characters.
+
+#### Scenario: Include items held by present characters
+- **WHEN** generating AI prompt for a paragraph
+- **THEN** system includes items held by characters in `changes.characters`
+- **AND** provides item details (name, type, properties, description)
+- **AND** excludes items held by non-present characters
+
+#### Scenario: Include item ownership context
+- **WHEN** including item information in prompts
+- **THEN** system indicates which character holds each item
+- **AND** shows item's current owner
+- **AND** provides item's acquisition history if relevant
+
+#### Scenario: Exclude items not relevant to paragraph
+- **WHEN** generating AI prompt for a paragraph
+- **THEN** system excludes items not held by present characters
+- **AND** does not include items with no owner
+- **AND** does not include items in locations (unless relevant to paragraph)
+
+### AAR-20: Context-Aware Prompt Generation
+The system SHALL generate context-aware prompts based on paragraph changes.
+
+#### Scenario: Generate prompt for character interaction paragraph
+- **WHEN** a paragraph involves multiple characters interacting
+- **THEN** system includes all present characters' information
+- **AND** includes items held by each character
+- **AND** highlights potential item-related interactions
+
+#### Scenario: Generate prompt for combat paragraph
+- **WHEN** a paragraph involves combat or action
+- **THEN** system includes character's combat-related abilities
+- **AND** includes weapons and equipment from `heldItems`
+- **AND** provides item properties relevant to combat (attack, defense, etc.)
+
+#### Scenario: Generate prompt for puzzle-solving paragraph
+- **WHEN** a paragraph involves puzzle or mystery
+- **THEN** system includes key items from `heldItems`
+- **AND** provides item descriptions that might be relevant to puzzle
+- **AND** suggests potential item combinations or uses
+
+### AAR-21: Held Items in Prompt Context
+The system SHALL provide structured held items information in AI prompts.
+
+#### Scenario: Format held items in prompt
+- **WHEN** including held items in prompt
+- **THEN** system formats items as structured list
+- **AND** includes: item name, type, key properties, brief description
+- **AND** organizes items by owner character
+
+#### Scenario: Include item availability
+- **WHEN** including held items in prompt
+- **THEN** system indicates which items are available for use
+- **AND** marks items that have been used recently (if applicable)
+- **AND** suggests potential item interactions
+
+#### Scenario: Contextual item suggestions
+- **WHEN** generating prompt for action scene
+- **THEN** system suggests items that might be relevant to action
+- **AND** highlights weapons, tools, or special items in `heldItems`
+- **AND** provides item properties that support action
+
 ## API
 
 ```javascript
@@ -97,6 +259,14 @@ class AIManager {
     copyToClipboard(text: string): Promise<void>;
     buildContext(): object;
     buildMessageHistory(message: string): Array;
+
+    // Character state update tools
+    registerTool(name: string, handler: Function): void;
+    updateCharacterState(toolArgs: object): Promise<object>;
+    updateItemState(toolArgs: object): Promise<object>;
+
+    // Held items formatting
+    formatHeldItems(characterId: string): string;
 }
 ```
 

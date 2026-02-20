@@ -20,6 +20,95 @@
 - 应显示段落关联的修改（角色、物品）
 - 空状态时显示提示信息
 
+### UR-2.1: Timeline Panel Rendering
+系统应在段落编辑器右侧渲染时间线分页面板。
+
+#### Scenario: Render timeline panel container
+- **WHEN** rendering chapter editor
+- **THEN** system renders timeline panel container on the right side
+- **AND** panel width is 300px by default
+- **AND** panel can be expanded or collapsed
+
+#### Scenario: Render timeline nodes
+- **WHEN** timeline panel is visible and chapter has paragraphs
+- **THEN** system renders a timeline node for each paragraph
+- **AND** nodes are displayed in sequential order
+- **AND** each node shows summary of changes (if any)
+
+#### Scenario: Render node with character changes
+- **WHEN** a paragraph has character changes
+- **THEN** timeline node displays character names
+- **AND** shows visual indicators for change types (new/modified/removed)
+- **AND** color-codes character changes (e.g., blue for characters)
+
+#### Scenario: Render node with item changes
+- **WHEN** a paragraph has item changes
+- **THEN** timeline node displays item names
+- **AND** shows visual indicators for change types (acquire/lose/transfer)
+- **AND** color-codes item changes (e.g., green for items)
+
+#### Scenario: Render node with both character and item changes
+- **WHEN** a paragraph has both character and item changes
+- **THEN** timeline node displays both types
+- **AND** shows character changes first
+- **AND** shows item changes below character changes
+
+#### Scenario: Render node without changes
+- **WHEN** a paragraph has no changes
+- **THEN** timeline node displays a default icon
+- **AND** shows paragraph number
+- **AND** uses neutral styling
+
+#### Scenario: Render active node
+- **WHEN** a paragraph is currently selected or visible in viewport
+- **THEN** corresponding timeline node is highlighted
+- **AND** active node has distinct styling (e.g., bold border, different background)
+
+#### Scenario: Render filter controls
+- **WHEN** timeline panel is visible
+- **THEN** system renders filter controls (All, Characters, Items)
+- **AND** currently selected filter is visually distinguished
+- **AND** clicking a filter updates node visibility
+
+#### Scenario: Render collapse/expand toggle
+- **WHEN** timeline panel is rendered
+- **THEN** system renders collapse button (when expanded)
+- **AND** system renders expand button (when collapsed)
+- **AND** button shows current state icon
+
+### UR-2.2: Timeline Theme Adaptation
+时间线面板应适配当前主题。
+
+#### Scenario: Apply light theme to timeline
+- **WHEN** application theme is light
+- **THEN** timeline panel uses light background color
+- **AND** text uses dark color
+- **AND** borders use subtle gray
+
+#### Scenario: Apply dark theme to timeline
+- **WHEN** application theme is dark
+- **THEN** timeline panel uses dark background color
+- **AND** text uses light color
+- **AND** borders use subtle light gray
+
+#### Scenario: Update styling on theme change
+- **WHEN** user toggles theme
+- **THEN** timeline panel styling updates immediately
+- **AND** all timeline elements reflect new theme colors
+
+### UR-2.3: Timeline Responsive Behavior
+时间线面板应支持响应式布局。
+
+#### Scenario: Collapse on mobile
+- **WHEN** screen width < 768px
+- **THEN** timeline panel defaults to collapsed state
+- **AND** toggle button remains accessible
+
+#### Scenario: Adjust width on desktop
+- **WHEN** user resizes browser window on desktop
+- **THEN** timeline panel maintains fixed width (300px)
+- **AND** paragraph editor width adjusts to fill remaining space
+
 ### UR-3: Character View Rendering
 - 应渲染角色列表
 - 应显示角色名称
@@ -77,6 +166,22 @@ class UIRenderer {
     renderSettings(): void;
     renderSettingEditor(settingId): void;
     renderPromptOptions(): void;
+
+    // Timeline rendering
+    renderTimelinePanel(): void;
+    renderTimelineNodes(paragraphs: Array): void;
+    renderTimelineNode(paragraph: object, index: number): string;
+    renderTimelineControls(): void;
+    renderTimelineToggle(): void;
+
+    // Timeline interaction
+    scrollToParagraph(paragraphId: string): void;
+    highlightTimelineNode(paragraphId: string): void;
+    updateActiveNodeOnScroll(): void;
+
+    // Timeline state
+    loadTimelineState(): object;
+    saveTimelineState(): void;
 }
 ```
 
@@ -85,3 +190,4 @@ class UIRenderer {
 - `state`: 应用状态管理器
 - `i18n`: 国际化管理器
 - `Constants`: 常量定义
+- `localStorage`: 用于持久化时间线面板状态
