@@ -640,6 +640,54 @@ class App {
     }
 
     /**
+     * Preview the AI prompt for paragraph analysis
+     * @param {string} paragraphId - The ID of the paragraph to preview
+     */
+    async previewAnalysisPrompt(paragraphId) {
+        const story = this.state.currentStory;
+        if (!story) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noStory'));
+            return;
+        }
+
+        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noChapter'));
+            return;
+        }
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noParagraph'));
+            return;
+        }
+
+        try {
+            // Get AI manager and paragraph analyzer
+            if (!this.aiManager.paragraphAnalyzer) {
+                throw new Error('Paragraph analyzer not initialized');
+            }
+
+            // Build analysis context
+            const context = {
+                chapterId: this.state.selectedChapter
+            };
+
+            const analysisContext = this.aiManager.paragraphAnalyzer.buildAnalysisContext(paragraph, context);
+
+            // Generate prompt
+            const prompt = this.aiManager.paragraphAnalyzer.generateAnalysisPrompt(paragraph, analysisContext);
+
+            // Show preview modal
+            this.showPromptPreviewModal(paragraph, prompt);
+
+        } catch (error) {
+            this.notificationManager.showError(`预览失败: ${error.message}`);
+            console.error('[App] Preview analysis prompt error:', error);
+        }
+    }
+
+    /**
      * Analyze a paragraph using AI to extract elements, events, and state changes
      * @param {string} paragraphId - The ID of the paragraph to analyze
      */
@@ -699,6 +747,76 @@ class App {
             this.notificationManager.showError(`${i18n.t('ai.paragraphAnalysis.error')}: ${error.message}`);
             console.error('[App] Paragraph analysis error:', error);
         }
+    }
+
+    /**
+     * Show prompt preview modal
+     * @param {Object} paragraph - The paragraph object
+     * @param {string} prompt - The AI prompt
+     */
+    showPromptPreviewModal(paragraph, prompt) {
+        const modal = document.createElement('div');
+        modal.className = 'modal prompt-preview-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>👁️ AI 请求预览</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-section">
+                        <h4>段落内容</h4>
+                        <p class="preview-text">${paragraph.content}</p>
+                    </div>
+                    <div class="preview-section">
+                        <h4>AI Prompt</h4>
+                        <pre class="prompt-preview-text">${this.escapeHtml(prompt)}</pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-cancel">关闭</button>
+                    <button class="btn btn-primary modal-continue">继续分析</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Bind events
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = modal.querySelector('.modal-cancel');
+        const continueBtn = modal.querySelector('.modal-continue');
+
+        const closeModal = () => {
+            modal.remove();
+        };
+
+        const continueAnalysis = () => {
+            closeModal();
+            this.analyzeParagraph(paragraph.id);
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        continueBtn.addEventListener('click', continueAnalysis);
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     * @param {string} text - Text to escape
+     * @returns {string} Escaped text
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     /**

@@ -432,6 +432,44 @@ body.dark {
     overflow-y: auto;
 }
 
+/* Prompt Preview Modal */
+.prompt-preview-modal .modal-content {
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.preview-section {
+    background-color: var(--light-sidebar);
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.preview-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: var(--secondary-color);
+}
+
+.prompt-preview-text {
+    background-color: var(--light-bg);
+    border: 1px solid var(--light-border);
+    border-radius: 4px;
+    padding: 15px;
+    font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+body.dark .prompt-preview-text {
+    background-color: var(--dark-sidebar);
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
