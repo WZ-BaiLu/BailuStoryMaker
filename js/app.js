@@ -193,9 +193,9 @@ class App {
         const chapter = this.state.addChapter(i18n.t('messages.noChapters'));
         this.state.selectChapter(chapter.id);
         this.uiRenderer.renderChapters();
-        this.uiRenderer.renderChapterEditor(chapter.id);
-        this.aiManager.setCurrentChapter(chapter.id);
-        this.viewManager.handleAIPanelVisibility('story');
+            this.uiRenderer.renderChapterEditor(chapter.id);
+            this.aiManager.setCurrentChapter(chapter.id);
+            this.viewManager.handleAIPanelVisibility('story');
     }
 
     // Paragraph management
@@ -414,11 +414,11 @@ class App {
     }
 
     // Prompt generation
-    
+
     /**
      * Generate AI prompt from story context
      */
-    generatePrompt() {
+    async generatePrompt() {
         const story = this.state.currentStory;
         if (!story) {
             this.notificationManager.showError(i18n.t('messages.noStoryLoaded'));
@@ -428,8 +428,17 @@ class App {
         const chapterId = document.getElementById('prompt-chapter').value;
         const templateName = document.getElementById('prompt-template').value;
 
-        const contextBuilder = new contextBuilder(story);
-        const context = contextBuilder.buildContext(chapterId);
+        // Use StateContextCache if available
+        const stateContextCache = this.aiManager?.stateContextCache || null;
+        const contextBuilder = new ContextBuilder(story, stateContextCache);
+
+        // Build context (async if using cache)
+        let context;
+        if (stateContextCache) {
+            context = await contextBuilder.buildContext(chapterId);
+        } else {
+            context = contextBuilder.buildContext(chapterId);
+        }
 
         const promptGenerator = new PromptGenerator(Constants.PROMPT_TEMPLATES);
         const prompt = promptGenerator.generatePrompt(context, templateName);

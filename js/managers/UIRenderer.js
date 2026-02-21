@@ -108,10 +108,67 @@ class UIRenderer {
             };
 
             this.renderParagraphs();
+            this.renderViewLocationSelector();
         } else {
             contentPanel.classList.add('hidden');
             placeholderPanel.classList.add('active');
         }
+    }
+
+    /**
+     * Render view location selector (新架构: Story View Management)
+     */
+    renderViewLocationSelector() {
+        const selector = document.getElementById('view-location-select');
+        const indicator = document.getElementById('present-elements-count');
+        const story = this.state.currentStory;
+
+        if (!selector || !story) {
+            return;
+        }
+
+        // Get all locations from story settings
+        const locations = story.settings?.filter(s => s.type === 'location') || [];
+        const optionsHtml = `
+            <option value="" data-i18n="story.viewLocationAny">全知视角</option>
+            ${locations.map(loc => `<option value="${loc.id}">${loc.name}</option>`).join('')}
+        `;
+
+        // Update selector only if options changed
+        if (selector.innerHTML !== optionsHtml) {
+            selector.innerHTML = optionsHtml;
+        }
+
+        // Get current view location from StoryViewManager (if available)
+        const currentView = this.app.aiManager?.storyViewManager?.getCurrentView() || '';
+
+        // Set current value without triggering change event
+        selector.value = currentView;
+
+        // Update present elements count
+        const presentCount = this._getPresentElementsCount(currentView);
+        if (indicator) {
+            indicator.textContent = presentCount;
+        }
+    }
+
+    /**
+     * Get count of present elements at view location
+     * @private
+     * @param {string} viewLocationId - View location ID
+     * @returns {number} Count of present elements
+     */
+    _getPresentElementsCount(viewLocationId) {
+        const story = this.state.currentStory;
+        if (!story || !viewLocationId) {
+            return 0;
+        }
+
+        // Count elements at the view location
+        const elementsAtLocation = story.characters?.filter(c => c.location === viewLocationId).length || 0;
+        const itemsAtLocation = story.items?.filter(i => i.owner === viewLocationId).length || 0;
+
+        return elementsAtLocation + itemsAtLocation;
     }
 
     /**
@@ -544,11 +601,163 @@ class UIRenderer {
             document.getElementById('char-notes').value = character.notes || '';
             this.renderAttributes(character.attributes);
             this.renderAbilities(character.abilities);
+
+            // Render element state (新架构支持)
+            this.renderElementState(character, 'character');
         } else {
             contentPanel.classList.add('hidden');
             placeholderPanel.classList.add('active');
             this.clearCharacterForm();
         }
+    }
+
+    /**
+     * Render element state display (新架构: Element/Event/State 驱动)
+     * @param {Object} element - The element object
+     * @param {string} elementType - The element type (character/item/location)
+     */
+    renderElementState(element, elementType) {
+        // Check if state container exists, if not create it
+        let stateContainer = document.getElementById(`element-state-${elementType}`);
+        if (!stateContainer) {
+            stateContainer = document.createElement('div');
+            stateContainer.id = `element-state-${elementType}`;
+            stateContainer.className = 'element-state-section';
+
+            // Find the form and insert state section before the submit button
+            const form = document.getElementById(`${elementType === 'character' ? 'character' : elementType === 'item' ? 'item' : 'setting'}-form`);
+            if (form) {
+                const submitButton = form.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    form.insertBefore(stateContainer, submitButton);
+                } else {
+                    form.appendChild(stateContainer);
+                }
+            }
+        }
+
+        // Render element location
+        const locationHtml = `
+            <div class="element-state-item">
+                <label>当前位置:</label>
+                <span class="element-state-value">${this._formatLocation(element.location)}</span>
+            </div>
+        `;
+
+        // Render element keywords
+        const keywordsHtml = `
+            <div class="element-state-item">
+                <label>关键字:</label>
+                <div class="element-keywords">
+                    ${element.keywords && element.keywords.length > 0
+                        ? element.keywords.map(kw => `<span class="tag">${kw}</span>`).join('')
+                        : '<span class="no-keywords">无关键字</span>'}
+                </div>
+            </div>
+        `;
+
+        // Render state history
+        const stateHistoryHtml = `
+            <div class="element-state-item">
+                <label>状态历史:</label>
+                ${this._renderStateHistory(element.stateHistory)}
+            </div>
+        `;
+
+        stateContainer.innerHTML = `
+            <div class="element-state-header">
+                <h4>元素状态</h4>
+            </div>
+            <div class="element-state-content">
+                ${locationHtml}
+                ${keywordsHtml}
+                ${stateHistoryHtml}
+            </div>
+        `;
+    }
+
+    /**
+     * Format location for display
+     * @private
+     * @param {string} location - The location ID or null
+     * @returns {string} Formatted location
+     */
+    _formatLocation(location) {
+        if (!location) {
+            return '<span class="no-location">未知位置</span>';
+        }
+
+        // Try to find location name from story elements
+        const story = this.state.currentStory;
+        if (story && story.elements) {
+            const locationElement = story.elements.find(e => e.id === location);
+            if (locationElement) {
+                return `<span class="location-name">${locationElement.name}</span>`;
+            }
+        }
+
+        // Fallback to location ID
+        return `<span class="location-name">${location}</span>`;
+    }
+
+    /**
+     * Render state history for element
+     * @private
+     * @param {Array} stateHistory - The state history array
+     * @returns {string} HTML string
+     */
+    _renderStateHistory(stateHistory) {
+        if (!stateHistory || stateHistory.length === 0) {
+            return '<div class="no-history">暂无状态变化</div>';
+        }
+
+        return `
+            <div class="state-history-list">
+                ${stateHistory.map((entry, index) => `
+                    <div class="state-history-entry">
+                        <div class="state-history-header">
+                            <span class="state-history-index">#${index + 1}</span>
+                            <span class="state-history-paragraph">${entry.paragraphId}</span>
+                        </div>
+                        <div class="state-history-changes">
+                            ${this._renderStateChanges(entry.changes)}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    /**
+     * Render state changes
+     * @private
+     * @param {Object} changes - The changes object
+     * @returns {string} HTML string
+     */
+    _renderStateChanges(changes) {
+        if (!changes) {
+            return '<span class="no-changes">无变化</span>';
+        }
+
+        const changeItems = [];
+
+        if (changes.location) {
+            changeItems.push(`<div class="state-change-item"><strong>位置:</strong> ${this._formatLocation(changes.location)}</div>`);
+        }
+
+        if (changes.description) {
+            changeItems.push(`<div class="state-change-item"><strong>描述:</strong> ${changes.description}</div>`);
+        }
+
+        if (changes.keywords && changes.keywords.length > 0) {
+            changeItems.push(`<div class="state-change-item"><strong>关键字:</strong> ${changes.keywords.map(k => `<span class="tag">${k}</span>`).join(' ')}</div>`);
+        }
+
+        if (changeItems.length === 0) {
+            return '<span class="no-changes">无变化</span>';
+        }
+
+        return changeItems.join('');
     }
 
     /**
@@ -560,6 +769,12 @@ class UIRenderer {
         document.getElementById('char-notes').value = '';
         document.getElementById('char-attributes').innerHTML = '';
         document.getElementById('char-abilities').innerHTML = '';
+
+        // Clear element state
+        const stateContainer = document.getElementById('element-state-character');
+        if (stateContainer) {
+            stateContainer.innerHTML = '';
+        }
     }
 
     /**
@@ -702,6 +917,9 @@ class UIRenderer {
             document.getElementById('item-type').value = item.type;
             document.getElementById('item-description').value = item.description || '';
             this.renderItemProperties(item.properties);
+
+            // Render element state (新架构支持)
+            this.renderElementState(item, 'item');
         } else {
             contentPanel.classList.add('hidden');
             placeholderPanel.classList.add('active');
@@ -717,6 +935,12 @@ class UIRenderer {
         document.getElementById('item-type').value = 'other';
         document.getElementById('item-description').value = '';
         document.getElementById('item-properties').innerHTML = '';
+
+        // Clear element state
+        const stateContainer = document.getElementById('element-state-item');
+        if (stateContainer) {
+            stateContainer.innerHTML = '';
+        }
     }
 
     /**
@@ -836,6 +1060,9 @@ class UIRenderer {
             document.getElementById('setting-type').value = setting.type;
             document.getElementById('setting-parent').value = setting.parentId || '';
             document.getElementById('setting-description').value = setting.description || '';
+
+            // Render element state (新架构支持)
+            this.renderElementState(setting, 'setting');
         } else {
             contentPanel.classList.add('hidden');
             placeholderPanel.classList.add('active');
@@ -851,6 +1078,12 @@ class UIRenderer {
         document.getElementById('setting-type').value = 'location';
         document.getElementById('setting-parent').value = '';
         document.getElementById('setting-description').value = '';
+
+        // Clear element state
+        const stateContainer = document.getElementById('element-state-setting');
+        if (stateContainer) {
+            stateContainer.innerHTML = '';
+        }
     }
 
     // ==================== Prompt View Rendering ====================
@@ -950,6 +1183,7 @@ class UIRenderer {
         // Generate change items HTML
         let changeItemsHtml = '';
 
+        // Render character changes (旧模型支持)
         if (filter === 'all' || filter === 'characters') {
             changes.characters?.forEach(charChange => {
                 const character = story?.characters?.find(c => c.id === charChange.characterId);
@@ -964,6 +1198,7 @@ class UIRenderer {
             });
         }
 
+        // Render item changes (旧模型支持)
         if (filter === 'all' || filter === 'items') {
             changes.items?.forEach(itemChange => {
                 const item = story?.items?.find(i => i.id === itemChange.itemId);
@@ -979,6 +1214,16 @@ class UIRenderer {
             });
         }
 
+        // Render element state changes (新架构支持)
+        if (paragraph.elementStateChanges && paragraph.elementStateChanges.length > 0) {
+            changeItemsHtml += this._renderElementStateChanges(paragraph.elementStateChanges, story);
+        }
+
+        // Render narrative type indicator (新架构支持)
+        const narrativeTypeHtml = paragraph.storyTimestamp
+            ? `<div class="timeline-narrative-type">${this._formatNarrativeType(paragraph.storyTimestamp)}</div>`
+            : '';
+
         const isActive = this.selectedParagraph === paragraph.id;
 
         return `
@@ -990,10 +1235,100 @@ class UIRenderer {
                     <div class="timeline-node-summary">
                         ${hasCharacters || hasItems ? i18n.t('story.changesTracker') : i18n.t('timeline.empty')}
                     </div>
+                    ${narrativeTypeHtml}
                 </div>
                 ${changeItemsHtml ? `<div class="timeline-node-changes">${changeItemsHtml}</div>` : ''}
             </div>
         `;
+    }
+
+    /**
+     * Render element state changes (新架构)
+     * @private
+     * @param {Array} stateChanges - Array of state changes
+     * @param {Object} story - Story object
+     * @returns {string} HTML string
+     */
+    _renderElementStateChanges(stateChanges, story) {
+        return stateChanges.map(change => {
+            const element = story?.elements?.find(e => e.id === change.elementId);
+            const elementName = element?.name || change.elementId;
+            const elementType = element?.type || change.elementType || 'unknown';
+
+            const typeIcon = this._getElementTypeIcon(elementType);
+
+            return `
+                <div class="timeline-change-item element-state">
+                    <span class="timeline-change-type-icon ${elementType}">${typeIcon}</span>
+                    <span class="timeline-change-name">${elementName}</span>
+                    <span class="timeline-change-detail">${this._formatElementStateChange(change)}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Format element state change for display
+     * @private
+     * @param {Object} change - State change object
+     * @returns {string} Formatted change string
+     */
+    _formatElementStateChange(change) {
+        const parts = [];
+
+        if (change.changes?.location) {
+            parts.push(`位置: ${this._formatLocation(change.changes.location)}`);
+        }
+
+        if (change.changes?.keywords && change.changes.keywords.length > 0) {
+            parts.push(`关键字: ${change.changes.keywords.join(', ')}`);
+        }
+
+        if (change.changes?.description) {
+            parts.push(`描述: ${change.changes.description}`);
+        }
+
+        return parts.join(' | ') || '状态更新';
+    }
+
+    /**
+     * Get icon for element type
+     * @private
+     * @param {string} type - Element type
+     * @returns {string} Icon character
+     */
+    _getElementTypeIcon(type) {
+        const icons = {
+            character: '👤',
+            item: '🎒',
+            location: '📍',
+            base: '🏰',
+            memory: '💭'
+        };
+        return icons[type] || '📄';
+    }
+
+    /**
+     * Format narrative type for display
+     * @private
+     * @param {Object} storyTimestamp - Story timestamp object
+     * @returns {string} Formatted narrative type
+     */
+    _formatNarrativeType(storyTimestamp) {
+        if (!storyTimestamp || !storyTimestamp.narrativeType || storyTimestamp.narrativeType === 'linear') {
+            return '';
+        }
+
+        const typeLabels = {
+            flashback: '🔄 倒叙',
+            flashforward: '⏭️ 插叙',
+            parallel: '⏸️ 平行'
+        };
+
+        const label = typeLabels[storyTimestamp.narrativeType] || storyTimestamp.narrativeType;
+        const offset = storyTimestamp.timeOffset ? ` (${storyTimestamp.timeOffset > 0 ? '+' : ''}${storyTimestamp.timeOffset})` : '';
+
+        return `<span class="narrative-badge ${storyTimestamp.narrativeType}">${label}${offset}</span>`;
     }
 
     /**

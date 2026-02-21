@@ -76,7 +76,7 @@
 .paragraph-bubble-content {
     min-height: 40px;
     line-height: 1.6;
-    white-space: pre-wrap;
+    /*white-space: pre-wrap;*/
 }
 
 .paragraph-bubble-content.editing {

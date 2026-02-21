@@ -1,12 +1,130 @@
 // Context Building Module
 
 class ContextBuilder {
-    constructor(story) {
+    constructor(story, stateContextCache = null) {
         this.story = story;
+        this.stateContextCache = stateContextCache;
+    }
+
+    // Set state context cache (for late injection)
+    setStateContextCache(stateContextCache) {
+        this.stateContextCache = stateContextCache;
     }
 
     // Build complete context for prompt generation
-    buildContext(chapterId) {
+    async buildContext(chapterId) {
+        // If StateContextCache is available, use it for enhanced context
+        if (this.stateContextCache) {
+            return this.buildContextWithCache(chapterId);
+        }
+
+        // Fallback to traditional context building
+        return this.buildTraditionalContext(chapterId);
+    }
+
+    // Build context using StateContextCache (new architecture)
+    async buildContextWithCache(chapterId) {
+        const chapter = this.getChapter(chapterId);
+        if (!chapter) {
+            return null;
+        }
+
+        // Get cached context with present elements
+        const storyContext = await this.stateContextCache.getContext(chapterId);
+        if (!storyContext) {
+            return this.buildTraditionalContext(chapterId);
+        }
+
+        // Format for AI
+        const context = {
+            chapter: chapter,
+            viewLocation: storyContext.viewLocation,
+            presentElements: storyContext.presentElements,
+            characters: this.formatPresentCharacters(storyContext),
+            items: this.formatPresentItems(storyContext),
+            setting: this.formatPresentSetting(storyContext),
+            recentEvents: this.getRecentEvents(chapterId),
+            narrativeContext: this.buildNarrativeContext(chapterId)
+        };
+
+        return context;
+    }
+
+    // Format present characters from story context
+    formatPresentCharacters(storyContext) {
+        const characterElements = storyContext.presentElements.filter(e => e.type === 'character');
+        return characterElements.map(element => {
+            const currentState = this.stateContextCache.getCurrentElementState(element.id) || {};
+            return {
+                id: element.id,
+                name: element.name,
+                description: element.description || '',
+                location: element.location,
+                keywords: element.keywords || [],
+                state: currentState
+            };
+        });
+    }
+
+    // Format present items from story context
+    formatPresentItems(storyContext) {
+        const itemElements = storyContext.presentElements.filter(e => e.type === 'item');
+        return itemElements.map(element => {
+            const currentState = this.stateContextCache.getCurrentElementState(element.id) || {};
+            return {
+                id: element.id,
+                name: element.name,
+                type: element.elementType || 'item',
+                description: element.description || '',
+                location: element.location,
+                keywords: element.keywords || [],
+                state: currentState
+            };
+        });
+    }
+
+    // Format present setting from story context
+    formatPresentSetting(storyContext) {
+        const locationElements = storyContext.presentElements.filter(e => e.type === 'location' || e.type === 'base');
+        if (locationElements.length === 0) {
+            return null;
+        }
+
+        // Return the first location element (typically the view location)
+        const location = locationElements[0];
+        return {
+            id: location.id,
+            name: location.name,
+            type: location.elementType || 'location',
+            description: location.description || ''
+        };
+    }
+
+    // Build narrative context (non-linear narrative support)
+    buildNarrativeContext(chapterId) {
+        const chapter = this.getChapter(chapterId);
+        if (!chapter || !chapter.paragraphs || chapter.paragraphs.length === 0) {
+            return null;
+        }
+
+        // Get first paragraph with storyTimestamp
+        const firstParagraphWithTimestamp = chapter.paragraphs.find(p => p.storyTimestamp);
+        if (!firstParagraphWithTimestamp || !firstParagraphWithTimestamp.storyTimestamp) {
+            return { type: 'linear' };
+        }
+
+        const timestamp = firstParagraphWithTimestamp.storyTimestamp;
+        return {
+            type: timestamp.narrativeType || 'linear',
+            referenceParagraph: timestamp.referenceParagraphId,
+            timeOffset: timestamp.timeOffset,
+            absoluteTime: timestamp.absoluteTime,
+            relativeTime: timestamp.relativeTime
+        };
+    }
+
+    // Build traditional context (fallback for old architecture)
+    buildTraditionalContext(chapterId) {
         const context = {
             chapter: this.getChapter(chapterId),
             characters: this.getRelevantCharacters(chapterId),

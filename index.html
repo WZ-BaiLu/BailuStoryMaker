@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/themes.css">
     <link rel="stylesheet" href="css/ai-assistant.css">
+    <link rel="stylesheet" href="css/timeline.css">
 </head>
 <body>
     <div id="app">
@@ -81,6 +82,16 @@
                                 <div class="editor-header">
                                     <input type="text" id="chapter-title" class="input-field" data-i18n-placeholder="story.chapterTitle" placeholder="章节标题">
                                     <button id="show-ai-panel-btn" class="btn btn-sm" title="显示AI助手">🤖</button>
+                                </div>
+                                <div class="view-location-selector">
+                                    <label data-i18n="story.viewLocation">当前视角位置:</label>
+                                    <select id="view-location-select" class="input-field">
+                                        <option value="" data-i18n="story.viewLocationAny">全知视角</option>
+                                    </select>
+                                    <div id="present-elements-indicator" class="present-elements-indicator">
+                                        <span data-i18n="story.presentElements">在场元素: </span>
+                                        <span id="present-elements-count">0</span>
+                                    </div>
                                 </div>
                                 <div class="paragraphs-container">
                                     <div id="paragraphs-list" class="paragraphs-list"></div>

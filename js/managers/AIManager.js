@@ -28,6 +28,14 @@ class AIManager {
 
         this.tools = {};  // AI tools registry
         this.elements = {};
+
+        // 新的管理器（延迟初始化）
+        this.elementManager = null;
+        this.stateTimeline = null;
+        this.storyViewManager = null;
+        this.stateContextCache = null;
+        this.aiElementTools = null;
+        this.aiPreviewManager = null;
     }
 
     /**
@@ -43,8 +51,14 @@ class AIManager {
         // Initialize input height
         this.autoResizeInput();
 
+        // Initialize new Element/Event/State components
+        this.initializeElementStateComponents();
+
         // Register AI tools
         this.registerAITools();
+
+        // Register AI Element Tools
+        this.registerAIElementTools();
 
         // Listen for configuration changes
         this.configManager.onChange(() => {
@@ -54,6 +68,65 @@ class AIManager {
         // Listen for window resize
         window.addEventListener('resize', () => {
             this.checkResponsiveLayout();
+        });
+    }
+
+    /**
+     * Initialize Element/Event/State components
+     */
+    initializeElementStateComponents() {
+        // 延迟加载组件以避免循环依赖
+        const StoryElement = require('../models/StoryElement');
+        const StateChange = require('../models/StateChange');
+        const StoryTimestamp = require('../models/StoryTimestamp');
+        const ElementManager = require('../managers/ElementManager');
+        const StateTimeline = require('../managers/StateTimeline');
+        const StoryViewManager = require('../managers/StoryViewManager');
+        const StateContextCache = require('../managers/StateContextCache');
+        const AIElementTools = require('../managers/AIElementTools');
+        const AIPreviewManager = require('../managers/AIPreviewManager');
+
+        // 创建管理器实例
+        this.elementManager = new ElementManager(this.state.currentStory || { elements: [] });
+        this.stateTimeline = new StateTimeline(this.elementManager, this.state.currentStory || { chapters: [] });
+        this.storyViewManager = new StoryViewManager(this.elementManager, this.stateTimeline);
+        this.stateContextCache = new StateContextCache(this.stateTimeline, this.storyViewManager);
+        this.aiElementTools = new AIElementTools(
+            this.elementManager,
+            this.stateTimeline,
+            this.state.currentStory || { chapters: [] }
+        );
+        this.aiPreviewManager = new AIPreviewManager(
+            this.state.currentStory || { chapters: [] },
+            this.elementManager,
+            this.stateTimeline,
+            this.stateContextCache,
+            this.aiElementTools
+        );
+    }
+
+    /**
+     * Register AI Element Tools
+     */
+    registerAIElementTools() {
+        if (!this.aiElementTools) {
+            console.warn('AIElementTools not initialized');
+            return;
+        }
+
+        const toolDefinitions = this.aiElementTools.getToolDefinitions();
+
+        toolDefinitions.forEach(definition => {
+            this.registerTool(
+                definition.name,
+                {
+                    type: definition.parameters ? 'object' : 'object',
+                    description: definition.description,
+                    properties: definition.parameters || {},
+                    required: definition.required || []
+                },
+                (params) => this.aiElementTools[definition.name](params)
+            );
         });
     }
 
@@ -810,6 +883,65 @@ class AIManager {
         const chapter = this.state.currentStory.chapters.find(c => c.id === this.currentChapterId);
         if (!chapter) return null;
 
+        // 如果新的状态上下文组件已初始化，使用它们
+        if (this.stateContextCache && this.elementManager) {
+            return this.buildContextWithStateCache(chapter);
+        }
+
+        // 回退到旧版本
+        return this.buildContextLegacy(chapter);
+    }
+
+    /**
+     * Build context with state cache (new Element/Event/State driven)
+     */
+    buildContextWithStateCache(chapter) {
+        const context = {
+            chapterTitle: chapter.title || '',
+            chapterContent: chapter.paragraphs?.map(p => p.content).join('\n\n') || ''
+        };
+
+        // 获取第一个段落 ID（或当前选中段落的 ID）
+        const firstParagraph = chapter.paragraphs?.[0];
+        const paragraphId = this.state.selectedParagraph || (firstParagraph?.id);
+
+        if (paragraphId) {
+            // 获取状态上下文
+            const stateContext = this.stateContextCache.getContext(paragraphId, {
+                useCache: true,
+                useViewLocation: true
+            });
+
+            // 添加元素信息
+            if (stateContext.elements && stateContext.elements.length > 0) {
+                context.elements = stateContext.elements.map(element => ({
+                    id: element.id,
+                    type: element.type,
+                    name: element.name,
+                    description: element.description,
+                    keywords: element.keywords,
+                    location: element.location
+                }));
+            }
+
+            // 添加在场元素
+            if (stateContext.presentElements && stateContext.presentElements.length > 0) {
+                context.presentElements = stateContext.presentElements;
+            }
+
+            // 格式化上下文供 AI 使用
+            if (this.stateContextCache.formatContextForAI) {
+                context.formattedContext = this.stateContextCache.formatContextForAI(stateContext);
+            }
+        }
+
+        return context;
+    }
+
+    /**
+     * Build context (legacy version)
+     */
+    buildContextLegacy(chapter) {
         const context = {
             chapterTitle: chapter.title || '',
             chapterContent: chapter.paragraphs?.map(p => p.content).join('\n\n') || ''
@@ -1120,6 +1252,9 @@ class AIManager {
                 this.state.updateParagraph(this.state.selectedChapter, paragraphIdToUse, { changes: paragraph.changes });
             }
         }
+
+        // Show success notification
+        this.notificationManager.showSuccess(`Character "${character.name}" state updated`);
 
         return {
             characterId,
