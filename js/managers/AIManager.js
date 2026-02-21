@@ -58,8 +58,10 @@ class AIManager {
         // Register AI tools
         this.registerAITools();
 
-        // Register AI Element Tools
-        this.registerAIElementTools();
+        // Register AI Element Tools (only if aiElementTools was initialized)
+        if (this.aiElementTools) {
+            this.registerAIElementTools();
+        }
 
         // Listen for configuration changes
         this.configManager.onChange(() => {
@@ -82,6 +84,18 @@ class AIManager {
             return;
         }
 
+        // 检查 AIElementTools 是否已加载
+        if (typeof AIElementTools === 'undefined') {
+            console.warn('[AIManager] AIElementTools not loaded yet, skipping initialization');
+            return;
+        }
+
+        // 检查 ParagraphAnalyzer 是否已加载
+        if (typeof ParagraphAnalyzer === 'undefined') {
+            console.warn('[AIManager] ParagraphAnalyzer not loaded yet, skipping initialization');
+            return;
+        }
+
         // 创建管理器实例
         this.elementManager = new ElementManager(this.state.currentStory || { elements: [] });
         this.stateTimeline = new StateTimeline(this.elementManager, this.state.currentStory || { chapters: [] });
@@ -101,16 +115,53 @@ class AIManager {
         );
 
         // Initialize Paragraph Analyzer
-        if (typeof ParagraphAnalyzer !== 'undefined') {
-            this.paragraphAnalyzer = new ParagraphAnalyzer(
-                this.state.currentStory || { chapters: [] },
-                this.elementManager,
-                this.aiService,
-                this.configManager
-            );
-        } else {
-            console.warn('[AIManager] ParagraphAnalyzer not loaded yet, will initialize later');
+        this.paragraphAnalyzer = new ParagraphAnalyzer(
+            this.state.currentStory || { chapters: [] },
+            this.elementManager,
+            this.aiService,
+            this.configManager,
+            this.aiElementTools
+        );
+    }
+
+    /**
+     * Re-initialize Element/Event/State components after story is loaded
+     */
+    reloadElementStateComponents() {
+        // 检查这些类是否已经加载
+        if (typeof ElementManager === 'undefined') {
+            console.warn('[AIManager] ElementManager not loaded yet, skipping reload');
+            return;
         }
+
+        // 重新初始化 ElementManager 以加载迁移后的数据
+        this.elementManager = new ElementManager(this.state.currentStory || { elements: [] });
+        this.stateTimeline = new StateTimeline(this.elementManager, this.state.currentStory || { chapters: [] });
+        this.storyViewManager = new StoryViewManager(this.elementManager, this.stateTimeline);
+        this.stateContextCache = new StateContextCache(this.stateTimeline, this.storyViewManager);
+        this.aiElementTools = new AIElementTools(
+            this.elementManager,
+            this.stateTimeline,
+            this.state.currentStory || { chapters: [] }
+        );
+        this.aiPreviewManager = new AIPreviewManager(
+            this.state.currentStory || { chapters: [] },
+            this.elementManager,
+            this.stateTimeline,
+            this.stateContextCache,
+            this.aiElementTools
+        );
+
+        // Re-initialize Paragraph Analyzer
+        this.paragraphAnalyzer = new ParagraphAnalyzer(
+            this.state.currentStory || { chapters: [] },
+            this.elementManager,
+            this.aiService,
+            this.configManager,
+            this.aiElementTools
+        );
+
+        console.log('[AIManager] Element/Event/State components reloaded');
     }
 
     /**
@@ -125,15 +176,20 @@ class AIManager {
         const toolDefinitions = this.aiElementTools.getToolDefinitions();
 
         toolDefinitions.forEach(definition => {
+            // New format: { type: 'function', function: { name, description, parameters } }
+            const funcDef = definition.function || definition;
+            const name = funcDef.name;
+            const parameters = funcDef.parameters;
+
             this.registerTool(
-                definition.name,
+                name,
                 {
-                    type: definition.parameters ? 'object' : 'object',
-                    description: definition.description,
-                    properties: definition.parameters || {},
-                    required: definition.required || []
+                    type: parameters.type,
+                    description: funcDef.description,
+                    properties: parameters.properties,
+                    required: parameters.required
                 },
-                (params) => this.aiElementTools[definition.name](params)
+                (params) => this.aiElementTools[name](params)
             );
         });
     }
@@ -1388,7 +1444,8 @@ class AIManager {
                 this.state.currentStory || { chapters: [] },
                 this.elementManager || null, // Can be null initially
                 this.aiService,
-                this.configManager
+                this.configManager,
+                this.aiElementTools
             );
 
             // Update with element manager if it becomes available

@@ -466,6 +466,21 @@ body.dark {
     overflow-y: auto;
 }
 
+.api-request-preview {
+    background-color: var(--light-bg);
+    border: 1px solid var(--light-border);
+    border-radius: 4px;
+    padding: 15px;
+    font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    white-space: pre;
+    word-wrap: normal;
+    overflow-x: auto;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
 body.dark .prompt-preview-text {
     background-color: var(--dark-sidebar);
 }

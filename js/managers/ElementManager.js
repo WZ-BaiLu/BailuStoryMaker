@@ -3,8 +3,6 @@
  * 负责元素的 CRUD 操作和状态历史管理
  */
 
-const StoryElement = require('../models/StoryElement');
-
 class ElementManager {
   constructor(storyData) {
     this.storyData = storyData;

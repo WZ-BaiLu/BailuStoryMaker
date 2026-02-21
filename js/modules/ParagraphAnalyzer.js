@@ -16,12 +16,14 @@ class ParagraphAnalyzer {
      * @param {ElementManager} elementManager - Element manager (optional)
      * @param {AIService} aiService - AI service for analysis
      * @param {AIConfigManager} configManager - AI config manager
+     * @param {AIElementTools} aiElementTools - AI element tools (optional)
      */
-    constructor(story, elementManager, aiService, configManager) {
+    constructor(story, elementManager, aiService, configManager, aiElementTools = null) {
         this.story = story;
         this.elementManager = elementManager;
         this.aiService = aiService;
         this.configManager = configManager;
+        this.aiElementTools = aiElementTools;
 
         // Analysis cache
         this.analysisCache = new Map();
@@ -54,25 +56,28 @@ class ParagraphAnalyzer {
     async analyzeParagraph(paragraph, context) {
         const cacheKey = this.getCacheKey(paragraph.id);
 
-        // Check cache
-        if (this.analysisCache.has(cacheKey)) {
+        // Check cache - only cache if no tools are available
+        if (this.aiElementTools && this.analysisCache.has(cacheKey)) {
             return this.analysisCache.get(cacheKey);
         }
 
         // Build analysis context
         const analysisContext = this.buildAnalysisContext(paragraph, context);
 
-        // Generate prompt
-        const prompt = this.generateAnalysisPrompt(paragraph, analysisContext);
+        // Generate prompt messages
+        const promptMessages = this.generateAnalysisPrompt(paragraph, analysisContext);
 
-        // Call AI
-        const aiResponse = await this.callAIForAnalysis(prompt);
+        // Call AI with tools if available
+        const tools = this.aiElementTools ? this.aiElementTools.getToolDefinitions() : null;
+        const aiResponse = await this.callAIForAnalysisWithTools(promptMessages, tools);
 
         // Parse response
         const analysis = this.parseAnalysisResult(aiResponse, paragraph.id);
 
-        // Cache result
-        this.analysisCache.set(cacheKey, analysis);
+        // Cache result only if no tools were used (tools modify state, so we shouldn't cache)
+        if (!tools || tools.length === 0) {
+            this.analysisCache.set(cacheKey, analysis);
+        }
 
         return analysis;
     }
@@ -129,15 +134,20 @@ class ParagraphAnalyzer {
      * Generate AI prompt for paragraph analysis
      * @param {Object} paragraph - The paragraph to analyze
      * @param {Object} analysisContext - Analysis context
-     * @returns {string} AI prompt
+     * @returns {Object} Object with system, assistant and user messages
      */
     generateAnalysisPrompt(paragraph, analysisContext) {
-        let prompt = `请分析以下段落内容，提取故事元素、事件和状态变化。
+        // System message with analysis requirements
+        const systemMessage = `你是一个专业的小说分析助手，负责分析小说段落并通过工具调用来更新故事元素和状态。
 
-## 段落内容
-${paragraph.content}
+请分析段落内容，并调用相应的工具来：
+1. 创建新的故事元素（人物、道具、地点、记忆、基础设定）
+2. 更新已有元素的状态（位置、描述、拥有者、状态、关键词等）
 
-## 当前故事背景
+使用提供的工具完成分析，不要返回 JSON 或其他格式的数据。`;
+
+        // Assistant message with context information
+        const assistantMessage = `## 当前故事背景
 - 章节: ${analysisContext.chapter ? analysisContext.chapter.title : '未知'}
 - 当前所在地: ${analysisContext.currentLocation || '未知'}
 
@@ -145,43 +155,16 @@ ${paragraph.content}
 ${this.formatElementsForPrompt(analysisContext.existingElements)}
 
 ## 前几个段落（上下文）
-${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).join('\n')}
+${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).join('\n')}`;
 
-## 分析要求
-请严格以 JSON 格式返回分析结果（不要包含任何其他文字），包含以下字段：
+        // User message with only paragraph content
+        const userMessage = paragraph.content;
 
-1. **elements**: 段落中提到或新增的故事元素数组
-   - 对于已存在的元素，返回: {"id": "existing_id", "type": "character"}
-   - 对于新元素，返回: {"id": "NEW:元素名称", "type": "character", "name": "元素名称", "description": "描述", "keywords": []}
-   - 类型包括: character(人物), item(道具), location(地点), memory(记忆), base(基础设定)
-
-2. **events**: 段落中发生的事件数组
-   - 每个事件: {"description": "事件描述", "type": "action", "participants": [], "location": null}
-   - type: action, dialogue, discovery, conflict, emotional, state_change
-
-3. **stateChanges**: 元素状态变化数组
-   - 每个变化: {"elementId": "元素ID", "property": "location", "from": "旧值", "to": "新值"}
-   - property 可以是: location, description, owner, status, keywords
-
-示例返回格式：
-\`\`\`json
-{
-  "elements": [
-    {"id": "char_1", "type": "character"},
-    {"id": "NEW:山", "type": "location", "name": "山", "description": "一座山", "keywords": ["山", "山峰"]}
-  ],
-  "events": [
-    {"description": "角色到达目的地", "type": "action", "participants": ["char_1"], "location": "NEW:山"}
-  ],
-  "stateChanges": [
-    {"elementId": "char_1", "property": "location", "from": "在路上", "to": "NEW:山"}
-  ]
-}
-\`\`\`
-
-重要：只返回 JSON 代码，不要添加任何解释性文字。`;
-
-        return prompt;
+        return {
+            system: systemMessage,
+            assistant: assistantMessage,
+            user: userMessage
+        };
     }
 
     /**
@@ -194,7 +177,7 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
             const config = this.configManager.getConfig();
             const messages = [{ role: 'user', content: prompt }];
 
-            const result = await this.aiService.chat(config, messages);
+            const result = await this.aiService.chat(config, messages, null, null);
 
             if (!result.success) {
                 throw new Error(result.error || 'AI service error');
@@ -208,30 +191,134 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
     }
 
     /**
+     * Call AI for analysis with tools support
+     * @param {Object} promptMessages - Object with system, assistant and user messages
+     * @param {Array} tools - Array of tool definitions
+     * @returns {Promise<Object>} AI response with tool calls executed
+     */
+    async callAIForAnalysisWithTools(promptMessages, tools = null) {
+        try {
+            const config = this.configManager.getConfig();
+            const messages = [
+                { role: 'system', content: promptMessages.system },
+                { role: 'assistant', content: promptMessages.assistant },
+                { role: 'user', content: promptMessages.user }
+            ];
+
+            const result = await this.aiService.chat(config, messages, null, tools);
+
+            if (!result.success) {
+                throw new Error(result.error || 'AI service error');
+            }
+
+            // Execute tool calls if present
+            if (result.data.tool_calls && Array.isArray(result.data.tool_calls)) {
+                const executedToolCalls = [];
+
+                for (const toolCall of result.data.tool_calls) {
+                    const functionName = toolCall.function?.name || toolCall.name;
+                    const functionArgs = toolCall.function?.arguments ?
+                        JSON.parse(toolCall.function.arguments) :
+                        toolCall.arguments;
+
+                    // Execute the tool
+                    const toolResult = await this.executeTool(functionName, functionArgs);
+
+                    executedToolCalls.push({
+                        name: functionName,
+                        arguments: functionArgs,
+                        result: toolResult
+                    });
+                }
+
+                result.data.tool_calls = executedToolCalls;
+            }
+
+            return result.data;
+        } catch (error) {
+            console.error('AI analysis with tools failed:', error);
+            throw new Error(`AI 分析失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * Execute a tool by name with arguments
+     * @param {string} toolName - Name of the tool to execute
+     * @param {Object} args - Tool arguments
+     * @returns {Promise<Object>} Tool execution result
+     */
+    async executeTool(toolName, args) {
+        if (!this.aiElementTools) {
+            return {
+                success: false,
+                error: 'AIElementTools not initialized'
+            };
+        }
+
+        const toolMap = {
+            'addElement': 'addElement',
+            'updateElementLocation': 'updateElementLocation',
+            'updateElementDescription': 'updateElementDescription',
+            'updateParagraphTimestamp': 'updateParagraphTimestamp'
+        };
+
+        const methodName = toolMap[toolName];
+        if (!methodName) {
+            return {
+                success: false,
+                error: `Unknown tool: ${toolName}`
+            };
+        }
+
+        try {
+            const result = await this.aiElementTools[methodName](args);
+            return result;
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
      * Parse AI analysis result
-     * @param {Object} aiResponse - AI response
+     * @param {Object} aiResponse - AI response with executed tool calls
      * @param {string} paragraphId - Paragraph ID
      * @returns {Object} Parsed analysis
      */
     parseAnalysisResult(aiResponse, paragraphId) {
         try {
-            // Extract JSON from AI response
-            let jsonContent = aiResponse.content;
+            // AI response contains tool_calls which have been executed
+            const analysisData = {
+                elements: [],
+                events: [],
+                stateChanges: [],
+                toolCalls: []
+            };
 
-            // Try to extract JSON from markdown code blocks
-            const jsonMatch = jsonContent.match(/```json\s*([\s\S]*?)\s*```/);
-            if (jsonMatch) {
-                jsonContent = jsonMatch[1];
+            // Extract tool calls if present
+            if (aiResponse.tool_calls && Array.isArray(aiResponse.tool_calls)) {
+                for (const toolCall of aiResponse.tool_calls) {
+                    analysisData.toolCalls.push({
+                        name: toolCall.name,
+                        args: toolCall.arguments,
+                        result: toolCall.result
+                    });
+
+                    // Build state changes and events from successful tool calls
+                    if (toolCall.result && toolCall.result.success) {
+                        this.processToolCallResult(toolCall, analysisData);
+                    }
+                }
             }
-
-            const analysisData = JSON.parse(jsonContent);
 
             return {
                 paragraphId: paragraphId,
                 timestamp: new Date().toISOString(),
-                elements: this.processElements(analysisData.elements),
-                events: this.processEvents(analysisData.events),
-                stateChanges: this.processStateChanges(analysisData.stateChanges),
+                elements: analysisData.elements,
+                events: analysisData.events,
+                stateChanges: analysisData.stateChanges,
                 rawAnalysis: analysisData
             };
         } catch (error) {
@@ -243,6 +330,92 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                 events: [],
                 stateChanges: []
             };
+        }
+    }
+
+    /**
+     * Process tool call result to build analysis data
+     * @param {Object} toolCall - Tool call with result
+     * @param {Object} analysisData - Analysis data to update
+     */
+    processToolCallResult(toolCall, analysisData) {
+        switch (toolCall.name) {
+            case 'addElement':
+                if (toolCall.result.element) {
+                    analysisData.elements.push({
+                        id: toolCall.result.element.id,
+                        type: toolCall.result.element.type,
+                        name: toolCall.result.element.name,
+                        isNew: true
+                    });
+
+                    // Adding a new element is itself an event
+                    const typeMap = {
+                        'character': '人物',
+                        'item': '道具',
+                        'location': '地点',
+                        'memory': '记忆',
+                        'base': '设定'
+                    };
+                    const typeName = typeMap[toolCall.arguments.type] || '元素';
+
+                    analysisData.events.push({
+                        description: `新增${typeName}: ${toolCall.arguments.name}`,
+                        type: 'discovery',
+                        participants: [toolCall.result.element.id],
+                        location: null
+                    });
+                }
+                break;
+
+            case 'updateElementLocation':
+                if (toolCall.arguments) {
+                    const element = this.elementManager?.getElementById(toolCall.arguments.elementId);
+                    analysisData.stateChanges.push({
+                        elementId: toolCall.arguments.elementId,
+                        elementName: element?.name || toolCall.arguments.elementId,
+                        property: 'location',
+                        from: '当前位置',
+                        to: toolCall.arguments.location,
+                        changes: {
+                            location: toolCall.arguments.location
+                        }
+                    });
+
+                    // Location change is an event
+                    analysisData.events.push({
+                        description: `${element?.name || toolCall.arguments.elementId} 移动到了 ${toolCall.arguments.location || '未知'}`,
+                        type: 'action',
+                        participants: [toolCall.arguments.elementId],
+                        location: toolCall.arguments.location
+                    });
+                }
+                break;
+
+            case 'updateElementDescription':
+                if (toolCall.arguments && toolCall.result && toolCall.result.changes) {
+                    const element = this.elementManager?.getElementById(toolCall.arguments.elementId);
+                    analysisData.stateChanges.push({
+                        elementId: toolCall.arguments.elementId,
+                        elementName: element?.name || toolCall.arguments.elementId,
+                        property: 'description',
+                        from: '原有描述',
+                        to: JSON.stringify(toolCall.result.changes),
+                        changes: toolCall.result.changes
+                    });
+                }
+                break;
+
+            case 'updateParagraphTimestamp':
+                if (toolCall.result && toolCall.result.timestamp) {
+                    analysisData.events.push({
+                        description: `段落时间戳更新为 ${toolCall.result.timestamp.narrativeType || '线性'}`,
+                        type: 'state_change',
+                        participants: [],
+                        location: null
+                    });
+                }
+                break;
         }
     }
 
@@ -471,39 +644,16 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
             errors: []
         };
 
-        // Create new elements
+        // Note: Elements are already created by tool calls during analysis
+        // We just need to record them and apply state changes to the paragraph
         for (const element of analysis.elements) {
             if (element.isNew) {
-                try {
-                    if (!this.elementManager) {
-                        throw new Error('ElementManager not initialized');
-                    }
-                    const newElement = await this.elementManager.addElement({
-                        type: element.type,
-                        name: element.name,
-                        description: element.description,
-                        keywords: element.keywords
-                    });
-
-                    result.createdElements.push({
-                        temporaryId: element.temporaryId,
-                        elementId: newElement.id,
-                        name: newElement.name
-                    });
-
-                    // Update stateChanges to use new elementId
-                    this.updateStateChangeElementIds(
-                        analysis.stateChanges,
-                        element.temporaryId,
-                        newElement.id
-                    );
-                } catch (error) {
-                    result.errors.push({
-                        type: 'createElement',
-                        element: element.temporaryId,
-                        error: error.message
-                    });
-                }
+                // Element was already created by the tool call
+                result.createdElements.push({
+                    elementId: element.id,
+                    name: element.name,
+                    type: element.type
+                });
             }
         }
 

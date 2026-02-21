@@ -140,7 +140,7 @@ class UIRenderer {
         }
 
         // Get current view location from StoryViewManager (if available)
-        const currentView = this.app.aiManager?.storyViewManager?.getCurrentView() || '';
+        const currentView = this.app.aiManager?.storyViewManager?.getViewLocation() || '';
 
         // Set current value without triggering change event
         selector.value = currentView;
@@ -544,13 +544,16 @@ class UIRenderer {
         const story = this.state.currentStory;
         if (!story) return;
 
-        container.innerHTML = story.characters.map(character => `
-            <div class="list-item ${this.state.selectedCharacter === character.id ? 'active' : ''}"
-                 data-character-id="${character.id}">
+        // Get all elements and filter by character type
+        const elements = (story.elements || []).filter(el => el.type === 'character');
+
+        container.innerHTML = elements.map(element => `
+            <div class="list-item ${this.state.selectedCharacter === element.id ? 'active' : ''}"
+                 data-element-id="${element.id}">
                 <div class="list-item-header">
-                    <span class="list-item-title">${character.name}</span>
+                    <span class="list-item-title">${element.name}</span>
                     <div class="list-item-actions">
-                        <button class="btn btn-sm btn-delete" data-action="delete-character" data-character-id="${character.id}">删除</button>
+                        <button class="btn btn-sm btn-delete" data-action="delete-character" data-element-id="${element.id}">删除</button>
                     </div>
                 </div>
             </div>
@@ -558,7 +561,7 @@ class UIRenderer {
 
         this.bindCharacterEvents(container);
 
-        if (story.characters.length === 0) {
+        if (elements.length === 0) {
             container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-text">${i18n.t('messages.noCharacters')}</div></div>`;
         }
     }
@@ -860,14 +863,17 @@ class UIRenderer {
         const story = this.state.currentStory;
         if (!story) return;
 
-        container.innerHTML = story.items.map(item => `
-            <div class="list-item ${this.state.selectedItem === item.id ? 'active' : ''}"
-                 data-item-id="${item.id}">
+        // Get all elements and filter by item type
+        const elements = (story.elements || []).filter(el => el.type === 'item');
+
+        container.innerHTML = elements.map(element => `
+            <div class="list-item ${this.state.selectedItem === element.id ? 'active' : ''}"
+                 data-element-id="${element.id}">
                 <div class="list-item-header">
-                    <span class="list-item-title">${item.name}</span>
-                    <span class="tag">${Constants.ITEM_TYPES[item.type] || item.type}</span>
+                    <span class="list-item-title">${element.name}</span>
+                    <span class="tag">道具</span>
                     <div class="list-item-actions">
-                        <button class="btn btn-sm btn-delete" data-action="delete-item" data-item-id="${item.id}">删除</button>
+                        <button class="btn btn-sm btn-delete" data-action="delete-item" data-element-id="${element.id}">删除</button>
                     </div>
                 </div>
             </div>
@@ -875,7 +881,7 @@ class UIRenderer {
 
         this.bindItemEvents(container);
 
-        if (story.items.length === 0) {
+        if (elements.length === 0) {
             container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎒</div><div class="empty-state-text">${i18n.t('messages.noItems')}</div></div>`;
         }
     }
@@ -991,6 +997,115 @@ class UIRenderer {
     // ==================== Setting Rendering ====================
 
     /**
+     * Render all elements list
+     */
+    renderAllElements() {
+        const container = document.getElementById('all-elements');
+        const story = this.state.currentStory;
+        if (!story) return;
+
+        // Get all elements
+        const elements = story.elements || [];
+
+        const typeLabels = {
+            'character': '人物',
+            'item': '道具',
+            'location': '地点',
+            'memory': '记忆',
+            'base': '设定'
+        };
+
+        container.innerHTML = elements.map(element => `
+            <div class="list-item ${this.state.selectedElement === element.id ? 'active' : ''}"
+                 data-element-id="${element.id}">
+                <div class="list-item-header">
+                    <span class="list-item-title">${element.name}</span>
+                    <span class="tag">${typeLabels[element.type] || element.type}</span>
+                    <div class="list-item-actions">
+                        <button class="btn btn-sm btn-delete" data-action="delete-element" data-element-id="${element.id}">删除</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        this.bindAllElementsEvents(container);
+
+        if (elements.length === 0) {
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">暂无元素</div></div>`;
+        }
+    }
+
+    /**
+     * Bind all elements events
+     * @param {HTMLElement} container - The all elements container
+     */
+    bindAllElementsEvents(container) {
+        container.querySelectorAll('.list-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('btn-delete')) {
+                    const elementId = item.dataset.elementId;
+                    this.state.selectElement(elementId);
+                    this.renderAllElements();
+                    this.renderElementEditor(elementId);
+                }
+            });
+        });
+
+        container.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const elementId = btn.dataset.elementId;
+                if (confirm('确定要删除这个元素吗？')) {
+                    this.state.deleteElement(elementId);
+                    this.renderAllElements();
+                    if (this.state.selectedElement === elementId) {
+                        this.state.selectElement(null);
+                        this.renderElementEditor(null);
+                    }
+                }
+            });
+        });
+    }
+
+    /**
+     * Render element editor
+     * @param {string|null} elementId - The element ID to render
+     */
+    renderElementEditor(elementId) {
+        const contentPanel = document.getElementById('element-editor-content');
+        const placeholderPanel = document.getElementById('element-editor-placeholder');
+        const story = this.state.currentStory;
+
+        if (!elementId || !story) {
+            contentPanel.classList.add('hidden');
+            placeholderPanel.classList.add('active');
+            this.clearElementForm();
+            return;
+        }
+
+        const element = story.elements.find(el => el.id === elementId);
+        if (element) {
+            contentPanel.classList.remove('hidden');
+            placeholderPanel.classList.remove('active');
+
+            document.getElementById('element-type').value = element.type;
+            document.getElementById('element-name').value = element.name;
+            document.getElementById('element-description').value = element.description || '';
+            document.getElementById('element-keywords').value = (element.keywords || []).join(', ');
+        }
+    }
+
+    /**
+     * Clear element form
+     */
+    clearElementForm() {
+        document.getElementById('element-type').value = 'character';
+        document.getElementById('element-name').value = '';
+        document.getElementById('element-description').value = '';
+        document.getElementById('element-keywords').value = '';
+    }
+
+    /**
      * Render the settings list
      */
     renderSettings() {
@@ -998,19 +1113,17 @@ class UIRenderer {
         const story = this.state.currentStory;
         if (!story) return;
 
-        // Update parent dropdown
-        const parentSelect = document.getElementById('setting-parent');
-        parentSelect.innerHTML = '<option value="">无父级</option>' +
-            story.settings.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        // Get all elements and filter by base/location type
+        const elements = (story.elements || []).filter(el => el.type === 'base' || el.type === 'location');
 
-        container.innerHTML = story.settings.map(setting => `
-            <div class="list-item ${this.state.selectedSetting === setting.id ? 'active' : ''}"
-                 data-setting-id="${setting.id}">
+        container.innerHTML = elements.map(element => `
+            <div class="list-item ${this.state.selectedSetting === element.id ? 'active' : ''}"
+                 data-element-id="${element.id}">
                 <div class="list-item-header">
-                    <span class="list-item-title">${setting.name}</span>
-                    <span class="tag">${Constants.SETTING_TYPES[setting.type] || setting.type}</span>
+                    <span class="list-item-title">${element.name}</span>
+                    <span class="tag">${element.type === 'location' ? '地点' : '设定'}</span>
                     <div class="list-item-actions">
-                        <button class="btn btn-sm btn-delete" data-action="delete-setting" data-setting-id="${setting.id}">删除</button>
+                        <button class="btn btn-sm btn-delete" data-action="delete-setting" data-element-id="${element.id}">删除</button>
                     </div>
                 </div>
             </div>
@@ -1018,7 +1131,7 @@ class UIRenderer {
 
         this.bindSettingEvents(container);
 
-        if (story.settings.length === 0) {
+        if (elements.length === 0) {
             container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏰</div><div class="empty-state-text">${i18n.t('messages.noSettings')}</div></div>`;
         }
     }

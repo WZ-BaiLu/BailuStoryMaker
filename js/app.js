@@ -160,14 +160,23 @@ class App {
         const story = this.state.currentStory;
         document.getElementById('story-title').textContent = story.metadata.title;
         this.uiRenderer.renderChapters();
+        this.uiRenderer.renderAllElements();
         this.uiRenderer.renderCharacters();
         this.uiRenderer.renderItems();
         this.uiRenderer.renderSettings();
+
+        // Reload Element/Event/State components with migrated data
+        if (this.aiManager) {
+            this.aiManager.reloadElementStateComponents();
+        }
 
         // Restore selected items in editors
         if (this.state.selectedChapter) {
             this.uiRenderer.renderChapterEditor(this.state.selectedChapter);
             this.aiManager.setCurrentChapter(this.state.selectedChapter);
+        }
+        if (this.state.selectedElement) {
+            this.uiRenderer.renderElementEditor(this.state.selectedElement);
         }
         if (this.state.selectedCharacter) {
             this.uiRenderer.renderCharacterEditor(this.state.selectedCharacter);
@@ -423,6 +432,45 @@ class App {
     }
 
     /**
+     * Add a new element
+     */
+    addElement() {
+        if (!this.state.currentStory) {
+            this.notificationManager.showError(i18n.t('messages.createOrLoadStory'));
+            return;
+        }
+        const element = this.state.addElement({ type: 'character', name: i18n.t('messages.noCharacters') });
+        this.state.selectElement(element.id);
+        this.uiRenderer.renderAllElements();
+        this.uiRenderer.renderElementEditor(element.id);
+    }
+
+    /**
+     * Save element form data
+     * @param {Event} e - Form submit event
+     */
+    saveElement(e) {
+        e.preventDefault();
+        if (!this.state.selectedElement) return;
+
+        const story = this.state.currentStory;
+        const element = story.elements.find(el => el.id === this.state.selectedElement);
+        if (element) {
+            element.type = document.getElementById('element-type').value;
+            element.name = document.getElementById('element-name').value.trim();
+            element.description = document.getElementById('element-description').value.trim();
+            element.keywords = document.getElementById('element-keywords').value
+                .split(',')
+                .map(k => k.trim())
+                .filter(k => k);
+
+            this.state.notify('elementUpdated', element);
+            this.uiRenderer.renderAllElements();
+            this.notificationManager.showSuccess(i18n.t('status.saved'));
+        }
+    }
+
+    /**
      * Save setting form data
      * @param {Event} e - Form submit event
      */
@@ -675,11 +723,30 @@ class App {
 
             const analysisContext = this.aiManager.paragraphAnalyzer.buildAnalysisContext(paragraph, context);
 
-            // Generate prompt
-            const prompt = this.aiManager.paragraphAnalyzer.generateAnalysisPrompt(paragraph, analysisContext);
+            // Generate prompt messages
+            const promptMessages = this.aiManager.paragraphAnalyzer.generateAnalysisPrompt(paragraph, analysisContext);
+
+            // Build API request object
+            const config = this.aiManager.configManager.getConfig();
+            const messages = [
+                { role: 'system', content: promptMessages.system },
+                { role: 'assistant', content: promptMessages.assistant },
+                { role: 'user', content: promptMessages.user }
+            ];
+
+            // Get tools from AIElementTools if available
+            const tools = this.aiManager.aiElementTools?.getToolDefinitions() || [];
+
+            const apiRequest = {
+                model: config.model,
+                temperature: config.temperature,
+                max_tokens: config.maxTokens,
+                messages: messages,
+                tools: tools.length > 0 ? tools : undefined
+            };
 
             // Show preview modal
-            this.showPromptPreviewModal(paragraph, prompt);
+            this.showPromptPreviewModal(paragraph, apiRequest);
 
         } catch (error) {
             this.notificationManager.showError(`预览失败: ${error.message}`);
@@ -752,15 +819,15 @@ class App {
     /**
      * Show prompt preview modal
      * @param {Object} paragraph - The paragraph object
-     * @param {string} prompt - The AI prompt
+     * @param {Object} apiRequest - The complete API request object
      */
-    showPromptPreviewModal(paragraph, prompt) {
+    showPromptPreviewModal(paragraph, apiRequest) {
         const modal = document.createElement('div');
         modal.className = 'modal prompt-preview-modal';
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>👁️ AI 请求预览</h3>
+                    <h3>👁️ AI API 请求预览</h3>
                     <button class="modal-close">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -769,8 +836,8 @@ class App {
                         <p class="preview-text">${paragraph.content}</p>
                     </div>
                     <div class="preview-section">
-                        <h4>AI Prompt</h4>
-                        <pre class="prompt-preview-text">${this.escapeHtml(prompt)}</pre>
+                        <h4>API 请求参数</h4>
+                        <pre class="api-request-preview">${this.escapeHtml(JSON.stringify(apiRequest, null, 2))}</pre>
                     </div>
                 </div>
                 <div class="modal-footer">

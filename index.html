@@ -141,13 +141,47 @@
                 <div id="elements-view" class="view">
                     <div class="elements-container">
                         <div class="elements-tabs">
-                            <button class="tab-btn active" data-tab="characters" data-i18n="elements.charactersTab">角色</button>
+                            <button class="tab-btn active" data-tab="all" data-i18n="elements.allTab">全部</button>
+                            <button class="tab-btn" data-tab="characters" data-i18n="elements.charactersTab">角色</button>
                             <button class="tab-btn" data-tab="items" data-i18n="elements.itemsTab">道具</button>
                             <button class="tab-btn" data-tab="settings" data-i18n="elements.settingsTab">设定</button>
                         </div>
                         <div class="elements-content">
+                            <!-- All Elements Tab -->
+                            <div id="all-tab" class="elements-tab-content active">
+                                <div class="elements-list">
+                                    <h3 data-i18n="elements.allList">全部元素</h3>
+                                    <button id="add-element-btn" class="btn btn-sm" data-i18n="buttons.addElement">+ 添加元素</button>
+                                    <div id="all-elements" class="elements-list-container"></div>
+                                </div>
+                                <div class="element-editor" id="element-editor-panel">
+                                    <div id="element-editor-placeholder" class="editor-placeholder active">
+                                        <div class="placeholder-content">
+                                            <div class="placeholder-icon">📦</div>
+                                            <p data-i18n="placeholder.element">请从左侧选择一个元素或创建新元素</p>
+                                        </div>
+                                    </div>
+                                    <div id="element-editor-content" class="element-editor-content hidden">
+                                        <h3 data-i18n="element.details">元素详情</h3>
+                                        <form id="element-form" class="editor-form">
+                                            <select id="element-type" class="input-field">
+                                                <option value="character" data-i18n="element.typeCharacter">人物</option>
+                                                <option value="item" data-i18n="element.typeItem">道具</option>
+                                                <option value="location" data-i18n="element.typeLocation">地点</option>
+                                                <option value="memory" data-i18n="element.typeMemory">记忆</option>
+                                                <option value="base" data-i18n="element.typeBase">基础设定</option>
+                                            </select>
+                                            <input type="text" id="element-name" class="input-field" data-i18n-placeholder="element.name" placeholder="元素名称">
+                                            <textarea id="element-description" class="input-field" data-i18n-placeholder="element.description" placeholder="元素描述"></textarea>
+                                            <textarea id="element-keywords" class="input-field" data-i18n-placeholder="element.keywords" placeholder="关键词（逗号分隔）"></textarea>
+                                            <button type="submit" class="btn btn-primary" data-i18n="buttons.saveElement">保存元素</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Characters Tab -->
-                            <div id="characters-tab" class="elements-tab-content active">
+                            <div id="characters-tab" class="elements-tab-content">
                                 <div class="elements-list">
                                     <h3 data-i18n="elements.charactersList">角色列表</h3>
                                     <button id="add-character-btn" class="btn btn-sm" data-i18n="buttons.addCharacter">+ 添加角色</button>
@@ -392,6 +426,16 @@
     <script src="js/services/AIService.js"></script>
     <!-- AI Modules -->
     <script src="js/modules/ParagraphAnalyzer.js"></script>
+    <!-- Models -->
+    <script src="js/models/StoryElement.js"></script>
+    <script src="js/models/StoryTimestamp.js"></script>
+    <!-- Element/Event/State Components -->
+    <script src="js/managers/ElementManager.js"></script>
+    <script src="js/managers/StateTimeline.js"></script>
+    <script src="js/managers/StoryViewManager.js"></script>
+    <script src="js/managers/StateContextCache.js"></script>
+    <script src="js/managers/AIElementTools.js"></script>
+    <script src="js/managers/AIPreviewManager.js"></script>
     <!-- AI Manager (must be loaded after AIConfigManager and AIService) -->
     <script src="js/managers/AIManager.js"></script>
     <script src="js/app.js"></script>

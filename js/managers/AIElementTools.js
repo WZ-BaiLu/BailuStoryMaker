@@ -3,8 +3,6 @@
  * 为 AI 提供元素管理的工具接口
  */
 
-const StoryTimestamp = require('../models/StoryTimestamp');
-
 class AIElementTools {
   constructor(elementManager, stateTimeline, storyData) {
     this.elementManager = elementManager;
@@ -369,104 +367,128 @@ class AIElementTools {
   getToolDefinitions() {
     return [
       {
-        name: 'addElement',
-        description: '添加新的故事元素（人物、道具、地点等）',
-        parameters: {
-          type: {
-            type: 'string',
-            enum: ['character', 'item', 'location', 'memory', 'base'],
-            description: '元素类型'
-          },
-          name: {
-            type: 'string',
-            description: '元素名称'
-          },
-          description: {
-            type: 'string',
-            description: '元素描述'
-          },
-          keywords: {
-            type: 'array',
-            items: { type: 'string' },
-            description: '关键词数组（可选）'
-          }
-        },
-        required: ['type', 'name', 'description']
-      },
-      {
-        name: 'updateElementLocation',
-        description: '更新元素的位置',
-        parameters: {
-          elementId: {
-            type: 'string',
-            description: '元素 ID'
-          },
-          location: {
-            type: 'string',
-            description: '位置元素 ID 或 null（表示无位置）'
-          }
-        },
-        required: ['elementId', 'location']
-      },
-      {
-        name: 'updateElementDescription',
-        description: '更新元素的描述和状态',
-        parameters: {
-          elementId: {
-            type: 'string',
-            description: '元素 ID'
-          },
-          description: {
-            type: 'string',
-            description: '元素描述（可选）'
-          },
-          stateDescription: {
+        type: 'function',
+        function: {
+          name: 'addElement',
+          description: '添加新的故事元素（人物、道具、地点等）',
+          parameters: {
             type: 'object',
-            description: '状态描述对象（可选）'
-          },
-          keywords: {
-            type: 'array',
-            items: { type: 'string' },
-            description: '关键词数组（可选）'
-          },
-          status: {
-            type: 'string',
-            description: '状态关键词，如"破损"、"被遗忘"（可选）'
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['character', 'item', 'location', 'memory', 'base'],
+                description: '元素类型'
+              },
+              name: {
+                type: 'string',
+                description: '元素名称'
+              },
+              description: {
+                type: 'string',
+                description: '元素描述'
+              },
+              keywords: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '关键词数组（可选）'
+              }
+            },
+            required: ['type', 'name', 'description']
           }
-        },
-        required: ['elementId']
+        }
       },
       {
-        name: 'updateParagraphTimestamp',
-        description: '更新段落的时间戳，支持倒叙、插叙、平行叙事',
-        parameters: {
-          paragraphId: {
-            type: 'string',
-            description: '段落 ID'
-          },
-          narrativeType: {
-            type: 'string',
-            enum: ['linear', 'flashback', 'flashforward', 'parallel'],
-            description: '叙事类型（可选）'
-          },
-          referenceParagraphId: {
-            type: 'string',
-            description: '参考段落 ID（用于非线性叙事）'
-          },
-          timeOffset: {
-            type: 'number',
-            description: '时间偏移量（可选，未提供则自动计算）'
-          },
-          absoluteTime: {
-            type: 'string',
-            description: '绝对时间（可选）'
-          },
-          relativeTime: {
-            type: 'string',
-            description: '相对时间（可选）'
+        type: 'function',
+        function: {
+          name: 'updateElementLocation',
+          description: '更新元素的位置',
+          parameters: {
+            type: 'object',
+            properties: {
+              elementId: {
+                type: 'string',
+                description: '元素 ID'
+              },
+              location: {
+                type: 'string',
+                description: '位置元素 ID 或 null（表示无位置）'
+              }
+            },
+            required: ['elementId', 'location']
           }
-        },
-        required: ['paragraphId']
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'updateElementDescription',
+          description: '更新元素的描述和状态',
+          parameters: {
+            type: 'object',
+            properties: {
+              elementId: {
+                type: 'string',
+                description: '元素 ID'
+              },
+              description: {
+                type: 'string',
+                description: '元素描述（可选）'
+              },
+              stateDescription: {
+                type: 'object',
+                description: '状态描述对象（可选）'
+              },
+              keywords: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '关键词数组（可选）'
+              },
+              status: {
+                type: 'string',
+                description: '状态关键词，如"破损"、"被遗忘"（可选）'
+              }
+            },
+            required: ['elementId']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'updateParagraphTimestamp',
+          description: '更新段落的时间戳，支持倒叙、插叙、平行叙事',
+          parameters: {
+            type: 'object',
+            properties: {
+              paragraphId: {
+                type: 'string',
+                description: '段落 ID'
+              },
+              narrativeType: {
+                type: 'string',
+                enum: ['linear', 'flashback', 'flashforward', 'parallel'],
+                description: '叙事类型（可选）'
+              },
+              referenceParagraphId: {
+                type: 'string',
+                description: '参考段落 ID（用于非线性叙事）'
+              },
+              timeOffset: {
+                type: 'number',
+                description: '时间偏移量（可选，未提供则自动计算）'
+              },
+              absoluteTime: {
+                type: 'string',
+                description: '绝对时间（可选）'
+              },
+              relativeTime: {
+                type: 'string',
+                description: '相对时间（可选）'
+              }
+            },
+            required: ['paragraphId']
+          }
+        }
       }
     ];
   }

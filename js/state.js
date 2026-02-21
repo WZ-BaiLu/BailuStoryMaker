@@ -7,6 +7,7 @@ class AppState {
         this.selectedCharacter = null;
         this.selectedItem = null;
         this.selectedSetting = null;
+        this.selectedElement = null;
         this.autoSaveTimer = null;
         this.listeners = [];
         this.history = new HistoryManager(50);
@@ -16,11 +17,17 @@ class AppState {
     // Load story
     loadStory(storyData) {
         try {
+            // Migrate old format (characters/items) to new format (elements)
+            if ((storyData.characters || storyData.items) && !storyData.elements) {
+                storyData = this._migrateStoryData(storyData);
+            }
+
             this.currentStory = storyData;
             this.selectedChapter = null;
             this.selectedCharacter = null;
             this.selectedItem = null;
             this.selectedSetting = null;
+            this.selectedElement = null;
             this.history.clear(); // Clear history when loading new story
             // Save to localStorage after loading
             this.saveToLocalStorage();
@@ -30,6 +37,67 @@ class AppState {
             console.error('Load story failed:', error);
             return false;
         }
+    }
+
+    /**
+     * Migrate old story format (characters/items) to new format (elements)
+     * @private
+     */
+    _migrateStoryData(storyData) {
+        const migrated = { ...storyData };
+        migrated.elements = [];
+
+        // Migrate characters to elements
+        if (migrated.characters && Array.isArray(migrated.characters)) {
+            migrated.characters.forEach(char => {
+                const element = {
+                    id: char.id,
+                    type: 'character',
+                    name: char.name,
+                    description: char.description,
+                    keywords: [],
+                    attributes: char.attributes,
+                    abilities: char.abilities,
+                    notes: char.notes
+                };
+                migrated.elements.push(element);
+            });
+            console.log(`[AppState] Migrated ${migrated.characters.length} characters to elements`);
+        }
+
+        // Migrate items to elements
+        if (migrated.items && Array.isArray(migrated.items)) {
+            migrated.items.forEach(item => {
+                const element = {
+                    id: item.id,
+                    type: 'item',
+                    name: item.name,
+                    description: item.description,
+                    keywords: [],
+                    properties: item.properties,
+                    owner: item.owner
+                };
+                migrated.elements.push(element);
+            });
+            console.log(`[AppState] Migrated ${migrated.items.length} items to elements`);
+        }
+
+        // Update paragraph changes format if needed
+        if (migrated.chapters) {
+            migrated.chapters.forEach(chapter => {
+                if (chapter.paragraphs) {
+                    chapter.paragraphs.forEach(paragraph => {
+                        // Old format: { characters: [], items: [] }
+                        // New format: { elements: [] }
+                        if (paragraph.changes && (paragraph.changes.characters || paragraph.changes.items)) {
+                            paragraph.changes = { elements: [] };
+                        }
+                    });
+                }
+            });
+        }
+
+        return migrated;
     }
 
     // Create new story
@@ -570,6 +638,54 @@ class AppState {
     selectSetting(settingId) {
         this.selectedSetting = settingId;
         this.notify('settingSelected', settingId);
+        // Auto-save to localStorage when selection changes
+        this.saveToLocalStorage();
+    }
+
+    // Element management
+    addElement(elementData) {
+        if (!this.currentStory) {
+            throw new Error('没有加载的故事');
+        }
+
+        if (!this.currentStory.elements) {
+            this.currentStory.elements = [];
+        }
+
+        this.saveStateBeforeChange('添加元素');
+
+        const element = {
+            id: Formatters.generateId('element'),
+            type: elementData.type,
+            name: elementData.name,
+            description: elementData.description || '',
+            keywords: elementData.keywords || [],
+            ...elementData
+        };
+
+        this.currentStory.elements.push(element);
+        this.notify('elementAdded', element);
+        // Auto-save to localStorage when content changes
+        this.saveToLocalStorage();
+
+        return element;
+    }
+
+    deleteElement(elementId) {
+        if (!this.currentStory) return;
+
+        this.saveStateBeforeChange('删除元素');
+
+        const index = this.currentStory.elements.findIndex(el => el.id === elementId);
+        if (index !== -1) {
+            this.currentStory.elements.splice(index, 1);
+            this.notify('elementDeleted', elementId);
+        }
+    }
+
+    selectElement(elementId) {
+        this.selectedElement = elementId;
+        this.notify('elementSelected', elementId);
         // Auto-save to localStorage when selection changes
         this.saveToLocalStorage();
     }

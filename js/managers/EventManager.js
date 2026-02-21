@@ -93,6 +93,7 @@ class EventManager {
         this.bindModalEvents();
         this.bindAIConfigEvents();
         this.bindStoryViewEvents();
+        this.bindAllElementsViewEvents();
         this.bindCharacterViewEvents();
         this.bindItemViewEvents();
         this.bindSettingViewEvents();
@@ -280,6 +281,14 @@ class EventManager {
                 this.app.handleNewParagraph();
             }
         });
+    }
+
+    /**
+     * Bind all elements view events
+     */
+    bindAllElementsViewEvents() {
+        document.getElementById('add-element-btn').addEventListener('click', () => this.app.addElement());
+        document.getElementById('element-form').addEventListener('submit', (e) => this.app.saveElement(e));
     }
 
     /**

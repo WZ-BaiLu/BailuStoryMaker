@@ -41,7 +41,7 @@ class AIService {
      * @param {Object} context - Optional context information
      * @returns {Promise<Object>} Response with success flag and data or error
      */
-    async chat(config, messages, context = null) {
+    async chat(config, messages, context = null, tools = null) {
         try {
             // Validate configuration
             const configValidation = this.validateConfig(config);
@@ -73,7 +73,7 @@ class AIService {
             const messagesWithContext = this.addContextToMessages(messages, context);
 
             // Build request
-            const request = adapter.buildRequest(config, messagesWithContext);
+            const request = adapter.buildRequest(config, messagesWithContext, tools);
 
             const endpoint = config.endpoint || adapter.getDefaultEndpoint();
 
@@ -277,22 +277,29 @@ class OpenAIAdapter {
         return 'https://api.openai.com/v1/chat/completions';
     }
 
-    buildRequest(config, messages) {
+    buildRequest(config, messages, tools = null) {
+        const body = {
+            model: config.model,
+            messages: messages.map(m => ({
+                role: m.role,
+                content: m.content
+            })),
+            temperature: config.temperature || 0.7,
+            max_tokens: config.maxTokens || 2000
+        };
+
+        // Add tools if provided
+        if (tools && tools.length > 0) {
+            body.tools = tools;
+        }
+
         return {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${config.apiKey}`
             },
-            body: JSON.stringify({
-                model: config.model,
-                messages: messages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                })),
-                temperature: config.temperature || 0.7,
-                max_tokens: config.maxTokens || 2000
-            })
+            body: JSON.stringify(body)
         };
     }
 
@@ -301,8 +308,10 @@ class OpenAIAdapter {
             if (data.error) {
                 throw new Error(data.error.message);
             }
+            const message = data.choices[0]?.message || {};
             return {
-                content: data.choices[0]?.message?.content || '',
+                content: message.content || '',
+                tool_calls: message.tool_calls || null,
                 usage: data.usage
             };
         });
@@ -317,7 +326,23 @@ class AnthropicAdapter {
         return 'https://api.anthropic.com/v1/messages';
     }
 
-    buildRequest(config, messages) {
+    buildRequest(config, messages, tools = null) {
+        const body = {
+            model: config.model,
+            max_tokens: config.maxTokens || 2000,
+            messages: messages.filter(m => m.role !== 'system').map(m => ({
+                role: m.role === 'assistant' ? 'assistant' : 'user',
+                content: m.content
+            })),
+            system: messages.find(m => m.role === 'system')?.content || undefined,
+            temperature: config.temperature || 0.7
+        };
+
+        // Add tools if provided
+        if (tools && tools.length > 0) {
+            body.tools = tools;
+        }
+
         return {
             method: 'POST',
             headers: {
@@ -325,16 +350,7 @@ class AnthropicAdapter {
                 'x-api-key': config.apiKey,
                 'anthropic-version': '2023-06-01'
             },
-            body: JSON.stringify({
-                model: config.model,
-                max_tokens: config.maxTokens || 2000,
-                messages: messages.filter(m => m.role !== 'system').map(m => ({
-                    role: m.role === 'assistant' ? 'assistant' : 'user',
-                    content: m.content
-                })),
-                system: messages.find(m => m.role === 'system')?.content || undefined,
-                temperature: config.temperature || 0.7
-            })
+            body: JSON.stringify(body)
         };
     }
 
@@ -343,8 +359,31 @@ class AnthropicAdapter {
             if (data.error) {
                 throw new Error(data.error.message);
             }
+
+            // Parse content for text and tool calls
+            let content = '';
+            let toolCalls = [];
+
+            if (data.content && Array.isArray(data.content)) {
+                for (const block of data.content) {
+                    if (block.type === 'text') {
+                        content += block.text;
+                    } else if (block.type === 'tool_use') {
+                        toolCalls.push({
+                            id: block.id,
+                            type: 'function',
+                            function: {
+                                name: block.name,
+                                arguments: JSON.stringify(block.input)
+                            }
+                        });
+                    }
+                }
+            }
+
             return {
-                content: data.content[0]?.text || '',
+                content: content,
+                tool_calls: toolCalls.length > 0 ? toolCalls : null,
                 usage: data.usage
             };
         });
@@ -359,24 +398,31 @@ class DeepSeekAdapter {
         return 'https://api.deepseek.com/v1/chat/completions';
     }
 
-    buildRequest(config, messages) {
+    buildRequest(config, messages, tools = null) {
         // DeepSeek max_tokens limit: 8192
         const maxTokens = Math.min(config.maxTokens || 2000, 8192);
+        const body = {
+            model: config.model,
+            messages: messages.map(m => ({
+                role: m.role,
+                content: m.content
+            })),
+            temperature: config.temperature || 0.7,
+            max_tokens: maxTokens
+        };
+
+        // Add tools if provided
+        if (tools && tools.length > 0) {
+            body.tools = tools;
+        }
+
         return {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${config.apiKey}`
             },
-            body: JSON.stringify({
-                model: config.model,
-                messages: messages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                })),
-                temperature: config.temperature || 0.7,
-                max_tokens: maxTokens
-            })
+            body: JSON.stringify(body)
         };
     }
 
@@ -385,8 +431,10 @@ class DeepSeekAdapter {
             if (data.error) {
                 throw new Error(data.error.message);
             }
+            const message = data.choices[0]?.message || {};
             return {
-                content: data.choices[0]?.message?.content || '',
+                content: message.content || '',
+                tool_calls: message.tool_calls || null,
                 usage: data.usage
             };
         });
@@ -401,22 +449,29 @@ class GrokAdapter {
         return 'https://api.x.ai/v1/chat/completions';
     }
 
-    buildRequest(config, messages) {
+    buildRequest(config, messages, tools = null) {
+        const body = {
+            model: config.model,
+            messages: messages.map(m => ({
+                role: m.role,
+                content: m.content
+            })),
+            temperature: config.temperature || 0.7,
+            max_tokens: config.maxTokens || 2000
+        };
+
+        // Add tools if provided
+        if (tools && tools.length > 0) {
+            body.tools = tools;
+        }
+
         return {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${config.apiKey}`
             },
-            body: JSON.stringify({
-                model: config.model,
-                messages: messages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                })),
-                temperature: config.temperature || 0.7,
-                max_tokens: config.maxTokens || 2000
-            })
+            body: JSON.stringify(body)
         };
     }
 
@@ -425,8 +480,10 @@ class GrokAdapter {
             if (data.error) {
                 throw new Error(data.error.message);
             }
+            const message = data.choices[0]?.message || {};
             return {
-                content: data.choices[0]?.message?.content || '',
+                content: message.content || '',
+                tool_calls: message.tool_calls || null,
                 usage: data.usage
             };
         });
@@ -442,22 +499,29 @@ class CustomAdapter {
         throw new Error('Custom provider requires endpoint to be specified');
     }
 
-    buildRequest(config, messages) {
+    buildRequest(config, messages, tools = null) {
+        const body = {
+            model: config.model,
+            messages: messages.map(m => ({
+                role: m.role,
+                content: m.content
+            })),
+            temperature: config.temperature || 0.7,
+            max_tokens: config.maxTokens || 2000
+        };
+
+        // Add tools if provided
+        if (tools && tools.length > 0) {
+            body.tools = tools;
+        }
+
         return {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${config.apiKey}`
             },
-            body: JSON.stringify({
-                model: config.model,
-                messages: messages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                })),
-                temperature: config.temperature || 0.7,
-                max_tokens: config.maxTokens || 2000
-            })
+            body: JSON.stringify(body)
         };
     }
 
@@ -466,8 +530,10 @@ class CustomAdapter {
             if (data.error) {
                 throw new Error(data.error.message);
             }
+            const message = data.choices[0]?.message || {};
             return {
-                content: data.choices[0]?.message?.content || '',
+                content: message.content || '',
+                tool_calls: message.tool_calls || null,
                 usage: data.usage
             };
         });
