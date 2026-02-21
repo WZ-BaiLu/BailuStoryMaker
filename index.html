@@ -21,11 +21,8 @@
                 <button class="nav-item active" data-view="story">
                     <span>📖</span> <span data-i18n="nav.story">故事</span>
                 </button>
-                <button class="nav-item" data-view="character">
-                    <span>👤</span> <span data-i18n="nav.character">角色</span>
-                </button>
-                <button class="nav-item" data-view="item">
-                    <span>🎒</span> <span data-i18n="nav.item">道具</span>
+                <button class="nav-item" data-view="elements">
+                    <span>🎭</span> <span data-i18n="nav.elements">故事元素</span>
                 </button>
                 <button class="nav-item" data-view="setting">
                     <span>🏰</span> <span data-i18n="nav.setting">设定</span>
@@ -143,78 +140,85 @@
                     </div>
                 </div>
 
-                <!-- Character View -->
-                <div id="character-view" class="view">
-                    <div class="character-container">
-                        <div class="character-list">
-                            <h3 data-i18n="character.list">角色列表</h3>
-                            <button id="add-character-btn" class="btn btn-sm" data-i18n="buttons.addCharacter">+ 添加角色</button>
-                            <div id="characters" class="characters-list"></div>
+                <!-- Story Elements View -->
+                <div id="elements-view" class="view">
+                    <div class="elements-container">
+                        <div class="elements-tabs">
+                            <button class="tab-btn active" data-tab="characters" data-i18n="elements.charactersTab">角色</button>
+                            <button class="tab-btn" data-tab="items" data-i18n="elements.itemsTab">道具</button>
                         </div>
-                        <div class="character-editor" id="character-editor-panel">
-                            <div id="character-editor-placeholder" class="editor-placeholder active">
-                                <div class="placeholder-content">
-                                    <div class="placeholder-icon">👤</div>
-                                    <p data-i18n="placeholder.character">请从左侧选择一个角色或创建新角色</p>
+                        <div class="elements-content">
+                            <!-- Characters Tab -->
+                            <div id="characters-tab" class="elements-tab-content active">
+                                <div class="elements-list">
+                                    <h3 data-i18n="elements.charactersList">角色列表</h3>
+                                    <button id="add-character-btn" class="btn btn-sm" data-i18n="buttons.addCharacter">+ 添加角色</button>
+                                    <div id="characters" class="elements-list-container"></div>
+                                </div>
+                                <div class="element-editor" id="character-editor-panel">
+                                    <div id="character-editor-placeholder" class="editor-placeholder active">
+                                        <div class="placeholder-content">
+                                            <div class="placeholder-icon">👤</div>
+                                            <p data-i18n="placeholder.character">请从左侧选择一个角色或创建新角色</p>
+                                        </div>
+                                    </div>
+                                    <div id="character-editor-content" class="element-editor-content hidden">
+                                        <h3 data-i18n="character.details">角色详情</h3>
+                                        <form id="character-form" class="editor-form">
+                                            <input type="text" id="char-name" class="input-field" data-i18n-placeholder="character.name" placeholder="角色名称">
+                                            <textarea id="char-description" class="input-field" data-i18n-placeholder="character.description" placeholder="角色描述"></textarea>
+                                            <div class="attributes-section">
+                                                <h4 data-i18n="character.attributes">属性</h4>
+                                                <div id="char-attributes"></div>
+                                                <button type="button" id="add-attr-btn" class="btn btn-sm" data-i18n="character.addAttribute">+ 添加属性</button>
+                                            </div>
+                                            <div class="abilities-section">
+                                                <h4 data-i18n="character.abilities">能力</h4>
+                                                <div id="char-abilities"></div>
+                                                <button type="button" id="add-ability-btn" class="btn btn-sm" data-i18n="character.addAbility">+ 添加能力</button>
+                                            </div>
+                                            <textarea id="char-notes" class="input-field" data-i18n-placeholder="character.notes" placeholder="备注"></textarea>
+                                            <button type="submit" class="btn btn-primary" data-i18n="buttons.saveCharacter">保存角色</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
-                            <div id="character-editor-content" class="character-editor-content hidden">
-                                <h3 data-i18n="character.details">角色详情</h3>
-                                <form id="character-form" class="editor-form">
-                                    <input type="text" id="char-name" class="input-field" data-i18n-placeholder="character.name" placeholder="角色名称">
-                                    <textarea id="char-description" class="input-field" data-i18n-placeholder="character.description" placeholder="角色描述"></textarea>
-                                    <div class="attributes-section">
-                                        <h4 data-i18n="character.attributes">属性</h4>
-                                        <div id="char-attributes"></div>
-                                        <button type="button" id="add-attr-btn" class="btn btn-sm" data-i18n="character.addAttribute">+ 添加属性</button>
-                                    </div>
-                                    <div class="abilities-section">
-                                        <h4 data-i18n="character.abilities">能力</h4>
-                                        <div id="char-abilities"></div>
-                                        <button type="button" id="add-ability-btn" class="btn btn-sm" data-i18n="character.addAbility">+ 添加能力</button>
-                                    </div>
-                                    <textarea id="char-notes" class="input-field" data-i18n-placeholder="character.notes" placeholder="备注"></textarea>
-                                    <button type="submit" class="btn btn-primary" data-i18n="buttons.saveCharacter">保存角色</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Item View -->
-                <div id="item-view" class="view">
-                    <div class="item-container">
-                        <div class="item-list">
-                            <h3 data-i18n="item.list">道具列表</h3>
-                            <button id="add-item-btn" class="btn btn-sm" data-i18n="buttons.addItem">+ 添加道具</button>
-                            <div id="items" class="items-list"></div>
-                        </div>
-                        <div class="item-editor" id="item-editor-panel">
-                            <div id="item-editor-placeholder" class="editor-placeholder active">
-                                <div class="placeholder-content">
-                                    <div class="placeholder-icon">🎒</div>
-                                    <p data-i18n="placeholder.item">请从左侧选择一个道具或创建新道具</p>
+                            <!-- Items Tab -->
+                            <div id="items-tab" class="elements-tab-content">
+                                <div class="elements-list">
+                                    <h3 data-i18n="elements.itemsList">道具列表</h3>
+                                    <button id="add-item-btn" class="btn btn-sm" data-i18n="buttons.addItem">+ 添加道具</button>
+                                    <div id="items" class="elements-list-container"></div>
                                 </div>
-                            </div>
-                            <div id="item-editor-content" class="item-editor-content hidden">
-                                <h3 data-i18n="item.details">道具详情</h3>
-                                <form id="item-form" class="editor-form">
-                                    <input type="text" id="item-name" class="input-field" data-i18n-placeholder="item.name" placeholder="道具名称">
-                                    <select id="item-type" class="input-field">
-                                        <option value="other" data-i18n="item.typeOther">其他</option>
-                                        <option value="weapon" data-i18n="item.typeWeapon">武器</option>
-                                        <option value="armor" data-i18n="item.typeArmor">护甲</option>
-                                        <option value="tool" data-i18n="item.typeTool">工具</option>
-                                        <option value="quest" data-i18n="item.typeQuest">任务物品</option>
-                                    </select>
-                                    <textarea id="item-description" class="input-field" data-i18n-placeholder="item.description" placeholder="道具描述"></textarea>
-                                    <div class="properties-section">
-                                        <h4 data-i18n="item.properties">属性</h4>
-                                        <div id="item-properties"></div>
-                                        <button type="button" id="add-prop-btn" class="btn btn-sm" data-i18n="item.addProperty">+ 添加属性</button>
+                                <div class="element-editor" id="item-editor-panel">
+                                    <div id="item-editor-placeholder" class="editor-placeholder active">
+                                        <div class="placeholder-content">
+                                            <div class="placeholder-icon">🎒</div>
+                                            <p data-i18n="placeholder.item">请从左侧选择一个道具或创建新道具</p>
+                                        </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary" data-i18n="buttons.saveItem">保存道具</button>
-                                </form>
+                                    <div id="item-editor-content" class="element-editor-content hidden">
+                                        <h3 data-i18n="item.details">道具详情</h3>
+                                        <form id="item-form" class="editor-form">
+                                            <input type="text" id="item-name" class="input-field" data-i18n-placeholder="item.name" placeholder="道具名称">
+                                            <select id="item-type" class="input-field">
+                                                <option value="other" data-i18n="item.typeOther">其他</option>
+                                                <option value="weapon" data-i18n="item.typeWeapon">武器</option>
+                                                <option value="armor" data-i18n="item.typeArmor">护甲</option>
+                                                <option value="tool" data-i18n="item.typeTool">工具</option>
+                                                <option value="quest" data-i18n="item.typeQuest">任务物品</option>
+                                            </select>
+                                            <textarea id="item-description" class="input-field" data-i18n-placeholder="item.description" placeholder="道具描述"></textarea>
+                                            <div class="properties-section">
+                                                <h4 data-i18n="item.properties">属性</h4>
+                                                <div id="item-properties"></div>
+                                                <button type="button" id="add-prop-btn" class="btn btn-sm" data-i18n="item.addProperty">+ 添加属性</button>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary" data-i18n="buttons.saveItem">保存道具</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

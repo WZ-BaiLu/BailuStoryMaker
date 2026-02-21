@@ -105,7 +105,8 @@ class AIManager {
             this.paragraphAnalyzer = new ParagraphAnalyzer(
                 this.state.currentStory || { chapters: [] },
                 this.elementManager,
-                this.aiService
+                this.aiService,
+                this.configManager
             );
         } else {
             console.warn('[AIManager] ParagraphAnalyzer not loaded yet, will initialize later');
@@ -1386,7 +1387,8 @@ class AIManager {
             this.paragraphAnalyzer = new ParagraphAnalyzer(
                 this.state.currentStory || { chapters: [] },
                 this.elementManager || null, // Can be null initially
-                this.aiService
+                this.aiService,
+                this.configManager
             );
 
             // Update with element manager if it becomes available

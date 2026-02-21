@@ -85,6 +85,34 @@ class App {
      */
     bindEvents() {
         this.eventManager.bindEvents();
+
+        // Bind element tab switching
+        this.bindElementTabs();
+    }
+
+    /**
+     * Bind element tab switching
+     */
+    bindElementTabs() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+
+                // Update button states
+                tabButtons.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Update content visibility
+                document.querySelectorAll('.elements-tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                const activeContent = document.getElementById(`${tabName}-tab`);
+                if (activeContent) {
+                    activeContent.classList.add('active');
+                }
+            });
+        });
     }
 
     // Story management (delegated to managers)
@@ -755,8 +783,8 @@ class App {
                         <ul>
                             ${analysis.stateChanges.map(s => `
                                 <li>
-                                    <strong>${s.elementId || s.elementName}:</strong>
-                                    ${s.property} → ${s.newValue}
+                                    <strong>${s.elementName || s.elementId}:</strong>
+                                    ${s.property}: ${s.from} → ${s.to}
                                 </li>
                             `).join('')}
                         </ul>

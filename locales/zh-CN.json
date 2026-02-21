@@ -7,8 +7,7 @@
   },
   "nav": {
     "story": "故事",
-    "character": "角色",
-    "item": "道具",
+    "elements": "故事元素",
     "setting": "设定",
     "prompt": "提示词"
   },
@@ -44,6 +43,12 @@
     "viewLocation": "当前视角位置:",
     "viewLocationAny": "全知视角",
     "presentElements": "在场元素: "
+  },
+  "elements": {
+    "charactersTab": "角色",
+    "itemsTab": "道具",
+    "charactersList": "角色列表",
+    "itemsList": "道具列表"
   },
   "character": {
     "list": "角色列表",

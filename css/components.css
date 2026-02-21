@@ -1,5 +1,52 @@
 /* Component-specific styles */
 
+/* Elements tabs */
+.elements-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--light-border);
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--light-text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.tab-btn:hover {
+    color: var(--primary-color);
+    background-color: rgba(74, 144, 217, 0.05);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.elements-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.elements-tab-content {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+.elements-tab-content.active {
+    display: flex;
+}
+
 /* Paragraphs container */
 .paragraphs-container {
     display: flex;

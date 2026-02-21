@@ -53,10 +53,10 @@ class EventManager {
                 this.app.modalManager.hideModal();
             }
 
-            // Alt + 1-5: Switch views
-            if (e.altKey && ['1', '2', '3', '4', '5'].includes(e.key)) {
+            // Alt + 1-4: Switch views
+            if (e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
                 e.preventDefault();
-                const views = ['story', 'character', 'item', 'setting', 'prompt'];
+                const views = ['story', 'elements', 'setting', 'prompt'];
                 this.app.viewManager.switchView(views[parseInt(e.key) - 1]);
             }
         });

@@ -1,0 +1,4 @@
+
+> bailustory@1.0.0 test
+> jest --testPathPattern=tests/managers/AIManager.test.js --verbose
+

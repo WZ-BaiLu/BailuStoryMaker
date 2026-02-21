@@ -54,8 +54,7 @@ class I18nManager {
           },
           "nav": {
             "story": "故事",
-            "character": "角色",
-            "item": "道具",
+            "elements": "故事元素",
             "setting": "设定",
             "prompt": "提示词"
           },
@@ -117,6 +116,12 @@ class I18nManager {
             "typeArmor": "护甲",
             "typeTool": "工具",
             "typeQuest": "任务物品"
+          },
+          "elements": {
+            "charactersTab": "角色",
+            "itemsTab": "道具",
+            "charactersList": "角色列表",
+            "itemsList": "道具列表"
           },
           "setting": {
             "list": "设定列表",
@@ -297,8 +302,7 @@ class I18nManager {
           },
           "nav": {
             "story": "Story",
-            "character": "Character",
-            "item": "Item",
+            "elements": "Story Elements",
             "setting": "Setting",
             "prompt": "Prompt"
           },
@@ -360,6 +364,12 @@ class I18nManager {
             "typeArmor": "Armor",
             "typeTool": "Tool",
             "typeQuest": "Quest Item"
+          },
+          "elements": {
+            "charactersTab": "Characters",
+            "itemsTab": "Items",
+            "charactersList": "Character List",
+            "itemsList": "Item List"
           },
           "setting": {
             "list": "Setting List",

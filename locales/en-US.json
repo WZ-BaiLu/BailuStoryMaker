@@ -7,8 +7,7 @@
   },
   "nav": {
     "story": "Story",
-    "character": "Character",
-    "item": "Item",
+    "elements": "Story Elements",
     "setting": "Setting",
     "prompt": "Prompt"
   },
@@ -44,6 +43,12 @@
     "viewLocation": "Current View Location:",
     "viewLocationAny": "Omniscient View",
     "presentElements": "Present Elements: "
+  },
+  "elements": {
+    "charactersTab": "Characters",
+    "itemsTab": "Items",
+    "charactersList": "Character List",
+    "itemsList": "Item List"
   },
   "character": {
     "list": "Character List",

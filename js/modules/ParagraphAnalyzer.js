@@ -15,11 +15,13 @@ class ParagraphAnalyzer {
      * @param {Object} story - Current story data
      * @param {ElementManager} elementManager - Element manager (optional)
      * @param {AIService} aiService - AI service for analysis
+     * @param {AIConfigManager} configManager - AI config manager
      */
-    constructor(story, elementManager, aiService) {
+    constructor(story, elementManager, aiService, configManager) {
         this.story = story;
         this.elementManager = elementManager;
         this.aiService = aiService;
+        this.configManager = configManager;
 
         // Analysis cache
         this.analysisCache = new Map();
@@ -176,16 +178,16 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
      */
     async callAIForAnalysis(prompt) {
         try {
-            const config = this.aiService.getConfig();
+            const config = this.configManager.getConfig();
+            const messages = [{ role: 'user', content: prompt }];
 
-            const response = await this.aiService.sendMessage({
-                messages: [{ role: 'user', content: prompt }],
-                model: config.model,
-                temperature: 0.3, // Lower temperature for more deterministic analysis
-                max_tokens: 2000
-            });
+            const result = await this.aiService.chat(config, messages);
 
-            return response;
+            if (!result.success) {
+                throw new Error(result.error || 'AI service error');
+            }
+
+            return result.data;
         } catch (error) {
             console.error('AI analysis failed:', error);
             throw new Error(`AI 分析失败: ${error.message}`);
@@ -244,10 +246,12 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
         return elements.map(element => {
             // Check if it's a new element or existing
             if (element.id && !element.id.startsWith('NEW:')) {
-                // Existing element - just return reference
+                // Existing element - get element info from ElementManager
+                const existingElement = this.elementManager?.getElementById(element.id);
                 return {
                     id: element.id,
                     type: element.type,
+                    name: existingElement?.name || element.name || element.id,
                     isNew: false
                 };
             } else {
@@ -292,16 +296,30 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
             return [];
         }
 
-        return stateChanges.map(change => ({
-            elementId: change.elementId || '',
-            changes: {
-                location: change.changes?.location,
-                description: change.changes?.description,
-                owner: change.changes?.owner,
-                status: change.changes?.status,
-                keywords: Array.isArray(change.changes?.keywords) ? change.changes.keywords : undefined
-            }
-        }));
+        return stateChanges.map(change => {
+            const elementId = change.elementId || '';
+            const element = this.elementManager?.getElementById(elementId);
+            const elementName = element?.name || elementId;
+
+            const fromValue = change.from !== undefined ? change.from : 'undefined';
+            const toValue = change.to !== undefined ? change.to : 'undefined';
+            const property = change.property || 'state';
+
+            return {
+                elementId,
+                elementName,
+                property,
+                from: fromValue,
+                to: toValue,
+                changes: {
+                    location: change.changes?.location,
+                    description: change.changes?.description,
+                    owner: change.changes?.owner,
+                    status: change.changes?.status,
+                    keywords: Array.isArray(change.changes?.keywords) ? change.changes.keywords : undefined
+                }
+            };
+        });
     }
 
     /**

@@ -16,7 +16,7 @@ class ViewManager {
 
     /**
      * Switch to a specific view
-     * @param {'story'|'character'|'item'|'setting'|'prompt'} viewName - The view to switch to
+     * @param {'story'|'elements'|'setting'|'prompt'} viewName - The view to switch to
      */
     switchView(viewName) {
         // Update navigation
