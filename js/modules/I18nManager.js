@@ -86,7 +86,10 @@ class I18nManager {
             "chapterTitle": "章节标题",
             "chapterContent": "开始编写你的故事...",
             "selectChapter": "请从左侧选择一个章节或创建新章节",
-            "changesTracker": "修改追踪"
+            "changesTracker": "修改追踪",
+            "viewLocation": "当前视角位置:",
+            "viewLocationAny": "全知视角",
+            "presentElements": "在场元素: "
           },
           "character": {
             "list": "角色列表",
@@ -203,7 +206,30 @@ class I18nManager {
             "testConnection": "测试连接",
             "resetDefaults": "重置默认",
             "clearKey": "清除密钥",
-            "save": "保存"
+            "save": "保存",
+            "paragraphAnalysis": {
+              "loading": "AI正在分析段落...",
+              "success": "段落分析完成",
+              "error": "段落分析失败",
+              "noStory": "没有加载的故事",
+              "noChapter": "没有选择的章节",
+              "noParagraph": "找不到段落",
+              "emptyContent": "段落内容为空，无法分析",
+              "applying": "正在应用分析结果...",
+              "applied": "分析结果已应用",
+              "applyError": "应用分析结果失败",
+              "analyzeButton": "AI分析段落",
+              "resultTitle": "📊 段落分析结果",
+              "originalText": "📝 原文",
+              "elementsFound": "🎭 发现的元素",
+              "eventsIdentified": "⚡ 识别的事件",
+              "stateChanges": "🔄 状态变化",
+              "summary": "摘要",
+              "applyButton": "应用分析结果",
+              "cancelButton": "取消",
+              "elementNew": "新增",
+              "elementExisting": "已存在"
+            }
           },
           "timeline": {
             "title": "时间线",
@@ -255,7 +281,9 @@ class I18nManager {
             "stateSummaryTitle": "当前状态总结",
             "characterStates": "角色状态",
             "itemStates": "道具状态",
-            "propertyName": "属性名"
+            "propertyName": "属性名",
+            "noCharactersInParagraph": "此段落中无角色",
+            "noItemsInParagraph": "此段落中无道具"
           }
         };
 
@@ -301,7 +329,10 @@ class I18nManager {
             "chapterTitle": "Chapter Title",
             "chapterContent": "Start writing your story...",
             "selectChapter": "Please select a chapter from the left or create a new one",
-            "changesTracker": "Changes Tracker"
+            "changesTracker": "Changes Tracker",
+            "viewLocation": "Current View Location:",
+            "viewLocationAny": "Omniscient View",
+            "presentElements": "Present Elements: "
           },
           "character": {
             "list": "Character List",
@@ -418,7 +449,30 @@ class I18nManager {
             "testConnection": "Test Connection",
             "resetDefaults": "Reset to Defaults",
             "clearKey": "Clear Key",
-            "save": "Save"
+            "save": "Save",
+            "paragraphAnalysis": {
+              "loading": "AI is analyzing paragraph...",
+              "success": "Paragraph analysis completed",
+              "error": "Paragraph analysis failed",
+              "noStory": "No story loaded",
+              "noChapter": "No chapter selected",
+              "noParagraph": "Paragraph not found",
+              "emptyContent": "Paragraph content is empty, cannot analyze",
+              "applying": "Applying analysis results...",
+              "applied": "Analysis results applied",
+              "applyError": "Failed to apply analysis results",
+              "analyzeButton": "AI Analyze Paragraph",
+              "resultTitle": "📊 Paragraph Analysis Results",
+              "originalText": "📝 Original Text",
+              "elementsFound": "🎭 Elements Found",
+              "eventsIdentified": "⚡ Events Identified",
+              "stateChanges": "🔄 State Changes",
+              "summary": "Summary",
+              "applyButton": "Apply Analysis Results",
+              "cancelButton": "Cancel",
+              "elementNew": "New",
+              "elementExisting": "Existing"
+            }
           },
           "timeline": {
             "title": "Timeline",
@@ -470,7 +524,9 @@ class I18nManager {
             "stateSummaryTitle": "Current State Summary",
             "characterStates": "Character States",
             "itemStates": "Item States",
-            "propertyName": "Property name"
+            "propertyName": "Property name",
+            "noCharactersInParagraph": "No characters in this paragraph",
+            "noItemsInParagraph": "No items in this paragraph"
           }
         };
     }

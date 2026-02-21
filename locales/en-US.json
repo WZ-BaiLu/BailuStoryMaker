@@ -40,7 +40,10 @@
     "chapterTitle": "Chapter Title",
     "chapterContent": "Start writing your story...",
     "selectChapter": "Please select a chapter from the left or create a new one",
-    "changesTracker": "Changes Tracker"
+    "changesTracker": "Changes Tracker",
+    "viewLocation": "Current View Location:",
+    "viewLocationAny": "Omniscient View",
+    "presentElements": "Present Elements: "
   },
   "character": {
     "list": "Character List",
@@ -200,7 +203,30 @@
     "confirmClearKey": "Are you sure you want to clear the API key?",
     "inputPlaceholder": "Type a message... (Shift+Enter for new line, Enter to send)",
     "moreDeterministic": "More deterministic",
-    "moreRandom": "More random"
+    "moreRandom": "More random",
+    "paragraphAnalysis": {
+      "loading": "AI is analyzing paragraph...",
+      "success": "Paragraph analysis completed",
+      "error": "Paragraph analysis failed",
+      "noStory": "No story loaded",
+      "noChapter": "No chapter selected",
+      "noParagraph": "Paragraph not found",
+      "emptyContent": "Paragraph content is empty, cannot analyze",
+      "applying": "Applying analysis results...",
+      "applied": "Analysis results applied",
+      "applyError": "Failed to apply analysis results",
+      "analyzeButton": "AI Analyze Paragraph",
+      "resultTitle": "📊 Paragraph Analysis Results",
+      "originalText": "📝 Original Text",
+      "elementsFound": "🎭 Elements Found",
+      "eventsIdentified": "⚡ Events Identified",
+      "stateChanges": "🔄 State Changes",
+      "summary": "Summary",
+      "applyButton": "Apply Analysis Results",
+      "cancelButton": "Cancel",
+      "elementNew": "New",
+      "elementExisting": "Existing"
+    }
   },
   "timeline": {
     "title": "Timeline",
@@ -261,6 +287,8 @@
     "dataInconsistencyDetected": "Data inconsistency detected",
     "repairData": "Repair Data",
     "dataRepaired": "Data repaired",
-    "confirmRemoveItem": "Are you sure you want to remove this item from the character?"
+    "confirmRemoveItem": "Are you sure you want to remove this item from the character?",
+    "noCharactersInParagraph": "No characters in this paragraph",
+    "noItemsInParagraph": "No items in this paragraph"
   }
 }

@@ -40,7 +40,10 @@
     "chapterTitle": "章节标题",
     "chapterContent": "开始编写你的故事...",
     "selectChapter": "请从左侧选择一个章节或创建新章节",
-    "changesTracker": "修改追踪"
+    "changesTracker": "修改追踪",
+    "viewLocation": "当前视角位置:",
+    "viewLocationAny": "全知视角",
+    "presentElements": "在场元素: "
   },
   "character": {
     "list": "角色列表",
@@ -200,7 +203,30 @@
     "confirmClearKey": "确定要清除API密钥吗？",
     "inputPlaceholder": "输入消息... (Shift+Enter换行, Enter发送)",
     "moreDeterministic": "更确定",
-    "moreRandom": "更随机"
+    "moreRandom": "更随机",
+    "paragraphAnalysis": {
+      "loading": "AI正在分析段落...",
+      "success": "段落分析完成",
+      "error": "段落分析失败",
+      "noStory": "没有加载的故事",
+      "noChapter": "没有选择的章节",
+      "noParagraph": "找不到段落",
+      "emptyContent": "段落内容为空，无法分析",
+      "applying": "正在应用分析结果...",
+      "applied": "分析结果已应用",
+      "applyError": "应用分析结果失败",
+      "analyzeButton": "AI分析段落",
+      "resultTitle": "📊 段落分析结果",
+      "originalText": "📝 原文",
+      "elementsFound": "🎭 发现的元素",
+      "eventsIdentified": "⚡ 识别的事件",
+      "stateChanges": "🔄 状态变化",
+      "summary": "摘要",
+      "applyButton": "应用分析结果",
+      "cancelButton": "取消",
+      "elementNew": "新增",
+      "elementExisting": "已存在"
+    }
   },
   "timeline": {
     "title": "时间线",
@@ -261,6 +287,8 @@
     "dataInconsistencyDetected": "检测到数据不一致",
     "repairData": "修复数据",
     "dataRepaired": "数据已修复",
-    "confirmRemoveItem": "确定要从角色移除此道具吗？"
+    "confirmRemoveItem": "确定要从角色移除此道具吗？",
+    "noCharactersInParagraph": "此段落中无角色",
+    "noItemsInParagraph": "此段落中无道具"
   }
 }
