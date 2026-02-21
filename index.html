@@ -24,9 +24,6 @@
                 <button class="nav-item" data-view="elements">
                     <span>🎭</span> <span data-i18n="nav.elements">故事元素</span>
                 </button>
-                <button class="nav-item" data-view="setting">
-                    <span>🏰</span> <span data-i18n="nav.setting">设定</span>
-                </button>
                 <button class="nav-item" data-view="prompt">
                     <span>✨</span> <span data-i18n="nav.prompt">提示词</span>
                 </button>
@@ -146,6 +143,7 @@
                         <div class="elements-tabs">
                             <button class="tab-btn active" data-tab="characters" data-i18n="elements.charactersTab">角色</button>
                             <button class="tab-btn" data-tab="items" data-i18n="elements.itemsTab">道具</button>
+                            <button class="tab-btn" data-tab="settings" data-i18n="elements.settingsTab">设定</button>
                         </div>
                         <div class="elements-content">
                             <!-- Characters Tab -->
@@ -220,40 +218,38 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Setting View -->
-                <div id="setting-view" class="view">
-                    <div class="setting-container">
-                        <div class="setting-list">
-                            <h3 data-i18n="setting.list">设定列表</h3>
-                            <button id="add-setting-btn" class="btn btn-sm" data-i18n="buttons.addSetting">+ 添加设定</button>
-                            <div id="settings" class="settings-list"></div>
-                        </div>
-                        <div class="setting-editor" id="setting-editor-panel">
-                            <div id="setting-editor-placeholder" class="editor-placeholder active">
-                                <div class="placeholder-content">
-                                    <div class="placeholder-icon">🏰</div>
-                                    <p data-i18n="placeholder.setting">请从左侧选择一个设定或创建新设定</p>
+                            <!-- Settings Tab -->
+                            <div id="settings-tab" class="elements-tab-content">
+                                <div class="elements-list">
+                                    <h3 data-i18n="elements.settingsList">设定列表</h3>
+                                    <button id="add-setting-btn" class="btn btn-sm" data-i18n="buttons.addSetting">+ 添加设定</button>
+                                    <div id="settings" class="elements-list-container"></div>
                                 </div>
-                            </div>
-                            <div id="setting-editor-content" class="setting-editor-content hidden">
-                                <h3 data-i18n="setting.details">设定详情</h3>
-                                <form id="setting-form" class="editor-form">
-                                    <input type="text" id="setting-name" class="input-field" data-i18n-placeholder="setting.name" placeholder="设定名称">
-                                    <select id="setting-type" class="input-field">
-                                        <option value="location" data-i18n="setting.typeLocation">地点</option>
-                                        <option value="region" data-i18n="setting.typeRegion">区域</option>
-                                        <option value="world" data-i18n="setting.typeWorld">世界</option>
-                                    </select>
-                                    <select id="setting-parent" class="input-field">
-                                        <option value="" data-i18n="setting.noParent">无父级</option>
-                                    </select>
-                                    <textarea id="setting-description" class="input-field" data-i18n-placeholder="setting.description" placeholder="设定描述"></textarea>
-                                    <button type="submit" class="btn btn-primary" data-i18n="buttons.saveSetting">保存设定</button>
-                                </form>
+                                <div class="element-editor" id="setting-editor-panel">
+                                    <div id="setting-editor-placeholder" class="editor-placeholder active">
+                                        <div class="placeholder-content">
+                                            <div class="placeholder-icon">🏰</div>
+                                            <p data-i18n="placeholder.setting">请从左侧选择一个设定或创建新设定</p>
+                                        </div>
+                                    </div>
+                                    <div id="setting-editor-content" class="element-editor-content hidden">
+                                        <h3 data-i18n="setting.details">设定详情</h3>
+                                        <form id="setting-form" class="editor-form">
+                                            <input type="text" id="setting-name" class="input-field" data-i18n-placeholder="setting.name" placeholder="设定名称">
+                                            <select id="setting-type" class="input-field">
+                                                <option value="location" data-i18n="setting.typeLocation">地点</option>
+                                                <option value="region" data-i18n="setting.typeRegion">区域</option>
+                                                <option value="world" data-i18n="setting.typeWorld">世界</option>
+                                            </select>
+                                            <select id="setting-parent" class="input-field">
+                                                <option value="" data-i18n="setting.noParent">无父级</option>
+                                            </select>
+                                            <textarea id="setting-description" class="input-field" data-i18n-placeholder="setting.description" placeholder="设定描述"></textarea>
+                                            <button type="submit" class="btn btn-primary" data-i18n="buttons.saveSetting">保存设定</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

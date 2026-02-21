@@ -120,8 +120,10 @@ class I18nManager {
           "elements": {
             "charactersTab": "角色",
             "itemsTab": "道具",
+            "settingsTab": "设定",
             "charactersList": "角色列表",
-            "itemsList": "道具列表"
+            "itemsList": "道具列表",
+            "settingsList": "设定列表"
           },
           "setting": {
             "list": "设定列表",
@@ -368,8 +370,10 @@ class I18nManager {
           "elements": {
             "charactersTab": "Characters",
             "itemsTab": "Items",
+            "settingsTab": "Settings",
             "charactersList": "Character List",
-            "itemsList": "Item List"
+            "itemsList": "Item List",
+            "settingsList": "Setting List"
           },
           "setting": {
             "list": "Setting List",

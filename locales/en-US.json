@@ -47,8 +47,10 @@
   "elements": {
     "charactersTab": "Characters",
     "itemsTab": "Items",
+    "settingsTab": "Settings",
     "charactersList": "Character List",
-    "itemsList": "Item List"
+    "itemsList": "Item List",
+    "settingsList": "Setting List"
   },
   "character": {
     "list": "Character List",

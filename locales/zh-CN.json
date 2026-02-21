@@ -47,8 +47,10 @@
   "elements": {
     "charactersTab": "角色",
     "itemsTab": "道具",
+    "settingsTab": "设定",
     "charactersList": "角色列表",
-    "itemsList": "道具列表"
+    "itemsList": "道具列表",
+    "settingsList": "设定列表"
   },
   "character": {
     "list": "角色列表",
