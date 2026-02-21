@@ -33,38 +33,42 @@ class ParagraphAnalyzer {
      */
     updateStory(story) {
         this.story = story;
+        this.clearCache();
     }
 
     /**
-     * Update the element manager (called when initialized)
-     * @param {ElementManager} elementManager - Element manager
+     * Update the element manager (called when it becomes available)
+     * @param {ElementManager} elementManager - Element manager instance
      */
     updateElementManager(elementManager) {
         this.elementManager = elementManager;
+        this.clearCache();
     }
 
     /**
-     * Analyze a single paragraph and generate suggestions
+     * Analyze a single paragraph
      * @param {Object} paragraph - The paragraph to analyze
-     * @param {Object} context - Context information (chapterId, previousParagraphs, etc.)
-     * @returns {Promise<Object>} Analysis result with suggestions
+     * @param {Object} context - Context information
+     * @returns {Promise<Object>} Analysis result
      */
     async analyzeParagraph(paragraph, context) {
         const cacheKey = this.getCacheKey(paragraph.id);
+
+        // Check cache
         if (this.analysisCache.has(cacheKey)) {
             return this.analysisCache.get(cacheKey);
         }
 
-        // Build context for AI
+        // Build analysis context
         const analysisContext = this.buildAnalysisContext(paragraph, context);
 
-        // Generate AI prompt
+        // Generate prompt
         const prompt = this.generateAnalysisPrompt(paragraph, analysisContext);
 
-        // Call AI for analysis
+        // Call AI
         const aiResponse = await this.callAIForAnalysis(prompt);
 
-        // Parse AI response
+        // Parse response
         const analysis = this.parseAnalysisResult(aiResponse, paragraph.id);
 
         // Cache result
@@ -128,7 +132,7 @@ class ParagraphAnalyzer {
      * @returns {string} AI prompt
      */
     generateAnalysisPrompt(paragraph, analysisContext) {
-        let prompt = `请分析以下段落内容，提取故事元素、事件和状态变化：
+        let prompt = `请分析以下段落内容，提取故事元素、事件和状态变化。
 
 ## 段落内容
 ${paragraph.content}
@@ -144,29 +148,38 @@ ${this.formatElementsForPrompt(analysisContext.existingElements)}
 ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).join('\n')}
 
 ## 分析要求
-请以 JSON 格式返回分析结果，包含以下字段：
+请严格以 JSON 格式返回分析结果（不要包含任何其他文字），包含以下字段：
 
-1. **elements**: 段落中提到或新增的故事元素
-   - 对于已存在的元素，只返回 id 和 type
-   - 对于新元素，返回完整信息（name, type, description, keywords）
+1. **elements**: 段落中提到或新增的故事元素数组
+   - 对于已存在的元素，返回: {"id": "existing_id", "type": "character"}
+   - 对于新元素，返回: {"id": "NEW:元素名称", "type": "character", "name": "元素名称", "description": "描述", "keywords": []}
    - 类型包括: character(人物), item(道具), location(地点), memory(记忆), base(基础设定)
 
-2. **events**: 段落中发生的事件
-   - description: 事件描述
-   - type: 事件类型 (action, dialogue, discovery, conflict, emotional, state_change)
-   - participants: 参与的元素ID列表
-   - location: 事件发生地（元素ID或描述）
+2. **events**: 段落中发生的事件数组
+   - 每个事件: {"description": "事件描述", "type": "action", "participants": [], "location": null}
+   - type: action, dialogue, discovery, conflict, emotional, state_change
 
-3. **stateChanges**: 元素状态变化
-   - elementId: 元素ID（对于新元素，使用临时标记如 NEW:elementName）
-   - changes: 变更内容
-    * location: 所在地变化
-    * description: 描述变化（如 {"剑术":"等级1"}）
-    * owner: 拥有者变化（仅item/character）
-    * status: 状态变化（如 "破损", "被遗忘"）
-    * keywords: 关键字变化
+3. **stateChanges**: 元素状态变化数组
+   - 每个变化: {"elementId": "元素ID", "property": "location", "from": "旧值", "to": "新值"}
+   - property 可以是: location, description, owner, status, keywords
 
-请确保 JSON 格式正确，并基于段落内容进行合理的推断。`;
+示例返回格式：
+\`\`\`json
+{
+  "elements": [
+    {"id": "char_1", "type": "character"},
+    {"id": "NEW:山", "type": "location", "name": "山", "description": "一座山", "keywords": ["山", "山峰"]}
+  ],
+  "events": [
+    {"description": "角色到达目的地", "type": "action", "participants": ["char_1"], "location": "NEW:山"}
+  ],
+  "stateChanges": [
+    {"elementId": "char_1", "property": "location", "from": "在路上", "to": "NEW:山"}
+  ]
+}
+\`\`\`
+
+重要：只返回 JSON 代码，不要添加任何解释性文字。`;
 
         return prompt;
     }
@@ -338,40 +351,17 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
      * @returns {string} Formatted element list
      */
     formatElementsForPrompt(elements) {
-        if (!elements || elements.length === 0) {
-            return '暂无元素';
+        if (!Array.isArray(elements) || elements.length === 0) {
+            return '（无）';
         }
 
-        const grouped = {
-            character: [],
-            item: [],
-            location: [],
-            memory: [],
-            base: []
-        };
-
-        elements.forEach(element => {
-            if (grouped[element.type]) {
-                grouped[element.type].push(element);
-            }
-        });
-
-        let result = '';
-
-        for (const [type, items] of Object.entries(grouped)) {
-            if (items.length > 0) {
-                result += `\n### ${type.toUpperCase()}\n`;
-                items.forEach(item => {
-                    result += `- ${item.name} (ID: ${item.id})`;
-                    if (item.description) {
-                        result += `: ${item.description.substring(0, 100)}`;
-                    }
-                    result += '\n';
-                });
-            }
-        }
-
-        return result || '暂无元素';
+        return elements.map(el => {
+            const prefix = el.type === 'character' ? '角色' :
+                          el.type === 'item' ? '道具' :
+                          el.type === 'location' ? '地点' :
+                          el.type === 'memory' ? '记忆' : '设定';
+            return `- ${prefix}: ${el.name} (ID: ${el.id})`;
+        }).join('\n');
     }
 
     /**
@@ -389,8 +379,8 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
     /**
      * Get previous paragraphs
      * @param {Object} paragraph - Current paragraph
-     * @param {Object} chapter - Chapter containing the paragraph
-     * @returns {Array} Previous paragraphs
+     * @param {Object} chapter - Chapter
+     * @returns {Array<Object>} Previous paragraphs
      */
     getPreviousParagraphs(paragraph, chapter) {
         if (!chapter || !chapter.paragraphs) {
@@ -398,7 +388,7 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
         }
 
         const index = chapter.paragraphs.findIndex(p => p.id === paragraph.id);
-        if (index <= 0) {
+        if (index === -1) {
             return [];
         }
 
@@ -406,16 +396,16 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
     }
 
     /**
-     * Get current location from chapter
+     * Get current location from previous paragraphs
      * @param {Object} chapter - Chapter
-     * @returns {string|null} Current location ID
+     * @returns {string|null} Current location
      */
     getCurrentLocation(chapter) {
         if (!chapter || !chapter.paragraphs) {
             return null;
         }
 
-        // Find the most recent location change
+        // Search backwards for location change
         for (let i = chapter.paragraphs.length - 1; i >= 0; i--) {
             const p = chapter.paragraphs[i];
             if (p.changes && p.changes.elements) {
@@ -559,6 +549,10 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
             if (change.elementId === temporaryId) {
                 change.elementId = newElementId;
             }
+            // Also update to/from values if they reference the temporary ID
+            if (change.to === temporaryId) {
+                change.to = newElementId;
+            }
         });
     }
 
@@ -573,19 +567,13 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
         }
 
         for (const chapter of this.story.chapters) {
-            if (chapter.paragraphs) {
-                const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
-                if (paragraph) {
-                    return paragraph;
-                }
+            if (!chapter.paragraphs) continue;
+            const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+            if (paragraph) {
+                return paragraph;
             }
         }
 
         return null;
     }
-}
-
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ParagraphAnalyzer;
 }
