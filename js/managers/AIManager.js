@@ -134,8 +134,13 @@ class AIManager {
             return;
         }
 
+        console.log('[AIManager] Reloading Element/Event/State components');
+        console.log('[AIManager] Story elements:', this.state.currentStory?.elements?.length || 0);
+
         // 重新初始化 ElementManager 以加载迁移后的数据
         this.elementManager = new ElementManager(this.state.currentStory || { elements: [] });
+        console.log('[AIManager] ElementManager initialized with elements:', this.elementManager.listElements().length);
+
         this.stateTimeline = new StateTimeline(this.elementManager, this.state.currentStory || { chapters: [] });
         this.storyViewManager = new StoryViewManager(this.elementManager, this.stateTimeline);
         this.stateContextCache = new StateContextCache(this.stateTimeline, this.storyViewManager);

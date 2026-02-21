@@ -158,17 +158,18 @@ class App {
      */
     onStoryLoaded() {
         const story = this.state.currentStory;
+
+        // Reload Element/Event/State components with migrated data FIRST
+        if (this.aiManager) {
+            this.aiManager.reloadElementStateComponents();
+        }
+
         document.getElementById('story-title').textContent = story.metadata.title;
         this.uiRenderer.renderChapters();
         this.uiRenderer.renderAllElements();
         this.uiRenderer.renderCharacters();
         this.uiRenderer.renderItems();
         this.uiRenderer.renderSettings();
-
-        // Reload Element/Event/State components with migrated data
-        if (this.aiManager) {
-            this.aiManager.reloadElementStateComponents();
-        }
 
         // Restore selected items in editors
         if (this.state.selectedChapter) {
@@ -901,9 +902,16 @@ class App {
                 throw new Error(result.error || i18n.t('ai.paragraphAnalysis.applyError'));
             }
 
-            // Refresh UI
+            // Save to localStorage after applying changes
+            this.state.saveToLocalStorage();
+
+            // Refresh UI - also refresh element lists since new elements may have been created
             this.uiRenderer.renderParagraphs();
             this.uiRenderer.renderChangesTracker();
+            this.uiRenderer.renderAllElements();
+            this.uiRenderer.renderCharacters();
+            this.uiRenderer.renderItems();
+            this.uiRenderer.renderSettings();
 
             this.notificationManager.hideLoading();
             this.notificationManager.showSuccess(i18n.t('ai.paragraphAnalysis.applied'));

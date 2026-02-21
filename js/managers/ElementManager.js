@@ -20,12 +20,33 @@ class ElementManager {
    * @private
    */
   _initializeElements(elements) {
-    elements.forEach(elementData => {
-      const element = new StoryElement(elementData);
-      this.elements.set(element.id, element);
+    elements.forEach((elementData, index) => {
+      try {
+        console.log(`[ElementManager] Initializing element ${index}:`, {
+          id: elementData.id,
+          type: elementData.type,
+          name: elementData.name,
+          hasDescription: !!elementData.description
+        });
+        const element = new StoryElement(elementData);
+        this.elements.set(element.id, element);
 
-      // 更新计数器
-      this._updateElementCounter(element.type, element.name);
+        // 更新计数器
+        this._updateElementCounter(element.type, element.name);
+      } catch (error) {
+        console.error(`[ElementManager] Failed to initialize element at index ${index}:`, elementData, error);
+        // 修复并重试
+        const fixedData = {
+          ...elementData,
+          type: elementData.type || 'base',
+          name: elementData.name || '未命名元素',
+          description: elementData.description || '暂无描述'
+        };
+        console.log('[ElementManager] Retrying with fixed data:', fixedData);
+        const element = new StoryElement(fixedData);
+        this.elements.set(element.id, element);
+        this._updateElementCounter(element.type, element.name);
+      }
     });
   }
 
@@ -67,7 +88,13 @@ class ElementManager {
       throw new Error('Element requires type, name, and description');
     }
 
-    // 生成唯一 ID（不在这里检查重名，因为 ID 是唯一的）
+    // 检查是否已存在同名元素
+    const existingElement = this.findElementByName(name);
+    if (existingElement) {
+      throw new Error(`Element with name "${name}" already exists (ID: ${existingElement.id}). Please use the existing element instead of creating a new one.`);
+    }
+
+    // 生成唯一 ID
     const id = this._generateUniqueId(type, name);
 
     // 创建元素

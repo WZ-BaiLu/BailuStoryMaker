@@ -82,25 +82,35 @@ class AIElementTools {
   _updateElementLocation(params) {
     const { elementId, location } = params;
 
-    // 验证元素存在
-    const element = this.elementManager.getElement(elementId);
+    // 验证元素存在（支持通过 ID 或名称查找）
+    let element = this.elementManager.getElement(elementId);
     if (!element) {
-      throw new Error(`Element not found: ${elementId}`);
+      // 尝试通过名称查找
+      element = this.elementManager.findElementByName(elementId);
+      if (!element) {
+        throw new Error(`Element not found: ${elementId}`);
+      }
     }
 
     // 验证位置（如果设置）
+    let locationElementId = location;
     if (location !== null) {
-      const locationElement = this.elementManager.getElement(location);
+      let locationElement = this.elementManager.getElement(location);
       if (!locationElement) {
-        throw new Error(`Location not found: ${location}`);
+        // 尝试通过名称查找
+        locationElement = this.elementManager.findElementByName(location);
+        if (!locationElement) {
+          throw new Error(`Location not found: ${location}`);
+        }
       }
       if (locationElement.type !== 'location') {
         throw new Error(`Element ${location} is not a location`);
       }
+      locationElementId = locationElement.id;
     }
 
     // 更新位置
-    this.elementManager.updateElementLocation(elementId, location);
+    this.elementManager.updateElementLocation(element.id, locationElementId);
 
     return {
       success: true,

@@ -137,21 +137,56 @@ class ParagraphAnalyzer {
      * @returns {Object} Object with system, assistant and user messages
      */
     generateAnalysisPrompt(paragraph, analysisContext) {
+        // Count existing elements by type and name
+        const elementCounts = {};
+        for (const element of analysisContext.existingElements) {
+            const key = `${element.type}:${element.name.toLowerCase()}`;
+            elementCounts[key] = (elementCounts[key] || 0) + 1;
+        }
+
         // System message with analysis requirements
         const systemMessage = `你是一个专业的小说分析助手，负责分析小说段落并通过工具调用来更新故事元素和状态。
 
-请分析段落内容，并调用相应的工具来：
-1. 创建新的故事元素（人物、道具、地点、记忆、基础设定）
-2. 更新已有元素的状态（位置、描述、拥有者、状态、关键词等）
+请分析段落内容，并在一次响应中完成以下所有操作（非常重要）：
 
-使用提供的工具完成分析，不要返回 JSON 或其他格式的数据。`;
+第一步：检查元素是否已存在
+- 查看下方的"已存在的元素"列表
+- 如果元素已存在，直接使用其名称，不要再创建
+- 如果元素不存在，使用 addElement 工具创建
+
+第二步：更新元素状态
+- 对于已存在或新创建的元素，如果段落中提到它们的位置，使用 updateElementLocation 设置位置
+
+关键要求：
+- 必须在同一个响应中调用所有必要的工具（不能分多次）
+- AI 工具调用不支持多轮对话，必须在一次响应中完成所有操作
+- 重复创建相同的元素会导致错误，请务必先检查"已存在的元素"列表
+- 在 updateElementLocation 中，可以使用元素名称而不是 ID（系统会自动查找）
+
+示例 1（分析"段誉来到一座山"，段誉已存在，山不存在）：
+1. addElement(type: "location", name: "一座山", description: "地点", keywords: [])
+2. updateElementLocation(elementId: "段誉", location: "一座山")
+
+示例 2（分析"段誉来到一座山"，两者都已存在）：
+1. updateElementLocation(elementId: "段誉", location: "一座山")
+
+示例 3（分析"段誉来到一座山"，两者都不存在）：
+1. addElement(type: "character", name: "段誉", description: "小说人物", keywords: [])
+2. addElement(type: "location", name: "一座山", description: "地点", keywords: [])
+3. updateElementLocation(elementId: "段誉", location: "一座山")
+
+注意事项：
+- 不要等待工具返回结果后再调用下一个工具
+- 在同一个响应中一次性调用所有需要的工具
+- 在 updateElementLocation 中，可以使用元素名称代替 ID
+- 完成分析后，不要返回任何文字说明，只通过工具调用更新状态`;
 
         // Assistant message with context information
         const assistantMessage = `## 当前故事背景
 - 章节: ${analysisContext.chapter ? analysisContext.chapter.title : '未知'}
 - 当前所在地: ${analysisContext.currentLocation || '未知'}
 
-## 已存在的元素
+## 已存在的元素（不要再创建这些元素）
 ${this.formatElementsForPrompt(analysisContext.existingElements)}
 
 ## 前几个段落（上下文）
@@ -211,30 +246,39 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                 throw new Error(result.error || 'AI service error');
             }
 
-            // Execute tool calls if present
-            if (result.data.tool_calls && Array.isArray(result.data.tool_calls)) {
-                const executedToolCalls = [];
+            const message = result.data;
 
-                for (const toolCall of result.data.tool_calls) {
+            // Execute tool calls if present
+            let allExecutedToolCalls = [];
+            if (message.tool_calls && Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+                // Execute all tool calls in single round
+                for (const toolCall of message.tool_calls) {
                     const functionName = toolCall.function?.name || toolCall.name;
                     const functionArgs = toolCall.function?.arguments ?
                         JSON.parse(toolCall.function.arguments) :
                         toolCall.arguments;
 
-                    // Execute the tool
+                    // Execute tool
                     const toolResult = await this.executeTool(functionName, functionArgs);
 
-                    executedToolCalls.push({
+                    allExecutedToolCalls.push({
                         name: functionName,
                         arguments: functionArgs,
                         result: toolResult
                     });
-                }
 
-                result.data.tool_calls = executedToolCalls;
+                    // Log tool result for debugging
+                    console.log(`[ParagraphAnalyzer] Tool executed: ${functionName}`, {
+                        args: functionArgs,
+                        result: toolResult
+                    });
+                }
             }
 
-            return result.data;
+            return {
+                content: message.content || '',
+                tool_calls: allExecutedToolCalls
+            };
         } catch (error) {
             console.error('AI analysis with tools failed:', error);
             throw new Error(`AI 分析失败: ${error.message}`);
@@ -309,6 +353,12 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                     // Build state changes and events from successful tool calls
                     if (toolCall.result && toolCall.result.success) {
                         this.processToolCallResult(toolCall, analysisData);
+                    } else if (toolCall.result && !toolCall.result.success) {
+                        // Log failed tool calls
+                        console.warn(`[ParagraphAnalyzer] Tool call failed: ${toolCall.name}`, {
+                            args: toolCall.arguments,
+                            error: toolCall.result.error
+                        });
                     }
                 }
             }
@@ -370,7 +420,9 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
 
             case 'updateElementLocation':
                 if (toolCall.arguments) {
-                    const element = this.elementManager?.getElementById(toolCall.arguments.elementId);
+                    // Use getElement instead of getElementById to be consistent with ElementManager API
+                    const element = this.elementManager?.getElement(toolCall.arguments.elementId);
+
                     analysisData.stateChanges.push({
                         elementId: toolCall.arguments.elementId,
                         elementName: element?.name || toolCall.arguments.elementId,
@@ -394,7 +446,9 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
 
             case 'updateElementDescription':
                 if (toolCall.arguments && toolCall.result && toolCall.result.changes) {
-                    const element = this.elementManager?.getElementById(toolCall.arguments.elementId);
+                    // Use getElement instead of getElementById to be consistent with ElementManager API
+                    const element = this.elementManager?.getElement(toolCall.arguments.elementId);
+
                     analysisData.stateChanges.push({
                         elementId: toolCall.arguments.elementId,
                         elementName: element?.name || toolCall.arguments.elementId,

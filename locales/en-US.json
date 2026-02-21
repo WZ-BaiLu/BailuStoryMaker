@@ -25,6 +25,8 @@
     "saveItem": "Save Item",
     "saveSetting": "Save Setting",
     "save": "Save",
+    "addElement": "Add Element",
+    "saveElement": "Save Element",
     "generatePrompt": "Generate Prompt",
     "copyPrompt": "Copy to Clipboard",
     "confirm": "Confirm",
@@ -48,9 +50,11 @@
     "charactersTab": "Characters",
     "itemsTab": "Items",
     "settingsTab": "Settings",
+    "allTab": "All",
     "charactersList": "Character List",
     "itemsList": "Item List",
-    "settingsList": "Setting List"
+    "settingsList": "Setting List",
+    "allList": "All Elements"
   },
   "character": {
     "list": "Character List",
@@ -102,6 +106,19 @@
     "typeRegion": "Region",
     "typeWorld": "World"
   },
+  "element": {
+    "details": "Element Details",
+    "name": "Element Name",
+    "description": "Element Description",
+    "keywords": "Keywords",
+    "type": "Type",
+    "typeCharacter": "Character",
+    "typeItem": "Item",
+    "typeLocation": "Location",
+    "typeMemory": "Memory",
+    "typeBase": "Base Setting"
+  },
+
   "prompt": {
     "title": "Prompt Generation",
     "selectChapter": "Select Chapter",
@@ -121,11 +138,12 @@
     "saving": "Saving..."
   },
   "placeholder": {
+    "inputName": "Enter Name",
+    "element": "Please select an element from the left or create a new one",
     "chapter": "Please select a chapter from the left or create a new one",
     "character": "Please select a character from the left or create a new one",
     "item": "Please select an item from the left or create a new one",
-    "setting": "Please select a setting from the left or create a new one",
-    "inputName": "Enter Name"
+    "setting": "Please select a setting from the left or create a new one"
   },
   "language": {
     "zhCN": "简体中文",

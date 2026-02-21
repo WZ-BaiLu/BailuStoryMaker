@@ -439,6 +439,46 @@ class UIRenderer {
             });
         }
 
+        // Element changes (new unified element system)
+        if (paragraph.changes && paragraph.changes.elements) {
+            paragraph.changes.elements.forEach(elementChange => {
+                // Resolve element ID or name
+                const elementId = elementChange.elementId;
+                const elementName = elementChange.elementName || elementId;
+
+                // Find element in story.elements
+                const element = story?.elements?.find(e => e.id === elementId);
+
+                // Format change based on property
+                let changeDetail = '';
+                let icon = '📦';
+
+                if (elementChange.property === 'location') {
+                    icon = '📍';
+                    const fromLocation = elementChange.from || '未知';
+                    const toLocation = elementChange.to || elementChange.changes?.location || '未知';
+                    changeDetail = `位置: ${fromLocation} → ${toLocation}`;
+                } else if (elementChange.property === 'description') {
+                    icon = '📝';
+                    changeDetail = `描述已更新`;
+                } else {
+                    changeDetail = JSON.stringify(elementChange.changes || {});
+                }
+
+                const displayName = element?.name || elementName;
+
+                changes.push(`
+                    <div class="timeline-change-item element" data-change-type="element" data-element-id="${elementId}">
+                        <span class="timeline-change-icon">${icon}</span>
+                        <div class="timeline-change-content">
+                            <div class="timeline-change-name">${displayName}</div>
+                            <div class="timeline-change-detail">${changeDetail}</div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+
         // Show empty message if no changes
         if (changes.length === 0) {
             changes.push(`

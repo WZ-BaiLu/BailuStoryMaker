@@ -14,14 +14,21 @@ class StoryElement {
    * @param {Array} [data.stateHistory=[]] - 状态变更历史
    */
   constructor(data) {
-    if (!data.type || !data.name || !data.description) {
-      throw new Error('StoryElement requires type, name, and description');
+    // Validate and provide defaults for required fields
+    if (!data.type) {
+      throw new Error('StoryElement requires type');
+    }
+    if (!data.name) {
+      throw new Error('StoryElement requires name');
+    }
+    if (data.description === null || data.description === undefined) {
+      throw new Error('StoryElement requires description');
     }
 
     this.id = data.id || this._generateId(data.type, data.name);
     this.type = this._validateType(data.type);
     this.name = data.name;
-    this.description = data.description;
+    this.description = data.description || ''; // Allow empty string
     this.keywords = Array.isArray(data.keywords) ? data.keywords : [];
     this.location = data.location || null;
     this.stateDescription = data.stateDescription || {};

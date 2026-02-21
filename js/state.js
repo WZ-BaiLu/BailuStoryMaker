@@ -22,6 +22,24 @@ class AppState {
                 storyData = this._migrateStoryData(storyData);
             }
 
+            // Fix any existing elements with empty/null descriptions or names
+            if (storyData.elements && Array.isArray(storyData.elements)) {
+                storyData.elements.forEach(element => {
+                    if (!element.name || element.name.trim() === '') {
+                        element.name = '未命名元素';
+                        console.log(`[AppState] Fixed empty name for element: ${element.id}`);
+                    }
+                    if (!element.description || element.description.trim() === '') {
+                        element.description = '暂无描述';
+                        console.log(`[AppState] Fixed empty description for element: ${element.name} (${element.id})`);
+                    }
+                    if (!element.type || element.type.trim() === '') {
+                        element.type = 'base';
+                        console.log(`[AppState] Fixed empty type for element: ${element.name} (${element.id})`);
+                    }
+                });
+            }
+
             this.currentStory = storyData;
             this.selectedChapter = null;
             this.selectedCharacter = null;
@@ -54,12 +72,13 @@ class AppState {
                     id: char.id,
                     type: 'character',
                     name: char.name,
-                    description: char.description,
+                    description: char.description?.trim() || '暂无描述',
                     keywords: [],
                     attributes: char.attributes,
                     abilities: char.abilities,
                     notes: char.notes
                 };
+                console.log(`[AppState] Migrating character: ${char.name}, description: "${element.description}"`);
                 migrated.elements.push(element);
             });
             console.log(`[AppState] Migrated ${migrated.characters.length} characters to elements`);
@@ -72,11 +91,12 @@ class AppState {
                     id: item.id,
                     type: 'item',
                     name: item.name,
-                    description: item.description,
+                    description: item.description?.trim() || '暂无描述',
                     keywords: [],
                     properties: item.properties,
                     owner: item.owner
                 };
+                console.log(`[AppState] Migrating item: ${item.name}, description: "${element.description}"`);
                 migrated.elements.push(element);
             });
             console.log(`[AppState] Migrated ${migrated.items.length} items to elements`);

@@ -64,7 +64,7 @@ class I18nManager {
             "import": "导入",
             "undo": "撤销",
             "redo": "重做",
-            "addChapter": "添加章节",
+            "addChapter": "+ 添加章节",
             "addCharacter": "添加角色",
             "addItem": "添加道具",
             "addSetting": "添加设定",
@@ -72,10 +72,13 @@ class I18nManager {
             "saveItem": "保存道具",
             "saveSetting": "保存设定",
             "save": "保存",
+            "addElement": "添加元素",
+            "saveElement": "保存元素",
             "generatePrompt": "生成提示词",
             "copyPrompt": "复制到剪贴板",
             "confirm": "确认",
-            "cancel": "取消"
+            "cancel": "取消",
+            "addParagraph": "+ 添加段落"
           },
           "header": {
             "noStoryLoaded": "未加载故事"
@@ -121,9 +124,23 @@ class I18nManager {
             "charactersTab": "角色",
             "itemsTab": "道具",
             "settingsTab": "设定",
+            "allTab": "全部",
             "charactersList": "角色列表",
             "itemsList": "道具列表",
-            "settingsList": "设定列表"
+            "settingsList": "设定列表",
+            "allList": "所有元素"
+          },
+          "element": {
+            "details": "元素详情",
+            "name": "元素名称",
+            "description": "元素描述",
+            "keywords": "关键词",
+            "type": "类型",
+            "typeCharacter": "角色",
+            "typeItem": "道具",
+            "typeLocation": "地点",
+            "typeMemory": "记忆",
+            "typeBase": "基础设定"
           },
           "setting": {
             "list": "设定列表",
@@ -156,11 +173,12 @@ class I18nManager {
             "saving": "保存中..."
           },
           "placeholder": {
+            "inputName": "输入名称",
+            "element": "请从左侧选择一个元素或创建新元素",
             "chapter": "请从左侧选择一个章节或创建新章节",
             "character": "请从左侧选择一个角色或创建新角色",
             "item": "请从左侧选择一个道具或创建新道具",
-            "setting": "请从左侧选择一个设定或创建新设定",
-            "inputName": "输入名称"
+            "setting": "请从左侧选择一个设定或创建新设定"
           },
           "language": {
             "zhCN": "简体中文",
@@ -314,7 +332,7 @@ class I18nManager {
             "import": "Import",
             "undo": "Undo",
             "redo": "Redo",
-            "addChapter": "Add Chapter",
+            "addChapter": "+ Add Chapter",
             "addCharacter": "Add Character",
             "addItem": "Add Item",
             "addSetting": "Add Setting",
@@ -322,10 +340,13 @@ class I18nManager {
             "saveItem": "Save Item",
             "saveSetting": "Save Setting",
             "save": "Save",
+            "addElement": "Add Element",
+            "saveElement": "Save Element",
             "generatePrompt": "Generate Prompt",
             "copyPrompt": "Copy to Clipboard",
             "confirm": "Confirm",
-            "cancel": "Cancel"
+            "cancel": "Cancel",
+            "addParagraph": "+ Add Paragraph"
           },
           "header": {
             "noStoryLoaded": "No Story Loaded"
@@ -371,9 +392,23 @@ class I18nManager {
             "charactersTab": "Characters",
             "itemsTab": "Items",
             "settingsTab": "Settings",
+            "allTab": "All",
             "charactersList": "Character List",
             "itemsList": "Item List",
-            "settingsList": "Setting List"
+            "settingsList": "Setting List",
+            "allList": "All Elements"
+          },
+          "element": {
+            "details": "Element Details",
+            "name": "Element Name",
+            "description": "Element Description",
+            "keywords": "Keywords",
+            "type": "Type",
+            "typeCharacter": "Character",
+            "typeItem": "Item",
+            "typeLocation": "Location",
+            "typeMemory": "Memory",
+            "typeBase": "Base Setting"
           },
           "setting": {
             "list": "Setting List",
@@ -406,11 +441,12 @@ class I18nManager {
             "saving": "Saving..."
           },
           "placeholder": {
+            "inputName": "Enter Name",
+            "element": "Please select an element from the left or create a new one",
             "chapter": "Please select a chapter from the left or create a new one",
             "character": "Please select a character from the left or create a new one",
             "item": "Please select an item from the left or create a new one",
-            "setting": "Please select a setting from the left or create a new one",
-            "inputName": "Enter Name"
+            "setting": "Please select a setting from the left or create a new one"
           },
           "language": {
             "zhCN": "简体中文",

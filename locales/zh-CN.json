@@ -25,6 +25,8 @@
     "saveItem": "保存道具",
     "saveSetting": "保存设定",
     "save": "保存",
+    "addElement": "添加元素",
+    "saveElement": "保存元素",
     "generatePrompt": "生成提示词",
     "copyPrompt": "复制到剪贴板",
     "confirm": "确认",
@@ -48,9 +50,11 @@
     "charactersTab": "角色",
     "itemsTab": "道具",
     "settingsTab": "设定",
+    "allTab": "全部",
     "charactersList": "角色列表",
     "itemsList": "道具列表",
-    "settingsList": "设定列表"
+    "settingsList": "设定列表",
+    "allList": "所有元素"
   },
   "character": {
     "list": "角色列表",
@@ -102,6 +106,19 @@
     "typeRegion": "区域",
     "typeWorld": "世界"
   },
+  "element": {
+    "details": "元素详情",
+    "name": "元素名称",
+    "description": "元素描述",
+    "keywords": "关键词",
+    "type": "类型",
+    "typeCharacter": "角色",
+    "typeItem": "道具",
+    "typeLocation": "地点",
+    "typeMemory": "记忆",
+    "typeBase": "基础设定"
+  },
+
   "prompt": {
     "title": "提示词生成",
     "selectChapter": "选择章节",
@@ -121,11 +138,12 @@
     "saving": "保存中..."
   },
   "placeholder": {
+    "inputName": "输入名称",
+    "element": "请从左侧选择一个元素或创建新元素",
     "chapter": "请从左侧选择一个章节或创建新章节",
     "character": "请从左侧选择一个角色或创建新角色",
     "item": "请从左侧选择一个道具或创建新道具",
-    "setting": "请从左侧选择一个设定或创建新设定",
-    "inputName": "输入名称"
+    "setting": "请从左侧选择一个设定或创建新设定"
   },
   "language": {
     "zhCN": "简体中文",
