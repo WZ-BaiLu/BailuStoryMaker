@@ -610,6 +610,201 @@ class App {
                 return [];
         }
     }
+
+    /**
+     * Analyze a paragraph using AI to extract elements, events, and state changes
+     * @param {string} paragraphId - The ID of the paragraph to analyze
+     */
+    async analyzeParagraph(paragraphId) {
+        const story = this.state.currentStory;
+        if (!story) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noStory'));
+            return;
+        }
+
+        // Find the paragraph
+        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
+        if (!chapter) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noChapter'));
+            return;
+        }
+
+        const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
+        if (!paragraph) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noParagraph'));
+            return;
+        }
+
+        if (!paragraph.content || paragraph.content.trim() === '') {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.emptyContent'));
+            return;
+        }
+
+        // Show loading notification
+        this.notificationManager.showLoading(i18n.t('ai.paragraphAnalysis.loading'));
+
+        try {
+            // Build context for analysis
+            const context = {
+                chapterId: this.state.selectedChapter,
+                paragraphIndex: chapter.paragraphs.findIndex(p => p.id === paragraphId),
+                viewLocation: chapter.viewLocation || null
+            };
+
+            // Analyze the paragraph
+            const result = await this.aiManager.analyzeParagraph(paragraph, context);
+
+            if (!result.success) {
+                throw new Error(result.error || i18n.t('ai.paragraphAnalysis.error'));
+            }
+
+            const analysis = result.data;
+
+            // Show analysis results modal
+            this.showAnalysisResultModal(paragraph, analysis);
+
+            this.notificationManager.hideLoading();
+            this.notificationManager.showSuccess(i18n.t('ai.paragraphAnalysis.success'));
+
+        } catch (error) {
+            this.notificationManager.hideLoading();
+            this.notificationManager.showError(`${i18n.t('ai.paragraphAnalysis.error')}: ${error.message}`);
+            console.error('[App] Paragraph analysis error:', error);
+        }
+    }
+
+    /**
+     * Apply paragraph analysis results
+     * @param {string} paragraphId - The ID of the paragraph
+     * @param {Object} analysis - The analysis result to apply
+     */
+    async applyParagraphAnalysis(paragraphId, analysis) {
+        this.notificationManager.showLoading(i18n.t('ai.paragraphAnalysis.applying'));
+
+        try {
+            const result = await this.aiManager.applyParagraphAnalysis(analysis, paragraphId);
+
+            if (!result.success) {
+                throw new Error(result.error || i18n.t('ai.paragraphAnalysis.applyError'));
+            }
+
+            // Refresh UI
+            this.uiRenderer.renderParagraphs();
+            this.uiRenderer.renderChangesTracker();
+
+            this.notificationManager.hideLoading();
+            this.notificationManager.showSuccess(i18n.t('ai.paragraphAnalysis.applied'));
+
+        } catch (error) {
+            this.notificationManager.hideLoading();
+            this.notificationManager.showError(`${i18n.t('ai.paragraphAnalysis.applyError')}: ${error.message}`);
+            console.error('[App] Apply analysis error:', error);
+        }
+    }
+
+    /**
+     * Show analysis result modal
+     * @param {Object} paragraph - The paragraph object
+     * @param {Object} analysis - The analysis result
+     */
+    showAnalysisResultModal(paragraph, analysis) {
+        const modal = document.createElement('div');
+        modal.className = 'modal analysis-result-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${i18n.t('ai.paragraphAnalysis.resultTitle')}</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="analysis-preview">
+                        <h4>${i18n.t('ai.paragraphAnalysis.originalText')}</h4>
+                        <p class="preview-text">${paragraph.content}</p>
+                    </div>
+
+                    ${analysis.elements && analysis.elements.length > 0 ? `
+                    <div class="analysis-section">
+                        <h4>${i18n.t('ai.paragraphAnalysis.elementsFound')} (${analysis.elements.length})</h4>
+                        <ul>
+                            ${analysis.elements.map(e => `
+                                <li>
+                                    <strong>${e.type}:</strong> ${e.name}
+                                    ${e.isNew ? `<span class="tag tag-new">${i18n.t('ai.paragraphAnalysis.elementNew')}</span>` : `<span class="tag tag-existing">${i18n.t('ai.paragraphAnalysis.elementExisting')}</span>`}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+
+                    ${analysis.events && analysis.events.length > 0 ? `
+                    <div class="analysis-section">
+                        <h4>${i18n.t('ai.paragraphAnalysis.eventsIdentified')} (${analysis.events.length})</h4>
+                        <ul>
+                            ${analysis.events.map(e => `
+                                <li>
+                                    <strong>${e.type}:</strong> ${e.description}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+
+                    ${analysis.stateChanges && analysis.stateChanges.length > 0 ? `
+                    <div class="analysis-section">
+                        <h4>${i18n.t('ai.paragraphAnalysis.stateChanges')} (${analysis.stateChanges.length})</h4>
+                        <ul>
+                            ${analysis.stateChanges.map(s => `
+                                <li>
+                                    <strong>${s.elementId || s.elementName}:</strong>
+                                    ${s.property} → ${s.newValue}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+
+                    <div class="analysis-summary">
+                        <p>
+                            <strong>${i18n.t('ai.paragraphAnalysis.summary')}:</strong>
+                            ${i18n.t('ai.paragraphAnalysis.elementsFound')} ${analysis.elements?.length || 0},
+                            ${i18n.t('ai.paragraphAnalysis.eventsIdentified')} ${analysis.events?.length || 0},
+                            ${i18n.t('ai.paragraphAnalysis.stateChanges')} ${analysis.stateChanges?.length || 0}
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-cancel">${i18n.t('ai.paragraphAnalysis.cancelButton')}</button>
+                    <button class="btn btn-primary btn-apply-analysis">${i18n.t('ai.paragraphAnalysis.applyButton')}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Bind events
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = modal.querySelector('.modal-cancel');
+        const applyBtn = modal.querySelector('.btn-apply-analysis');
+
+        const closeModal = () => {
+            modal.remove();
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        applyBtn.addEventListener('click', () => {
+            closeModal();
+            this.applyParagraphAnalysis(paragraph.id, analysis);
+        });
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
 }
 
 // Initialize app when DOM is ready

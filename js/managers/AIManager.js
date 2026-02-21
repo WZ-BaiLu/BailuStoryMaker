@@ -36,6 +36,7 @@ class AIManager {
         this.stateContextCache = null;
         this.aiElementTools = null;
         this.aiPreviewManager = null;
+        this.paragraphAnalyzer = null;
     }
 
     /**
@@ -75,16 +76,11 @@ class AIManager {
      * Initialize Element/Event/State components
      */
     initializeElementStateComponents() {
-        // 延迟加载组件以避免循环依赖
-        const StoryElement = require('../models/StoryElement');
-        const StateChange = require('../models/StateChange');
-        const StoryTimestamp = require('../models/StoryTimestamp');
-        const ElementManager = require('../managers/ElementManager');
-        const StateTimeline = require('../managers/StateTimeline');
-        const StoryViewManager = require('../managers/StoryViewManager');
-        const StateContextCache = require('../managers/StateContextCache');
-        const AIElementTools = require('../managers/AIElementTools');
-        const AIPreviewManager = require('../managers/AIPreviewManager');
+        // 检查这些类是否已经加载
+        if (typeof ElementManager === 'undefined') {
+            console.warn('[AIManager] ElementManager not loaded yet, skipping initialization');
+            return;
+        }
 
         // 创建管理器实例
         this.elementManager = new ElementManager(this.state.currentStory || { elements: [] });
@@ -103,6 +99,17 @@ class AIManager {
             this.stateContextCache,
             this.aiElementTools
         );
+
+        // Initialize Paragraph Analyzer
+        if (typeof ParagraphAnalyzer !== 'undefined') {
+            this.paragraphAnalyzer = new ParagraphAnalyzer(
+                this.state.currentStory || { chapters: [] },
+                this.elementManager,
+                this.aiService
+            );
+        } else {
+            console.warn('[AIManager] ParagraphAnalyzer not loaded yet, will initialize later');
+        }
     }
 
     /**
@@ -1361,5 +1368,104 @@ class AIManager {
             action,
             message: itemChange.message
         };
+    }
+
+    /**
+     * Analyze paragraph to extract elements, events, and state changes
+     * @param {Object} paragraph - Paragraph to analyze
+     * @param {Object} context - Context information (chapterId, etc.)
+     * @returns {Promise<Object>} Analysis result
+     */
+    async analyzeParagraph(paragraph, context) {
+        // Lazy initialize ParagraphAnalyzer if not ready
+        if (!this.paragraphAnalyzer) {
+            if (typeof ParagraphAnalyzer === 'undefined') {
+                throw new Error('Paragraph analyzer module not loaded. Make sure ParagraphAnalyzer.js is included in the HTML.');
+            }
+            // Create with current story and element manager
+            this.paragraphAnalyzer = new ParagraphAnalyzer(
+                this.state.currentStory || { chapters: [] },
+                this.elementManager || null, // Can be null initially
+                this.aiService
+            );
+
+            // Update with element manager if it becomes available
+            if (this.elementManager) {
+                this.paragraphAnalyzer.updateElementManager(this.elementManager);
+            }
+        } else {
+            // Update story data
+            this.paragraphAnalyzer.updateStory(this.state.currentStory || { chapters: [] });
+            if (this.elementManager) {
+                this.paragraphAnalyzer.updateElementManager(this.elementManager);
+            }
+        }
+
+        try {
+            const analysis = await this.paragraphAnalyzer.analyzeParagraph(paragraph, context);
+            return {
+                success: true,
+                data: analysis
+            };
+        } catch (error) {
+            console.error('[AIManager] Paragraph analysis error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Analyze multiple paragraphs in batch
+     * @param {Array<Object>} paragraphs - Paragraphs to analyze
+     * @param {Object} context - Context information
+     * @returns {Promise<Array<Object>>} Analysis results
+     */
+    async analyzeParagraphs(paragraphs, context) {
+        if (!this.paragraphAnalyzer) {
+            throw new Error('Paragraph analyzer not initialized');
+        }
+
+        try {
+            const results = await this.paragraphAnalyzer.analyzeParagraphs(paragraphs, context);
+            return {
+                success: true,
+                data: results
+            };
+        } catch (error) {
+            console.error('[AIManager] Batch analysis error:', error);
+            return {
+                success: false,
+                error: error.message,
+                data: []
+            };
+        }
+    }
+
+    /**
+     * Apply paragraph analysis to story
+     * @param {Object} analysis - Analysis result
+     * @param {string} paragraphId - Paragraph ID
+     * @returns {Promise<Object>} Application result
+     */
+    async applyParagraphAnalysis(analysis, paragraphId) {
+        if (!this.paragraphAnalyzer) {
+            throw new Error('Paragraph analyzer not initialized');
+        }
+
+        try {
+            const result = await this.paragraphAnalyzer.applyAnalysis(analysis, paragraphId);
+            return {
+                success: true,
+                data: result
+            };
+        } catch (error) {
+            console.error('[AIManager] Apply analysis error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
     }
 }

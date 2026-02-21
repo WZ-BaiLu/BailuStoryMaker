@@ -58,4 +58,26 @@ class NotificationManager {
     showInfo(message) {
         this.showToast(message, 'success');
     }
+
+    /**
+     * Show a loading notification
+     * @param {string} message - The message to display
+     */
+    showLoading(message) {
+        const loadingToast = document.createElement('div');
+        loadingToast.className = 'toast loading';
+        loadingToast.id = 'loading-toast';
+        loadingToast.innerHTML = `<span class="loading-spinner"></span><span class="loading-text">${message}</span>`;
+        document.body.appendChild(loadingToast);
+    }
+
+    /**
+     * Hide the loading notification
+     */
+    hideLoading() {
+        const loadingToast = document.getElementById('loading-toast');
+        if (loadingToast) {
+            loadingToast.remove();
+        }
+    }
 }

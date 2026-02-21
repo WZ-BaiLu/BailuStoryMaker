@@ -200,6 +200,7 @@ class UIRenderer {
                 <div class="paragraph-bubble-header">
                     <span class="paragraph-bubble-number">段落 ${index + 1}</span>
                     <div class="paragraph-bubble-actions">
+                        <button class="btn btn-sm btn-analyze-paragraph" data-action="analyze-paragraph" title="${i18n.t('ai.paragraphAnalysis.analyzeButton')}">🤖</button>
                         <button class="btn btn-sm" data-action="edit-paragraph">编辑</button>
                         <button class="btn btn-sm btn-delete" data-action="delete-paragraph">删除</button>
                     </div>
@@ -296,6 +297,15 @@ class UIRenderer {
                             newTextarea.setSelectionRange(newTextarea.value.length, newTextarea.value.length);
                         }
                     }, 0);
+                });
+            }
+
+            // Analyze button
+            const analyzeBtn = bubble.querySelector('[data-action="analyze-paragraph"]');
+            if (analyzeBtn) {
+                analyzeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.app.analyzeParagraph(paragraphId);
                 });
             }
 
