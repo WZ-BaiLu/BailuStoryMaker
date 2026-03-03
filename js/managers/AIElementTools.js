@@ -207,6 +207,169 @@ class AIElementTools {
   }
 
   /**
+   * 获取当前上下文信息（包括地点）
+   * @param {Object} params - 参数（可选，可包含 chapterId 和 paragraphId）
+   * @returns {Promise<Object>} 上下文信息
+   */
+  async getContextInfo(params) {
+    try {
+      return this._executeWithTimeout(() => {
+        return this._getContextInfo(params);
+      });
+    } catch (error) {
+      return this._handleError('getContextInfo', error);
+    }
+  }
+
+  /**
+   * 内部获取上下文信息实现
+   * @private
+   */
+  _getContextInfo(params) {
+    const { chapterId, paragraphId } = params || {};
+
+    // 获取所有地点
+    const locations = this.elementManager.listElements('location');
+    const locationNames = locations.map(loc => loc.name);
+
+    // 如果提供了 chapterId 和 paragraphId，尝试获取更精确的上下文
+    let currentLocation = null;
+    let elementsAtLocation = [];
+
+    if (chapterId && this.storyData.chapters) {
+      const chapter = this.storyData.chapters.find(c => c.id === chapterId);
+
+      if (chapter && chapter.paragraphs) {
+        // 搜索最近的地点变化
+        for (let i = chapter.paragraphs.length - 1; i >= 0; i--) {
+          const p = chapter.paragraphs[i];
+
+          // 如果指定了段落ID，只搜索该段落之前的段落
+          if (paragraphId && p.id === paragraphId) {
+            break;
+          }
+
+          if (p.changes && p.changes.elements) {
+            for (const elementChange of p.changes.elements) {
+              if (elementChange.stateChanges?.location) {
+                currentLocation = elementChange.stateChanges.location;
+
+                // 获取在该地点的元素
+                if (currentLocation) {
+                  elementsAtLocation = this.elementManager.getElementsAtLocation(currentLocation)
+                    .map(el => ({
+                      id: el.id,
+                      name: el.name,
+                      type: el.type
+                    }));
+                }
+
+                break;
+              }
+            }
+
+            if (currentLocation) {
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        currentLocation: currentLocation,
+        locations: locationNames,
+        elementsAtLocation: elementsAtLocation,
+        totalLocations: locations.length
+      }
+    };
+  }
+
+  /**
+   * 列出指定类型的元素
+   * @param {Object} params - 参数
+   * @returns {Promise<Object>} 元素列表
+   */
+  async listElements(params) {
+    try {
+      return this._executeWithTimeout(() => {
+        return this._listElements(params);
+      });
+    } catch (error) {
+      return this._handleError('listElements', error);
+    }
+  }
+
+  /**
+   * 内部列出元素实现
+   * @private
+   */
+  _listElements(params) {
+    const { types } = params || {};
+
+    // 如果没有指定类型，返回所有元素
+    if (!types || !Array.isArray(types) || types.length === 0) {
+      const allElements = this.elementManager.listElements();
+      return {
+        success: true,
+        data: {
+          elements: allElements.map(el => ({
+            id: el.id,
+            type: el.type,
+            name: el.name,
+            description: el.description
+          })),
+          total: allElements.length
+        }
+      };
+    }
+
+    // 映射类型名称
+    const typeMap = {
+      'characters': 'character',
+      'locations': 'location',
+      'items': 'item',
+      'memories': 'memory',
+      'bases': 'base'
+    };
+
+    const result = {
+      success: true,
+      data: {
+        elements: [],
+        byType: {},
+        total: 0
+      }
+    };
+
+    // 查询每种类型
+    for (const type of types) {
+      const internalType = typeMap[type];
+      if (!internalType) {
+        console.warn(`[AIElementTools] Unknown element type: ${type}`);
+        continue;
+      }
+
+      const elements = this.elementManager.listElements(internalType);
+      const formattedElements = elements.map(el => ({
+        id: el.id,
+        type: el.type,
+        name: el.name,
+        description: el.description
+      }));
+
+      result.data.elements.push(...formattedElements);
+      result.data.byType[type] = formattedElements.map(el => el.name);
+    }
+
+    result.data.total = result.data.elements.length;
+
+    return result;
+  }
+
+  /**
    * 内部更新段落时间戳实现
    * @private
    */
@@ -379,6 +542,46 @@ class AIElementTools {
       {
         type: 'function',
         function: {
+          name: 'listElements',
+          description: '列出指定类型的元素，用于查询已存在的元素（人物、地点、道具等）',
+          parameters: {
+            type: 'object',
+            properties: {
+              types: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  enum: ['characters', 'locations', 'items', 'memories', 'bases']
+                },
+                description: '元素类型数组，如 ["locations", "characters"]'
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'getContextInfo',
+          description: '获取当前上下文信息，包括当前地点、所有地点列表、在当前地点的元素等',
+          parameters: {
+            type: 'object',
+            properties: {
+              chapterId: {
+                type: 'string',
+                description: '章节 ID（可选）'
+              },
+              paragraphId: {
+                type: 'string',
+                description: '段落 ID（可选）'
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
           name: 'addElement',
           description: '添加新的故事元素（人物、道具、地点等）',
           parameters: {
@@ -417,11 +620,11 @@ class AIElementTools {
             properties: {
               elementId: {
                 type: 'string',
-                description: '元素 ID'
+                description: '元素 ID 或元素名称'
               },
               location: {
                 type: 'string',
-                description: '位置元素 ID 或 null（表示无位置）'
+                description: '位置元素 ID 或位置名称，或 null（表示无位置）'
               }
             },
             required: ['elementId', 'location']

@@ -149,44 +149,94 @@ class ParagraphAnalyzer {
 
 请分析段落内容，并在一次响应中完成以下所有操作（非常重要）：
 
-第一步：检查元素是否已存在
-- 查看下方的"已存在的元素"列表
-- 如果元素已存在，直接使用其名称，不要再创建
-- 如果元素不存在，使用 addElement 工具创建
+## 分析流程
 
-第二步：更新元素状态
-- 对于已存在或新创建的元素，如果段落中提到它们的位置，使用 updateElementLocation 设置位置
+### 第一步：识别段落中的元素
+- 识别段落中提到的人物、地点、道具、记忆、设定等元素
+- 特别注意地点信息（当前场景发生的地方）
 
-关键要求：
-- 必须在同一个响应中调用所有必要的工具（不能分多次）
-- AI 工具调用不支持多轮对话，必须在一次响应中完成所有操作
-- 重复创建相同的元素会导致错误，请务必先检查"已存在的元素"列表
-- 在 updateElementLocation 中，可以使用元素名称而不是 ID（系统会自动查找）
+### 第二步：使用工具查询已存在的元素
+- 使用 listElements 工具查询特定类型的元素
+- 查询类型：characters, locations, items, memories, bases
+- 根据查询结果判断哪些元素已存在，哪些需要创建
 
-示例 1（分析"段誉来到一座山"，段誉已存在，山不存在）：
-1. addElement(type: "location", name: "一座山", description: "地点", keywords: [])
-2. updateElementLocation(elementId: "段誉", location: "一座山")
+### 第三步：创建新元素（如果需要）
+- 使用 addElement 工具创建段落中提到但不存在的新元素
+- 元素类型：character（人物）、location（地点）、item（道具）、memory（记忆）、base（设定）
 
-示例 2（分析"段誉来到一座山"，两者都已存在）：
-1. updateElementLocation(elementId: "段誉", location: "一座山")
+### 第四步：设置元素位置
+- 使用 updateElementLocation 工具设置元素的位置
+- 如果段落提到某人在某个地点，使用该工具设置关系
 
-示例 3（分析"段誉来到一座山"，两者都不存在）：
-1. addElement(type: "character", name: "段誉", description: "小说人物", keywords: [])
+## 关键要求
+
+1. **必须按顺序调用工具**：
+   - 先调用 listElements 查询已存在的元素
+   - 根据查询结果调用 addElement 创建新元素
+   - 最后调用 updateElementLocation 设置位置
+
+2. **所有工具调用必须在同一个响应中完成**：
+   - 不要等待工具返回后再调用下一个
+   - 一次性列出所有需要的工具调用
+
+3. **避免重复创建元素**：
+   - 通过 listElements 查询结果检查元素是否已存在
+   - 已存在的元素直接使用，不要再创建
+
+4. **updateElementLocation 支持使用名称**：
+   - 可以使用元素名称而不是 ID
+   - 系统会自动查找对应的元素
+
+## 示例
+
+### 示例 1：分析"张无忌来到光明顶"
+
+假设查询结果：张无忌已存在，光明顶不存在
+
+工具调用顺序：
+1. listElements(types: ["locations"])  // 查询地点
+2. addElement(type: "location", name: "光明顶", description: "明教总坛所在地", keywords: ["山峰", "明教"])
+3. updateElementLocation(elementId: "张无忌", location: "光明顶")
+
+### 示例 2：分析"赵敏在大殿里看到周芷若"
+
+假设查询结果：赵敏已存在，周芷若已存在，大殿不存在
+
+工具调用顺序：
+1. listElements(types: ["locations"])  // 查询地点
+2. addElement(type: "location", name: "大殿", description: "建筑", keywords: ["大殿"])
+3. updateElementLocation(elementId: "赵敏", location: "大殿")
+4. updateElementLocation(elementId: "周芷若", location: "大殿")
+
+### 示例 3：分析"段誉来到一座山"
+
+假设查询结果：段誉已存在，没有任何地点
+
+工具调用顺序：
+1. listElements(types: ["locations"])  // 查询地点
 2. addElement(type: "location", name: "一座山", description: "地点", keywords: [])
 3. updateElementLocation(elementId: "段誉", location: "一座山")
 
-注意事项：
-- 不要等待工具返回结果后再调用下一个工具
-- 在同一个响应中一次性调用所有需要的工具
-- 在 updateElementLocation 中，可以使用元素名称代替 ID
-- 完成分析后，不要返回任何文字说明，只通过工具调用更新状态`;
+## 注意事项
+
+- 完成分析后，不要返回任何文字说明，只通过工具调用更新状态
+- listElements 工具可以查询多个类型，如 types: ["characters", "locations"]
+- 地点是理解段落的关键信息，请特别注意识别`;
 
         // Assistant message with context information
         const assistantMessage = `## 当前故事背景
 - 章节: ${analysisContext.chapter ? analysisContext.chapter.title : '未知'}
-- 当前所在地: ${analysisContext.currentLocation || '未知'}
 
-## 已存在的元素（不要再创建这些元素）
+## 分析提示
+
+请仔细阅读段落内容，识别其中提到的人物、地点、道具等元素，并使用工具进行操作。
+
+关键步骤：
+1. 使用 listElements 工具查询已存在的元素
+2. 根据查询结果创建新元素（如果需要）
+3. 设置元素位置关系
+
+## 已存在的元素（仅供参考，建议使用 listElements 工具查询最新信息）
 ${this.formatElementsForPrompt(analysisContext.existingElements)}
 
 ## 前几个段落（上下文）
@@ -200,29 +250,6 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
             assistant: assistantMessage,
             user: userMessage
         };
-    }
-
-    /**
-     * Call AI for analysis
-     * @param {string} prompt - AI prompt
-     * @returns {Promise<Object>} AI response
-     */
-    async callAIForAnalysis(prompt) {
-        try {
-            const config = this.configManager.getConfig();
-            const messages = [{ role: 'user', content: prompt }];
-
-            const result = await this.aiService.chat(config, messages, null, null);
-
-            if (!result.success) {
-                throw new Error(result.error || 'AI service error');
-            }
-
-            return result.data;
-        } catch (error) {
-            console.error('AI analysis failed:', error);
-            throw new Error(`AI 分析失败: ${error.message}`);
-        }
     }
 
     /**
@@ -300,6 +327,8 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
         }
 
         const toolMap = {
+            'listElements': 'listElements',
+            'getContextInfo': 'getContextInfo',
             'addElement': 'addElement',
             'updateElementLocation': 'updateElementLocation',
             'updateElementDescription': 'updateElementDescription',
@@ -390,6 +419,20 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
      */
     processToolCallResult(toolCall, analysisData) {
         switch (toolCall.name) {
+            case 'listElements':
+                // List elements is used for query, doesn't generate events
+                if (toolCall.result && toolCall.result.data) {
+                    console.log('[ParagraphAnalyzer] Elements listed:', toolCall.result.data);
+                }
+                break;
+
+            case 'getContextInfo':
+                // Context info is used internally, doesn't generate events
+                if (toolCall.result && toolCall.result.data) {
+                    console.log('[ParagraphAnalyzer] Context info retrieved:', toolCall.result.data);
+                }
+                break;
+
             case 'addElement':
                 if (toolCall.result.element) {
                     analysisData.elements.push({
@@ -481,105 +524,6 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                 }
                 break;
         }
-    }
-
-    /**
-     * Process elements from analysis
-     * @param {Array} elements - Raw elements from AI
-     * @returns {Array} Processed elements
-     */
-    processElements(elements) {
-        if (!Array.isArray(elements)) {
-            return [];
-        }
-
-        return elements.map(element => {
-            // Check if it's a new element or existing
-            if (element.id && !element.id.startsWith('NEW:')) {
-                // Existing element - get element info from ElementManager
-                const existingElement = this.elementManager?.getElementById(element.id);
-                return {
-                    id: element.id,
-                    type: element.type,
-                    name: existingElement?.name || element.name || element.id,
-                    isNew: false
-                };
-            } else {
-                // New element - mark for creation
-                return {
-                    temporaryId: element.id || `NEW:${element.name}`,
-                    type: element.type,
-                    name: element.name,
-                    description: element.description,
-                    keywords: element.keywords || [],
-                    isNew: true
-                };
-            }
-        });
-    }
-
-    /**
-     * Process events from analysis
-     * @param {Array} events - Raw events from AI
-     * @returns {Array} Processed events
-     */
-    processEvents(events) {
-        if (!Array.isArray(events)) {
-            return [];
-        }
-
-        return events.map(event => ({
-            description: event.description || '',
-            type: this.validateEventType(event.type),
-            participants: Array.isArray(event.participants) ? event.participants : [],
-            location: event.location || null
-        }));
-    }
-
-    /**
-     * Process state changes from analysis
-     * @param {Array} stateChanges - Raw state changes from AI
-     * @returns {Array} Processed state changes
-     */
-    processStateChanges(stateChanges) {
-        if (!Array.isArray(stateChanges)) {
-            return [];
-        }
-
-        return stateChanges.map(change => {
-            const elementId = change.elementId || '';
-            const element = this.elementManager?.getElementById(elementId);
-            const elementName = element?.name || elementId;
-
-            const fromValue = change.from !== undefined ? change.from : 'undefined';
-            const toValue = change.to !== undefined ? change.to : 'undefined';
-            const property = change.property || 'state';
-
-            return {
-                elementId,
-                elementName,
-                property,
-                from: fromValue,
-                to: toValue,
-                changes: {
-                    location: change.changes?.location,
-                    description: change.changes?.description,
-                    owner: change.changes?.owner,
-                    status: change.changes?.status,
-                    keywords: Array.isArray(change.changes?.keywords) ? change.changes.keywords : undefined
-                }
-            };
-        });
-    }
-
-    /**
-     * Validate event type
-     * @param {string} type - Event type from AI
-     * @returns {string} Validated event type
-     */
-    validateEventType(type) {
-        const validTypes = ['action', 'dialogue', 'discovery', 'conflict', 'emotional', 'state_change'];
-        return validTypes.includes(type) ? type : 'action';
     }
 
     /**
@@ -748,26 +692,6 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
         this.invalidateCache(paragraphId);
 
         return result;
-    }
-
-    /**
-     * Update state change element IDs after creating new elements
-     * @param {Array} stateChanges - State changes to update
-     * @param {string} temporaryId - Temporary element ID
-     * @param {string} newElementId - New element ID
-     */
-    updateStateChangeElementIds(stateChanges, temporaryId, newElementId) {
-        if (!stateChanges) return;
-
-        stateChanges.forEach(change => {
-            if (change.elementId === temporaryId) {
-                change.elementId = newElementId;
-            }
-            // Also update to/from values if they reference the temporary ID
-            if (change.to === temporaryId) {
-                change.to = newElementId;
-            }
-        });
     }
 
     /**
