@@ -88,6 +88,15 @@
                                     </div>
                                 </div>
                                 <div class="paragraphs-container">
+                                    <div class="paragraphs-controls">
+                                        <div class="timeline-global-control">
+                                            <button id="toggle-all-timelines" class="btn btn-sm btn-secondary">
+                                                <span class="timeline-toggle-icon">▼</span>
+                                                <span data-i18n="timeline.toggleAll">展开/收起所有时间线</span>
+                                            </button>
+                                            <span id="timeline-status" class="timeline-status" data-i18n="timeline.allCollapsed">全部收起</span>
+                                        </div>
+                                    </div>
                                     <div id="paragraphs-list" class="paragraphs-list"></div>
                                     <div class="paragraph-input-area">
                                         <textarea id="new-paragraph-input" class="input-field" placeholder="输入段落内容，按 Enter 添加..." rows="2"></textarea>

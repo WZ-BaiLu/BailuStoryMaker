@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI 优化测试</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        .test-container {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .paragraphs-container {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .paragraph-bubble {
+            margin: 10px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+        }
+        
+        .paragraph-timeline-content {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        
+        .paragraph-timeline-content.collapsed {
+            display: none;
+        }
+        
+        .timeline-toggle-arrow {
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>UI 优化测试</h1>
+        
+        <div class="paragraphs-container">
+            <div class="paragraphs-controls">
+                <div class="timeline-global-control">
+                    <button id="toggle-all-timelines" class="btn btn-sm btn-secondary">
+                        <span class="timeline-toggle-icon">▼</span>
+                        <span>展开/收起所有时间线</span>
+                    </button>
+                    <span id="timeline-status" class="timeline-status">全部收起</span>
+                </div>
+            </div>
+            
+            <div id="paragraphs-list" class="paragraphs-list">
+                <div class="paragraph-bubble" data-paragraph-id="1">
+                    <div class="paragraph-bubble-header">
+                        <span class="paragraph-bubble-number">段落 1</span>
+                        <button class="btn-summarize-state" data-paragraph-id="1">📋 总结状态</button>
+                    </div>
+                    <div class="paragraph-bubble-content">
+                        这是第一个段落的内容。
+                    </div>
+                    <div class="paragraph-timeline-toggle">
+                        <span class="timeline-toggle-arrow">▼</span> 时间线
+                    </div>
+                    <div class="paragraph-timeline-content" data-paragraph-id="1">
+                        这是段落1的时间线内容。
+                    </div>
+                </div>
+                
+                <div class="paragraph-bubble" data-paragraph-id="2">
+                    <div class="paragraph-bubble-header">
+                        <span class="paragraph-bubble-number">段落 2</span>
+                        <button class="btn-summarize-state" data-paragraph-id="2">📋 总结状态</button>
+                    </div>
+                    <div class="paragraph-bubble-content">
+                        这是第二个段落的内容。
+                    </div>
+                    <div class="paragraph-timeline-toggle">
+                        <span class="timeline-toggle-arrow">▼</span> 时间线
+                    </div>
+                    <div class="paragraph-timeline-content" data-paragraph-id="2" class="collapsed">
+                        这是段落2的时间线内容。
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="test-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>测试模态框</h3>
+                    <button class="modal-close" onclick="document.getElementById('test-modal').classList.add('hidden')">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>这是一个测试模态框，应该全屏覆盖。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="document.getElementById('test-modal').classList.add('hidden')">关闭</button>
+                </div>
+            </div>
+        </div>
+        
+        <button class="btn btn-primary" onclick="document.getElementById('test-modal').classList.remove('hidden')">
+            打开测试模态框
+        </button>
+    </div>
+    
+    <script>
+        // 全局时间线控制
+        const toggleBtn = document.getElementById('toggle-all-timelines');
+        const statusEl = document.getElementById('timeline-status');
+        
+        function toggleAllTimelines() {
+            const timelines = document.querySelectorAll('.paragraph-timeline-content');
+            const icon = toggleBtn.querySelector('.timeline-toggle-icon');
+            
+            if (timelines.length === 0) return;
+            
+            const anyExpanded = Array.from(timelines).some(tl => !tl.classList.contains('collapsed'));
+            
+            timelines.forEach(timeline => {
+                if (anyExpanded) {
+                    timeline.classList.add('collapsed');
+                } else {
+                    timeline.classList.remove('collapsed');
+                }
+            });
+            
+            document.querySelectorAll('.timeline-toggle-arrow').forEach(arrow => {
+                arrow.textContent = anyExpanded ? '▶' : '▼';
+            });
+            
+            icon.textContent = anyExpanded ? '▶' : '▼';
+            updateTimelineStatus();
+        }
+        
+        function updateTimelineStatus() {
+            const timelines = document.querySelectorAll('.paragraph-timeline-content');
+            if (timelines.length === 0) {
+                statusEl.textContent = '暂无时间线';
+                return;
+            }
+            
+            const expandedCount = Array.from(timelines).filter(tl => !tl.classList.contains('collapsed')).length;
+            const totalCount = timelines.length;
+            
+            if (expandedCount === 0) {
+                statusEl.textContent = '全部收起';
+            } else if (expandedCount === totalCount) {
+                statusEl.textContent = '全部展开';
+            } else {
+                statusEl.textContent = `${expandedCount}/${totalCount} 已展开`;
+            }
+        }
+        
+        function updateTimelineArrow(timeline) {
+            const arrow = timeline.closest('.paragraph-bubble').querySelector('.timeline-toggle-arrow');
+            if (arrow) {
+                arrow.textContent = timeline.classList.contains('collapsed') ? '▶' : '▼';
+            }
+            updateTimelineStatus();
+        }
+        
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', toggleAllTimelines);
+        }
+        
+        // 单个时间线切换
+        document.querySelectorAll('.paragraph-timeline-toggle').forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                const bubble = e.target.closest('.paragraph-bubble');
+                const timelineContent = bubble.querySelector('.paragraph-timeline-content');
+                if (timelineContent) {
+                    timelineContent.classList.toggle('collapsed');
+                    updateTimelineArrow(timelineContent);
+                }
+            });
+        });
+        
+        // 总结状态按钮
+        document.querySelectorAll('.btn-summarize-state').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const paragraphId = e.target.dataset.paragraphId;
+                alert(`总结段落 ${paragraphId} 的状态`);
+            });
+        });
+        
+        // 初始状态更新
+        updateTimelineStatus();
+    </script>
+</body>
+</html>

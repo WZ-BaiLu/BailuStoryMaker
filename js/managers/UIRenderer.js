@@ -13,6 +13,11 @@ class UIRenderer {
         this.state = state;
         this.selectedParagraph = null;
         this.editingParagraph = null;
+        
+        // Initialize global timeline controls after DOM is ready
+        setTimeout(() => {
+            this.initGlobalTimelineControls();
+        }, 100);
     }
 
     // ==================== Story and Paragraph Rendering ====================
@@ -341,10 +346,7 @@ class UIRenderer {
                     const timelineContent = bubble.querySelector(`.paragraph-timeline-content[data-paragraph-id="${paragraphId}"]`);
                     if (timelineContent) {
                         timelineContent.classList.toggle('collapsed');
-                        const arrow = timelineToggle.querySelector('.timeline-toggle-arrow');
-                        if (arrow) {
-                            arrow.textContent = timelineContent.classList.contains('collapsed') ? '▶' : '▼';
-                        }
+                        this.updateTimelineArrow(timelineContent);
                     }
                 });
             }
@@ -2309,6 +2311,12 @@ class UIRenderer {
             (action) => this.getItemActionLabel(action)
         );
 
+        // 关闭现有的状态总结弹窗
+        const existingModal = document.getElementById('state-summary-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
         // 显示模态框
         document.body.insertAdjacentHTML('beforeend', summaryHtml);
     }
@@ -2323,5 +2331,95 @@ class UIRenderer {
         } else if (type === 'item') {
             this.showAddItemChangeModal(paragraphId);
         }
+    }
+
+    /**
+     * Initialize global timeline controls
+     */
+    initGlobalTimelineControls() {
+        const toggleBtn = document.getElementById('toggle-all-timelines');
+        const statusEl = document.getElementById('timeline-status');
+        
+        if (!toggleBtn || !statusEl) return;
+
+        toggleBtn.addEventListener('click', () => {
+            this.toggleAllTimelines();
+        });
+
+        // Update initial status
+        this.updateTimelineStatus();
+    }
+
+    /**
+     * Toggle all timeline sections
+     */
+    toggleAllTimelines() {
+        const timelines = document.querySelectorAll('.paragraph-timeline-content');
+        const toggleBtn = document.getElementById('toggle-all-timelines');
+        const icon = toggleBtn.querySelector('.timeline-toggle-icon');
+        
+        if (timelines.length === 0) return;
+
+        // Check current state (if any timeline is expanded)
+        const anyExpanded = Array.from(timelines).some(tl => !tl.classList.contains('collapsed'));
+        
+        // Toggle all timelines
+        timelines.forEach(timeline => {
+            if (anyExpanded) {
+                // Collapse all
+                timeline.classList.add('collapsed');
+            } else {
+                // Expand all
+                timeline.classList.remove('collapsed');
+            }
+        });
+
+        // Update toggle arrows
+        document.querySelectorAll('.timeline-toggle-arrow').forEach(arrow => {
+            arrow.textContent = anyExpanded ? '▶' : '▼';
+        });
+
+        // Update button icon
+        icon.textContent = anyExpanded ? '▶' : '▼';
+
+        // Update status
+        this.updateTimelineStatus();
+    }
+
+    /**
+     * Update timeline status text
+     */
+    updateTimelineStatus() {
+        const statusEl = document.getElementById('timeline-status');
+        if (!statusEl) return;
+
+        const timelines = document.querySelectorAll('.paragraph-timeline-content');
+        if (timelines.length === 0) {
+            statusEl.textContent = i18n.t('timeline.noTimelines');
+            return;
+        }
+
+        const expandedCount = Array.from(timelines).filter(tl => !tl.classList.contains('collapsed')).length;
+        const totalCount = timelines.length;
+
+        if (expandedCount === 0) {
+            statusEl.textContent = i18n.t('timeline.allCollapsed');
+        } else if (expandedCount === totalCount) {
+            statusEl.textContent = i18n.t('timeline.allExpanded');
+        } else {
+            statusEl.textContent = `${expandedCount}/${totalCount} ${i18n.t('timeline.expanded')}`;
+        }
+    }
+
+    /**
+     * Update individual timeline arrow
+     * @param {HTMLElement} timeline - The timeline element
+     */
+    updateTimelineArrow(timeline) {
+        const arrow = timeline.closest('.paragraph-bubble').querySelector('.timeline-toggle-arrow');
+        if (arrow) {
+            arrow.textContent = timeline.classList.contains('collapsed') ? '▶' : '▼';
+        }
+        this.updateTimelineStatus();
     }
 }

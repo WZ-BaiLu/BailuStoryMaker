@@ -613,3 +613,43 @@ body.dark .prompt-preview-text {
     background-color: #e0a800;
     transform: scale(1.1);
 }
+
+/* Global timeline controls */
+.paragraphs-controls {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background-color: var(--light-sidebar);
+    border-radius: 4px;
+    border: 1px solid var(--light-border);
+}
+
+.timeline-global-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.timeline-global-control .btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    font-size: 0.875rem;
+}
+
+.timeline-toggle-icon {
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.timeline-status {
+    font-size: 0.875rem;
+    color: var(--secondary-color);
+    font-style: italic;
+}
+
+/* Dark theme support */
+body.dark .paragraphs-controls {
+    background-color: var(--dark-sidebar);
+    border-color: var(--dark-border);
+}
