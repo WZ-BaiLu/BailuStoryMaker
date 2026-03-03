@@ -420,11 +420,16 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
 
             case 'updateElementLocation':
                 if (toolCall.arguments) {
-                    // Use getElement instead of getElementById to be consistent with ElementManager API
-                    const element = this.elementManager?.getElement(toolCall.arguments.elementId);
+                    // Try to find element by ID first, then by name
+                    let element = this.elementManager?.getElement(toolCall.arguments.elementId);
+                    if (!element && this.elementManager) {
+                        element = this.elementManager.findElementByName(toolCall.arguments.elementId);
+                    }
+
+                    const elementId = element?.id || toolCall.arguments.elementId;
 
                     analysisData.stateChanges.push({
-                        elementId: toolCall.arguments.elementId,
+                        elementId: elementId,
                         elementName: element?.name || toolCall.arguments.elementId,
                         property: 'location',
                         from: '当前位置',
@@ -438,7 +443,7 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                     analysisData.events.push({
                         description: `${element?.name || toolCall.arguments.elementId} 移动到了 ${toolCall.arguments.location || '未知'}`,
                         type: 'action',
-                        participants: [toolCall.arguments.elementId],
+                        participants: [elementId],
                         location: toolCall.arguments.location
                     });
                 }
@@ -446,11 +451,16 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
 
             case 'updateElementDescription':
                 if (toolCall.arguments && toolCall.result && toolCall.result.changes) {
-                    // Use getElement instead of getElementById to be consistent with ElementManager API
-                    const element = this.elementManager?.getElement(toolCall.arguments.elementId);
+                    // Try to find element by ID first, then by name
+                    let element = this.elementManager?.getElement(toolCall.arguments.elementId);
+                    if (!element && this.elementManager) {
+                        element = this.elementManager.findElementByName(toolCall.arguments.elementId);
+                    }
+
+                    const elementId = element?.id || toolCall.arguments.elementId;
 
                     analysisData.stateChanges.push({
-                        elementId: toolCall.arguments.elementId,
+                        elementId: elementId,
                         elementName: element?.name || toolCall.arguments.elementId,
                         property: 'description',
                         from: '原有描述',

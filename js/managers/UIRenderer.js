@@ -2282,165 +2282,36 @@ class UIRenderer {
     /**
      * Summarize character and item states at a specific paragraph
      * @param {string} paragraphId - Paragraph ID
+/**
+     * Summarize character and item states at a specific paragraph
+     * @param {string} paragraphId - Paragraph ID
      */
     summarizeParagraphState(paragraphId) {
         const story = this.state.currentStory;
         if (!story) return;
 
-        const chapter = story.chapters.find(c => c.id === this.state.selectedChapter);
-        if (!chapter) return;
+        const chapterId = this.state.selectedChapter;
+        if (!chapterId) return;
 
-        const paragraphIndex = chapter.paragraphs.findIndex(p => p.id === paragraphId);
-        if (paragraphIndex === -1) return;
+        // 创建状态总结器
+        const summary = new ParagraphStateSummary(story);
 
-        // Get characters in this paragraph
-        const presentCharacterIds = new Set();
-        const presentItemIds = new Set();
+        // 计算状态
+        const { characterStates, itemStates, locationStates } = summary.calculateStates(chapterId, paragraphId);
 
-        for (let i = 0; i <= paragraphIndex; i++) {
-            const p = chapter.paragraphs[i];
-            if (p.changes?.characters) {
-                p.changes.characters.forEach(charChange => {
-                    presentCharacterIds.add(charChange.characterId);
-                });
-            }
-            if (p.changes?.items) {
-                p.changes.items.forEach(itemChange => {
-                    presentItemIds.add(itemChange.itemId);
-                });
-            }
-        }
+        // 生成 HTML
+        const summaryHtml = summary.formatAsHTML(
+            characterStates,
+            itemStates,
+            locationStates,
+            (key) => i18n.t(key),
+            (emotion) => this.translateEmotion(emotion),
+            (action) => this.getItemActionLabel(action)
+        );
 
-        // Calculate state up to this paragraph
-        const characterStates = {};
-        const itemStates = {};
-
-        // Initialize with base states (only for present characters)
-        story.characters.forEach(char => {
-            if (presentCharacterIds.has(char.id)) {
-                characterStates[char.id] = {
-                    name: char.name,
-                    attributes: { ...char.attributes.current },
-                    emotionalState: char.emotionalState || 'neutral',
-                    heldItems: char.heldItems || []
-                };
-            }
-        });
-
-        story.items.forEach(item => {
-            // Only show items held by present characters
-            if (item.owner && presentCharacterIds.has(item.owner)) {
-                itemStates[item.id] = {
-                    name: item.name,
-                    action: 'none',
-                    properties: { ...item.properties.current },
-                    owner: item.owner
-                };
-            }
-        });
-
-        // Apply changes up to this paragraph
-        for (let i = 0; i <= paragraphIndex; i++) {
-            const p = chapter.paragraphs[i];
-            if (!p.changes) continue;
-
-            // Apply character changes
-            p.changes.characters?.forEach(charChange => {
-                if (!characterStates[charChange.characterId]) return;
-
-                if (charChange.changes?.attributes) {
-                    characterStates[charChange.characterId].attributes = {
-                        ...characterStates[charChange.characterId].attributes,
-                        ...charChange.changes.attributes
-                    };
-                }
-                if (charChange.changes?.emotionalState) {
-                    characterStates[charChange.characterId].emotionalState = charChange.changes.emotionalState;
-                }
-            });
-
-            // Apply item changes
-            p.changes.items?.forEach(itemChange => {
-                if (!itemStates[itemChange.itemId]) return;
-
-                itemStates[itemChange.itemId].action = itemChange.action;
-                if (itemChange.changes?.properties) {
-                    itemStates[itemChange.itemId].properties = {
-                        ...itemStates[itemChange.itemId].properties,
-                        ...itemChange.changes.properties
-                    };
-                }
-            });
-        }
-
-        // Generate summary
-        const summaryHtml = `
-            <div class="modal-overlay" id="state-summary-modal">
-                <div class="modal modal-lg">
-                    <div class="modal-header">
-                        <h3>${i18n.t('timeline.stateSummaryTitle')}</h3>
-                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <h4>${i18n.t('timeline.characterStates')}</h4>
-                        <div class="state-summary-section">
-                            ${Object.values(characterStates).length === 0
-                                ? `<div class="state-summary-empty">${i18n.t('timeline.noCharactersInParagraph')}</div>`
-                                : Object.values(characterStates).map(char => `
-                                    <div class="state-summary-item">
-                                        <div class="state-summary-name">${char.name}</div>
-                                        <div class="state-summary-details">
-                                            <div class="state-summary-emotion">${i18n.t('timeline.emotionalState')}: ${this.translateEmotion(char.emotionalState)}</div>
-                                            ${Object.entries(char.attributes).map(([key, value]) => `
-                                                <div class="state-summary-attr">${key}: ${value}</div>
-                                            `).join('')}
-                                            ${char.heldItems && char.heldItems.length > 0 ? `
-                                                <div class="state-summary-held-items">
-                                                    <div class="state-summary-label">${i18n.t('character.heldItems')}:</div>
-                                                    ${char.heldItems.map(itemId => {
-                                                        const item = itemStates[itemId];
-                                                        return item ? `
-                                                            <div class="state-summary-item-name">${item.name}</div>
-                                                        ` : '';
-                                                    }).join('')}
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                `).join('')
-                            }
-                        </div>
-
-                        <h4>${i18n.t('timeline.itemStates')}</h4>
-                        <div class="state-summary-section">
-                            ${Object.values(itemStates).length === 0
-                                ? `<div class="state-summary-empty">${i18n.t('timeline.noItemsInParagraph')}</div>`
-                                : Object.values(itemStates).map(item => {
-                                    const actionLabel = item.action !== 'none' ? ` (${this.getItemActionLabel(item.action)})` : '';
-                                    return `
-                                        <div class="state-summary-item">
-                                            <div class="state-summary-name">${item.name}${actionLabel}</div>
-                                            <div class="state-summary-details">
-                                                ${Object.entries(item.properties).map(([key, value]) => `
-                                                    <div class="state-summary-attr">${key}: ${value}</div>
-                                                `).join('')}
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')
-                            }
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">${i18n.t('buttons.confirm')}</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
+        // 显示模态框
         document.body.insertAdjacentHTML('beforeend', summaryHtml);
     }
-
     /**
      * Show add change modal (redirects to specific type)
      * @param {string} paragraphId - Paragraph ID

@@ -52,7 +52,13 @@ class ContextBuilder {
 
     // Format present characters from story context
     formatPresentCharacters(storyContext) {
-        const characterElements = storyContext.presentElements.filter(e => e.type === 'character');
+        let characterElements = storyContext.presentElements.filter(e => e.type === 'character');
+
+        // If no present elements (no view location set), return all characters
+        if (characterElements.length === 0 && storyContext.elements) {
+            characterElements = storyContext.elements.filter(e => e.type === 'character');
+        }
+
         return characterElements.map(element => {
             const currentState = this.stateContextCache.getCurrentElementState(element.id) || {};
             return {
@@ -68,7 +74,13 @@ class ContextBuilder {
 
     // Format present items from story context
     formatPresentItems(storyContext) {
-        const itemElements = storyContext.presentElements.filter(e => e.type === 'item');
+        let itemElements = storyContext.presentElements.filter(e => e.type === 'item');
+
+        // If no present elements (no view location set), return all items
+        if (itemElements.length === 0 && storyContext.elements) {
+            itemElements = storyContext.elements.filter(e => e.type === 'item');
+        }
+
         return itemElements.map(element => {
             const currentState = this.stateContextCache.getCurrentElementState(element.id) || {};
             return {

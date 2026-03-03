@@ -291,6 +291,40 @@ class StateContextCache {
       activeChapter: this.activeChapter
     };
   }
+
+  /**
+   * 获取元素当前状态
+   * @param {string} elementId - 元素 ID 或名称
+   * @returns {Object} 元素当前状态
+   */
+  getCurrentElementState(elementId) {
+    // Try to find element by ID first, then by name
+    let element = this.stateTimeline.elementManager.getElement(elementId);
+    if (!element) {
+      element = this.stateTimeline.elementManager.findElementByName(elementId);
+    }
+
+    if (!element) {
+      return {};
+    }
+
+    return {
+      location: element.location,
+      description: element.description,
+      stateDescription: element.stateDescription,
+      keywords: element.keywords
+    };
+  }
+
+  /**
+   * 获取元素在指定段落的状态
+   * @param {string} elementId - 元素 ID
+   * @param {string} paragraphId - 段落 ID
+   * @returns {Object} 元素状态
+   */
+  getElementStateAt(elementId, paragraphId) {
+    return this.stateTimeline.getElementStateAt(paragraphId, elementId);
+  }
 }
 
 // 导出
