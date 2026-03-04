@@ -39,7 +39,9 @@ class ParagraphAnalyzer {
      */
     updateStory(story) {
         this.story = story;
-        this.clearCache();
+        // Don't clear cache - cache keys include previous paragraphs so it's safe
+        // Clear cache only when story structure changes significantly
+        // this.clearCache();
     }
 
     /**
@@ -48,7 +50,8 @@ class ParagraphAnalyzer {
      */
     updateElementManager(elementManager) {
         this.elementManager = elementManager;
-        this.clearCache();
+        // Don't clear cache - element changes don't affect paragraph analysis validity
+        // this.clearCache();
     }
 
     /**
@@ -58,8 +61,16 @@ class ParagraphAnalyzer {
      * @returns {Promise<Object>} Analysis result
      */
     async analyzeParagraph(paragraph, context) {
-        // Use paragraph content for cache to handle duplicate requests
-        const cacheKey = this.getCacheKey(paragraph.id, paragraph.content);
+        // Build analysis context first (need previous paragraphs for cache key)
+        const analysisContext = this.buildAnalysisContext(paragraph, context);
+
+        // Create cache key including previous paragraphs content
+        const previousContent = analysisContext.previousParagraphs
+            .map(p => p.content)
+            .join('|||');
+        const cacheKey = this.getCacheKey(paragraph.id, paragraph.content, previousContent);
+
+        console.log(`[ParagraphAnalyzer] Cache key for paragraph ${paragraph.id}: ${cacheKey}`);
 
         // Check cache for duplicate requests
         if (this.analysisCache.has(cacheKey)) {
@@ -69,14 +80,11 @@ class ParagraphAnalyzer {
             // Validate cached analysis structure
             if (!this.isValidAnalysis(cachedAnalysis)) {
                 console.warn(`[ParagraphAnalyzer] Invalid cached analysis, removing from cache`);
-                this.invalidateCache(paragraph.id, paragraph.content);
+                this.invalidateCache(paragraph.id, paragraph.content, previousContent);
             } else {
                 return cachedAnalysis;
             }
         }
-
-        // Build analysis context
-        const analysisContext = this.buildAnalysisContext(paragraph, context);
 
         // Generate prompt messages
         const promptMessages = this.generateAnalysisPrompt(paragraph, analysisContext);
@@ -632,11 +640,14 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
      * @param {string} paragraphId - Paragraph ID
      * @returns {string} Cache key
      */
-    getCacheKey(paragraphId, paragraphContent = null) {
-        // Use paragraph content for cache to avoid duplicate analysis of same content
+    getCacheKey(paragraphId, paragraphContent = null, previousContent = null) {
+        // Use paragraph content + previous paragraphs content for cache
+        // to avoid reusing cache when previous paragraphs changed
         if (paragraphContent) {
-            // Create a hash based on content to identify duplicate requests
-            return `paragraph-analysis-${this.hashContent(paragraphContent)}`;
+            const contentToHash = previousContent
+                ? `${previousContent}|||${paragraphContent}`
+                : paragraphContent;
+            return `paragraph-analysis-${this.hashContent(contentToHash)}`;
         }
         return `paragraph-analysis-${paragraphId}`;
     }
