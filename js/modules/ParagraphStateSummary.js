@@ -2,7 +2,7 @@
  * Paragraph State Summary Module
  *
  * 负责计算和格式化段落位置的角色和道具状态
- * 支持新旧两种元素系统
+ * 使用统一的 elements 元素系统
  */
 
 class ParagraphStateSummary {
@@ -72,19 +72,7 @@ class ParagraphStateSummary {
    * @private
    */
   _extractElementIds(paragraph, characterIds, itemIds, locationIds) {
-    // 旧系统
-    if (paragraph.changes?.characters) {
-      paragraph.changes.characters.forEach(charChange => {
-        characterIds.add(charChange.characterId);
-      });
-    }
-    if (paragraph.changes?.items) {
-      paragraph.changes.items.forEach(itemChange => {
-        itemIds.add(itemChange.itemId);
-      });
-    }
-
-    // 新系统
+    // 使用统一的 elements 系统
     if (paragraph.changes?.elements) {
       paragraph.changes.elements.forEach(elementChange => {
         const element = this.story.elements?.find(e =>
@@ -98,6 +86,12 @@ class ParagraphStateSummary {
           } else if (element.type === 'item') {
             itemIds.add(element.id);
           } else if (element.type === 'location') {
+            locationIds.add(element.id);
+          }
+        }
+      });
+    }
+  }
             locationIds.add(element.id);
           }
         }
@@ -231,36 +225,50 @@ class ParagraphStateSummary {
   _applyChanges(paragraph, characterStates, itemStates, locationStates) {
     if (!paragraph.changes) return;
 
-    // 旧系统：角色变更
-    paragraph.changes.characters?.forEach(charChange => {
-      if (!characterStates[charChange.characterId]) return;
-
-      if (charChange.changes?.attributes) {
-        characterStates[charChange.characterId].attributes = {
-          ...characterStates[charChange.characterId].attributes,
-          ...charChange.changes.attributes
-        };
-      }
-      if (charChange.changes?.emotionalState) {
-        characterStates[charChange.characterId].emotionalState = charChange.changes.emotionalState;
-      }
-    });
-
-    // 旧系统：道具变更
-    paragraph.changes.items?.forEach(itemChange => {
-      if (!itemStates[itemChange.itemId]) return;
-
-      itemStates[itemChange.itemId].action = itemChange.action;
-      if (itemChange.changes?.properties) {
-        itemStates[itemChange.itemId].properties = {
-          ...itemStates[itemChange.itemId].properties,
-          ...itemChange.changes.properties
-        };
-      }
-    });
-
-    // 新系统：元素变更
+    // 使用统一的 elements 系统应用变更
     paragraph.changes.elements?.forEach(elementChange => {
+      const element = this.story.elements?.find(e =>
+        e.id === elementChange.elementId ||
+        e.name === elementChange.elementName
+      );
+
+      if (!element) return;
+
+      if (element.type === 'character' && characterStates[element.id]) {
+        if (elementChange.property === 'location') {
+          characterStates[element.id].location = elementChange.to || elementChange.changes?.location;
+        }
+        if (elementChange.property === 'description' && elementChange.changes) {
+          Object.assign(characterStates[element.id].stateDescription, elementChange.changes);
+        }
+        // 支持旧系统的属性变更
+        if (elementChange.changes?.attributes) {
+          characterStates[element.id].attributes = {
+            ...characterStates[element.id].attributes,
+            ...elementChange.changes.attributes
+          };
+        }
+        if (elementChange.changes?.emotionalState) {
+          characterStates[element.id].emotionalState = elementChange.changes.emotionalState;
+        }
+      } else if (element.type === 'item' && itemStates[element.id]) {
+        if (elementChange.property === 'location') {
+          itemStates[element.id].location = elementChange.to || elementChange.changes?.location;
+        }
+        if (elementChange.property === 'description' && elementChange.changes) {
+          Object.assign(itemStates[element.id].stateDescription, elementChange.changes);
+        }
+        // 支持旧系统的动作和属性变更
+        if (elementChange.action) {
+          itemStates[element.id].action = elementChange.action;
+        }
+        if (elementChange.changes?.properties) {
+          itemStates[element.id].properties = {
+            ...itemStates[element.id].properties,
+            ...elementChange.changes.properties
+          };
+        }
+      } else if (element.type === 'location' && locationStates[element.id]) {
       const element = this.story.elements?.find(e =>
         e.id === elementChange.elementId ||
         e.name === elementChange.elementName

@@ -840,8 +840,23 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
         try {
             const paragraph = this.findParagraph(paragraphId);
             if (paragraph) {
+                console.log('[ParagraphAnalyzer] Found paragraph:', paragraphId);
+                console.log('[ParagraphAnalyzer] Current changes:', paragraph.changes);
+                console.log('[ParagraphAnalyzer] State changes to apply:', stateChanges);
+
                 if (!paragraph.changes) {
                     paragraph.changes = { elements: [] };
+                }
+
+                // Ensure changes structure only has elements (unified element system)
+                // Remove old characters and items if they exist
+                delete paragraph.changes.characters;
+                delete paragraph.changes.items;
+                delete paragraph.changes.settings;
+
+                // Ensure elements array exists
+                if (!paragraph.changes.elements) {
+                    paragraph.changes.elements = [];
                 }
 
                 // Add state changes
@@ -850,8 +865,12 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                 }
 
                 result.updatedElements = stateChanges.length;
+                console.log('[ParagraphAnalyzer] Updated changes:', paragraph.changes);
+            } else {
+                console.error('[ParagraphAnalyzer] Paragraph not found:', paragraphId);
             }
         } catch (error) {
+            console.error('[ParagraphAnalyzer] Error updating paragraph:', error);
             result.errors.push({
                 type: 'updateParagraph',
                 paragraphId: paragraphId,

@@ -758,14 +758,30 @@ class AppState {
 
         this.saveStateBeforeChange('添加段落角色');
 
-        // Initialize changes object if not present
+        // Initialize changes object with unified elements structure
         if (!paragraph.changes) {
-            paragraph.changes = { characters: [], items: [], settings: [] };
+            paragraph.changes = { elements: [] };
+        } else {
+            // Remove old structure if present
+            delete paragraph.changes.characters;
+            delete paragraph.changes.items;
+            delete paragraph.changes.settings;
+            if (!paragraph.changes.elements) {
+                paragraph.changes.elements = [];
+            }
         }
 
-        // Add character to paragraph if not already present
-        if (!paragraph.changes.characters.includes(characterId)) {
-            paragraph.changes.characters.push(characterId);
+        // Check if character is already in elements
+        const existing = paragraph.changes.elements.find(e => e.elementId === characterId);
+        if (!existing) {
+            paragraph.changes.elements.push({
+                elementId: characterId,
+                elementName: character.name,
+                property: 'presence',
+                from: null,
+                to: true,
+                changes: { present: true }
+            });
         }
 
         this.notify('paragraphUpdated', { chapterId: this.selectedChapter, paragraph });
@@ -780,16 +796,19 @@ class AppState {
         if (!chapter || !chapter.paragraphs) return;
 
         const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
-        if (!paragraph || !paragraph.changes || !paragraph.changes.characters) return;
+        if (!paragraph || !paragraph.changes) return;
 
         this.saveStateBeforeChange('移除段落角色');
 
-        const index = paragraph.changes.characters.indexOf(characterId);
-        if (index !== -1) {
-            paragraph.changes.characters.splice(index, 1);
-            this.notify('paragraphUpdated', { chapterId: this.selectedChapter, paragraph });
-            this.saveToLocalStorage();
+        // Remove from elements array
+        if (paragraph.changes.elements) {
+            paragraph.changes.elements = paragraph.changes.elements.filter(
+                e => e.elementId !== characterId
+            );
         }
+
+        this.notify('paragraphUpdated', { chapterId: this.selectedChapter, paragraph });
+        this.saveToLocalStorage();
     }
 
     // Convenience method: give item to character in paragraph
@@ -819,14 +838,18 @@ class AppState {
         const info = {
             id: paragraph.id,
             content: paragraph.content,
-            changes: paragraph.changes || { characters: [], items: [], settings: [] },
+            changes: paragraph.changes || { elements: [] },
             characters: [],
             items: []
         };
 
-        // Resolve character details
-        if (paragraph.changes && paragraph.changes.characters) {
-            info.characters = paragraph.changes.characters
+        // Resolve character details from elements
+        if (paragraph.changes && paragraph.changes.elements) {
+            const characterIds = paragraph.changes.elements
+                .filter(e => e.elementType === 'character')
+                .map(e => e.elementId);
+
+            info.characters = characterIds
                 .map(charId => this.currentStory.characters.find(c => c.id === charId))
                 .filter(c => c)
                 .map(c => ({
@@ -836,9 +859,13 @@ class AppState {
                 }));
         }
 
-        // Resolve item details
-        if (paragraph.changes && paragraph.changes.items) {
-            info.items = paragraph.changes.items
+        // Resolve item details from elements
+        if (paragraph.changes && paragraph.changes.elements) {
+            const itemIds = paragraph.changes.elements
+                .filter(e => e.elementType === 'item')
+                .map(e => e.elementId);
+
+            info.items = itemIds
                 .map(itemId => this.currentStory.items.find(i => i.id === itemId))
                 .filter(i => i)
                 .map(i => ({
