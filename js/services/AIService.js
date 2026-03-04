@@ -106,26 +106,41 @@ class AIService {
 
         const contextMessages = [];
 
-        // Add system message with context if available
-        if (context.chapterTitle || context.chapterContent) {
-            let contextText = '';
-            if (context.chapterTitle) {
-                contextText += `Chapter: ${context.chapterTitle}\n`;
-            }
-            if (context.chapterContent) {
-                contextText += `\nContent:\n${context.chapterContent}`;
-            }
-            if (context.characters) {
-                contextText += `\n\nCharacters in this chapter:\n${context.characters.join(', ')}`;
-            }
-
-            contextMessages.push({
+        // Add system message with chapter title if available
+        if (context.chapterTitle) {
+            const systemMessage = {
                 role: 'system',
-                content: contextText.trim()
-            });
+                content: `Chapter: ${context.chapterTitle}`
+            };
+            contextMessages.push(systemMessage);
         }
 
-        return [...contextMessages, ...messages];
+        // Add assistant message with chapter content as reference (paragraph text reference)
+        // 使用 assistant 角色发送段落文本参考
+        if (context.chapterContent && context.chapterContent.trim() !== '') {
+            const contentMessage = {
+                role: 'assistant',
+                content: `以下是当前章节已写的内容，作为创作参考：\n\n${context.chapterContent}`
+            };
+            contextMessages.push(contentMessage);
+        }
+
+        // Add assistant message with element state summary (element state of current paragraph)
+        // 使用 assistant 角色发送当前段落的元素状态总结
+        if (context.elementStateSummary) {
+            const elementStateMessage = {
+                role: 'assistant',
+                content: `当前在场元素状态：\n${context.elementStateSummary}`
+            };
+            contextMessages.push(elementStateMessage);
+        }
+
+        // Only append context messages if there are any
+        if (contextMessages.length > 0) {
+            return [...contextMessages, ...messages];
+        }
+
+        return messages;
     }
 
     /**

@@ -4,6 +4,7 @@ class AppState {
     constructor() {
         this.currentStory = null;
         this.selectedChapter = null;
+        this.selectedParagraph = null;
         this.selectedCharacter = null;
         this.selectedItem = null;
         this.selectedSetting = null;
@@ -17,11 +18,6 @@ class AppState {
     // Load story
     loadStory(storyData) {
         try {
-            // Migrate old format (characters/items) to new format (elements)
-            if ((storyData.characters || storyData.items) && !storyData.elements) {
-                storyData = this._migrateStoryData(storyData);
-            }
-
             // Fix any existing elements with empty/null descriptions or names
             if (storyData.elements && Array.isArray(storyData.elements)) {
                 storyData.elements.forEach(element => {
@@ -57,69 +53,6 @@ class AppState {
         }
     }
 
-    /**
-     * Migrate old story format (characters/items) to new format (elements)
-     * @private
-     */
-    _migrateStoryData(storyData) {
-        const migrated = { ...storyData };
-        migrated.elements = [];
-
-        // Migrate characters to elements
-        if (migrated.characters && Array.isArray(migrated.characters)) {
-            migrated.characters.forEach(char => {
-                const element = {
-                    id: char.id,
-                    type: 'character',
-                    name: char.name,
-                    description: char.description?.trim() || '暂无描述',
-                    keywords: [],
-                    attributes: char.attributes,
-                    abilities: char.abilities,
-                    notes: char.notes
-                };
-                console.log(`[AppState] Migrating character: ${char.name}, description: "${element.description}"`);
-                migrated.elements.push(element);
-            });
-            console.log(`[AppState] Migrated ${migrated.characters.length} characters to elements`);
-        }
-
-        // Migrate items to elements
-        if (migrated.items && Array.isArray(migrated.items)) {
-            migrated.items.forEach(item => {
-                const element = {
-                    id: item.id,
-                    type: 'item',
-                    name: item.name,
-                    description: item.description?.trim() || '暂无描述',
-                    keywords: [],
-                    properties: item.properties,
-                    owner: item.owner
-                };
-                console.log(`[AppState] Migrating item: ${item.name}, description: "${element.description}"`);
-                migrated.elements.push(element);
-            });
-            console.log(`[AppState] Migrated ${migrated.items.length} items to elements`);
-        }
-
-        // Update paragraph changes format if needed
-        if (migrated.chapters) {
-            migrated.chapters.forEach(chapter => {
-                if (chapter.paragraphs) {
-                    chapter.paragraphs.forEach(paragraph => {
-                        // Old format: { characters: [], items: [] }
-                        // New format: { elements: [] }
-                        if (paragraph.changes && (paragraph.changes.characters || paragraph.changes.items)) {
-                            paragraph.changes = { elements: [] };
-                        }
-                    });
-                }
-            });
-        }
-
-        return migrated;
-    }
-
     // Create new story
     createStory(title) {
         const newStory = {
@@ -146,7 +79,13 @@ class AppState {
 
         this.currentStory.metadata.updatedAt = Formatters.formatDate();
         this.notify('storySaved', this.currentStory);
-        return this.currentStory;
+
+        // Clone story and remove deprecated empty fields
+        const storyToExport = JSON.parse(JSON.stringify(this.currentStory));
+        delete storyToExport.characters;
+        delete storyToExport.items;
+
+        return storyToExport;
     }
 
     // Chapter management
@@ -201,7 +140,15 @@ class AppState {
 
     selectChapter(chapterId) {
         this.selectedChapter = chapterId;
+        this.selectedParagraph = null; // 切换章节时清空选中段落
         this.notify('chapterSelected', chapterId);
+        // Auto-save to localStorage when selection changes
+        this.saveToLocalStorage();
+    }
+
+    selectParagraph(paragraphId) {
+        this.selectedParagraph = paragraphId;
+        this.notify('paragraphSelected', paragraphId);
         // Auto-save to localStorage when selection changes
         this.saveToLocalStorage();
     }
@@ -736,6 +683,7 @@ class AppState {
             const stateToSave = {
                 story: this.currentStory,
                 selectedChapter: this.selectedChapter,
+                selectedParagraph: this.selectedParagraph,
                 selectedCharacter: this.selectedCharacter,
                 selectedItem: this.selectedItem,
                 selectedSetting: this.selectedSetting
@@ -749,22 +697,13 @@ class AppState {
     loadFromLocalStorage() {
         const data = FileManager.loadFromLocalStorage(Constants.STORAGE_KEYS.CURRENT_STORY);
         if (data) {
-            // Check if data is in old format (story only) or new format (with selected items)
-            if (data.story) {
-                // New format: contains selected items
-                this.currentStory = data.story;
-                this.selectedChapter = data.selectedChapter || null;
-                this.selectedCharacter = data.selectedCharacter || null;
-                this.selectedItem = data.selectedItem || null;
-                this.selectedSetting = data.selectedSetting || null;
-            } else {
-                // Old format: story data only
-                this.currentStory = data;
-                this.selectedChapter = null;
-                this.selectedCharacter = null;
-                this.selectedItem = null;
-                this.selectedSetting = null;
-            }
+            // New format: contains story and selected items
+            this.currentStory = data.story || data;
+            this.selectedChapter = data.selectedChapter || null;
+            this.selectedParagraph = data.selectedParagraph || null;
+            this.selectedCharacter = data.selectedCharacter || null;
+            this.selectedItem = data.selectedItem || null;
+            this.selectedSetting = data.selectedSetting || null;
             // Also save to localStorage after loading to ensure format consistency
             this.saveToLocalStorage();
             this.notify('storyLoaded', this.currentStory);
@@ -789,6 +728,7 @@ class AppState {
         return {
             story: this.currentStory,
             selectedChapter: this.selectedChapter,
+            selectedParagraph: this.selectedParagraph,
             selectedCharacter: this.selectedCharacter,
             selectedItem: this.selectedItem,
             selectedSetting: this.selectedSetting
@@ -969,6 +909,7 @@ class AppState {
         const stateSnapshot = {
             story: this.currentStory,
             selectedChapter: this.selectedChapter,
+            selectedParagraph: this.selectedParagraph,
             selectedCharacter: this.selectedCharacter,
             selectedItem: this.selectedItem,
             selectedSetting: this.selectedSetting
@@ -985,6 +926,7 @@ class AppState {
         if (previousState && previousState.story) {
             this.currentStory = previousState.story;
             this.selectedChapter = previousState.selectedChapter;
+            this.selectedParagraph = previousState.selectedParagraph;
             this.selectedCharacter = previousState.selectedCharacter;
             this.selectedItem = previousState.selectedItem;
             this.selectedSetting = previousState.selectedSetting;
@@ -1002,6 +944,7 @@ class AppState {
         if (nextState && nextState.story) {
             this.currentStory = nextState.story;
             this.selectedChapter = nextState.selectedChapter;
+            this.selectedParagraph = nextState.selectedParagraph;
             this.selectedCharacter = nextState.selectedCharacter;
             this.selectedItem = nextState.selectedItem;
             this.selectedSetting = nextState.selectedSetting;

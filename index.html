@@ -46,6 +46,10 @@
                     <h2 id="story-title" data-i18n="header.noStoryLoaded">未加载故事</h2>
                 </div>
                 <div class="header-right">
+                    <button id="toggle-all-timelines" class="btn btn-secondary">
+                        <span class="timeline-toggle-icon">▼</span>
+                        <span data-i18n="timeline.toggleAll">展开/收起</span>
+                    </button>
                     <button id="undo-btn" class="btn btn-secondary" disabled data-i18n="buttons.undo">↩ 撤销</button>
                     <button id="redo-btn" class="btn btn-secondary" disabled data-i18n="buttons.redo">↪ 重做</button>
                     <button id="export-btn" class="btn btn-secondary" data-i18n="buttons.export">导出</button>
@@ -88,15 +92,6 @@
                                     </div>
                                 </div>
                                 <div class="paragraphs-container">
-                                    <div class="paragraphs-controls">
-                                        <div class="timeline-global-control">
-                                            <button id="toggle-all-timelines" class="btn btn-sm btn-secondary">
-                                                <span class="timeline-toggle-icon">▼</span>
-                                                <span data-i18n="timeline.toggleAll">展开/收起所有时间线</span>
-                                            </button>
-                                            <span id="timeline-status" class="timeline-status" data-i18n="timeline.allCollapsed">全部收起</span>
-                                        </div>
-                                    </div>
                                     <div id="paragraphs-list" class="paragraphs-list"></div>
                                     <div class="paragraph-input-area">
                                         <textarea id="new-paragraph-input" class="input-field" placeholder="输入段落内容，按 Enter 添加..." rows="2"></textarea>
@@ -130,6 +125,7 @@
                                     <textarea id="ai-input" placeholder="输入消息... (Shift+Enter换行, Enter发送)" rows="3"></textarea>
                                     <div class="ai-input-footer">
                                         <button id="ai-send-button" data-i18n="ai.send">发送</button>
+                                        <button id="ai-preview-creation-btn" data-i18n="buttons.previewCreationRequest" title="预览创作请求">📝</button>
                                         <span id="ai-character-counter">0/4000</span>
                                     </div>
                                 </div>

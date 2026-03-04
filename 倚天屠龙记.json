@@ -1,0 +1,214 @@
+{
+  "metadata": {
+    "id": "story-1771477496979-8ljt78e35",
+    "title": "倚天屠龙记",
+    "createdAt": "2026-02-19T05:04:56.979Z",
+    "updatedAt": "2026-03-04T14:40:43.747Z",
+    "author": ""
+  },
+  "settings": [],
+  "chapters": [
+    {
+      "id": "chapter-1771477504571-lp36w4tia",
+      "title": "段誉大战小龙女",
+      "order": 1,
+      "createdAt": "2026-02-19T05:05:04.571Z",
+      "updatedAt": "2026-03-03T17:06:28.476Z",
+      "paragraphs": [
+        {
+          "id": "paragraph-1771486892436-dpnor8ku9",
+          "content": "段誉来到一座山",
+          "changes": {
+            "elements": [
+              {
+                "elementId": "段誉",
+                "elementName": "段誉",
+                "property": "location",
+                "from": "当前位置",
+                "to": "一座山",
+                "changes": {
+                  "location": "一座山"
+                }
+              }
+            ]
+          },
+          "createdAt": "2026-02-19T07:41:32.436Z"
+        },
+        {
+          "id": "paragraph-1771486897522-cfyh93v1d",
+          "content": "山上有一座庙",
+          "changes": {
+            "elements": [
+              {
+                "elementId": "location-一座庙-1",
+                "elementName": "一座庙",
+                "property": "location",
+                "from": "当前位置",
+                "to": "一座山",
+                "changes": {
+                  "location": "一座山"
+                }
+              }
+            ]
+          },
+          "createdAt": "2026-02-19T07:41:37.522Z"
+        },
+        {
+          "id": "paragraph-1771486906433-jo1pw7hub",
+          "content": "庙里有个老和尚和一个小和尚",
+          "changes": {
+            "elements": [
+              {
+                "elementId": "character-老和尚-1",
+                "elementName": "老和尚",
+                "property": "location",
+                "from": "当前位置",
+                "to": "一座庙",
+                "changes": {
+                  "location": "一座庙"
+                }
+              },
+              {
+                "elementId": "character-小和尚-1",
+                "elementName": "小和尚",
+                "property": "location",
+                "from": "当前位置",
+                "to": "一座庙",
+                "changes": {
+                  "location": "一座庙"
+                }
+              }
+            ]
+          },
+          "createdAt": "2026-02-19T07:41:46.433Z"
+        },
+        {
+          "id": "paragraph-1771487534337-fu82sjtav",
+          "content": "阿萨德飞",
+          "changes": {
+            "elements": []
+          },
+          "createdAt": "2026-02-19T07:52:14.337Z"
+        },
+        {
+          "id": "paragraph-1771489746461-3cybrga22",
+          "content": "小和尚传授段誉九阳神功，解开了张无忌的玄冥神掌阴毒。张无忌立刻一柱擎天",
+          "changes": {
+            "elements": []
+          },
+          "createdAt": "2026-02-19T08:29:06.461Z"
+        }
+      ]
+    },
+    {
+      "id": "chapter-1771477514713-9rpch6j4w",
+      "title": "新章节2",
+      "order": 2,
+      "content": "傻逼编辑器",
+      "createdAt": "2026-02-19T05:05:14.713Z",
+      "updatedAt": "2026-02-19T05:31:22.166Z"
+    }
+  ],
+  "timeline": [],
+  "elements": [
+    {
+      "id": "char-1771478210874-i7pjls9vr",
+      "type": "character",
+      "name": "张无忌",
+      "description": "张翠山和殷素素的儿子",
+      "keywords": [
+        "人物",
+        "张无忌"
+      ],
+      "location": null,
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "item-1771478235225-i5is2p3qo",
+      "type": "item",
+      "name": "屠龙刀",
+      "description": "暂无描述",
+      "keywords": [
+        "道具",
+        "屠龙刀"
+      ],
+      "location": null,
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "character-段誉-1",
+      "type": "character",
+      "name": "段誉",
+      "description": "小说人物",
+      "keywords": [
+        "人物",
+        "段誉"
+      ],
+      "location": "location-一座山-1",
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "location-一座山-1",
+      "type": "location",
+      "name": "一座山",
+      "description": "地点",
+      "keywords": [
+        "地点",
+        "一座山"
+      ],
+      "location": null,
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "location-一座庙-1",
+      "type": "location",
+      "name": "一座庙",
+      "description": "山上的庙宇",
+      "keywords": [
+        "庙宇",
+        "山上",
+        "建筑",
+        "地点",
+        "一座庙"
+      ],
+      "location": "location-一座山-1",
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "character-老和尚-1",
+      "type": "character",
+      "name": "老和尚",
+      "description": "庙里的老和尚",
+      "keywords": [
+        "和尚",
+        "庙宇",
+        "人物",
+        "老和尚"
+      ],
+      "location": "location-一座庙-1",
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "character-小和尚-1",
+      "type": "character",
+      "name": "小和尚",
+      "description": "庙里的小和尚",
+      "keywords": [
+        "和尚",
+        "庙宇",
+        "年轻",
+        "人物",
+        "小和尚"
+      ],
+      "location": "location-一座庙-1",
+      "stateDescription": {},
+      "stateHistory": []
+    }
+  ]
+}

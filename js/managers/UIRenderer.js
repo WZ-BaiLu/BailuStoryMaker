@@ -13,7 +13,8 @@ class UIRenderer {
         this.state = state;
         this.selectedParagraph = null;
         this.editingParagraph = null;
-        
+        this.expandedTimelines = new Set(); // Track which timeline sections are expanded
+
         // Initialize global timeline controls after DOM is ready
         setTimeout(() => {
             this.initGlobalTimelineControls();
@@ -205,7 +206,7 @@ class UIRenderer {
                 <div class="paragraph-bubble-header">
                     <span class="paragraph-bubble-number">段落 ${index + 1}</span>
                     <div class="paragraph-bubble-actions">
-                        <button class="btn btn-sm btn-preview-prompt" data-action="preview-prompt" title="预览AI请求">👁️</button>
+                        <button class="btn btn-sm btn-preview-prompt" data-action="preview-prompt" title="${i18n.t('buttons.previewAnalysisRequest')}">👁️</button>
                         <button class="btn btn-sm btn-analyze-paragraph" data-action="analyze-paragraph" title="${i18n.t('ai.paragraphAnalysis.analyzeButton')}">🤖</button>
                         <button class="btn btn-sm" data-action="edit-paragraph">编辑</button>
                         <button class="btn btn-sm btn-delete" data-action="delete-paragraph">删除</button>
@@ -282,9 +283,11 @@ class UIRenderer {
                 if (!e.target.classList.contains('btn') && e.target !== textarea) {
                     // If clicking the already selected paragraph, deselect it
                     if (this.selectedParagraph === paragraphId) {
+                        this.state.selectParagraph(null);
                         this.selectedParagraph = null;
                         this.renderParagraphs();
                     } else {
+                        this.state.selectParagraph(paragraphId);
                         this.selectedParagraph = paragraphId;
                         this.renderParagraphs();
                     }
@@ -335,6 +338,7 @@ class UIRenderer {
                     if (confirm('确定删除这个段落吗？')) {
                         this.state.deleteParagraph(this.state.selectedChapter, paragraphId);
                         if (this.selectedParagraph === paragraphId) {
+                            this.state.selectParagraph(null);
                             this.selectedParagraph = null;
                         }
                     }
@@ -483,9 +487,10 @@ class UIRenderer {
             `);
         }
 
+        const isExpanded = this.expandedTimelines.has(paragraph.id);
         return `
             <div class="paragraph-timeline">
-                <div class="paragraph-timeline-content collapsed" data-paragraph-id="${paragraph.id}">
+                <div class="paragraph-timeline-content ${isExpanded ? '' : 'collapsed'}" data-paragraph-id="${paragraph.id}">
                     <div class="timeline-actions">
                         <button class="btn-add-change" data-paragraph-id="${paragraph.id}" data-type="character">👤 ${i18n.t('timeline.addCharacterChange')}</button>
                         <button class="btn-add-change" data-paragraph-id="${paragraph.id}" data-type="item">🎒 ${i18n.t('timeline.addItemChange')}</button>
@@ -568,6 +573,178 @@ class UIRenderer {
     /**
      * Render the characters list
      */
+    /**
+     * Render the elements view (unified elements page)
+     */
+    renderElements() {
+        const allContainer = document.getElementById('all-elements');
+        const charactersContainer = document.getElementById('characters');
+        const itemsContainer = document.getElementById('items');
+        const settingsContainer = document.getElementById('settings');
+        const story = this.state.currentStory;
+        if (!story) return;
+
+        const elements = story.elements || [];
+
+        // Render all elements
+        if (allContainer) {
+            allContainer.innerHTML = elements.map(element => `
+                <div class="list-item"
+                     data-element-id="${element.id}" data-element-type="${element.type}">
+                    <div class="list-item-header">
+                        <span class="list-item-title">${element.name}</span>
+                        <span class="tag">${element.type}</span>
+                        <div class="list-item-actions">
+                            <button class="btn btn-sm btn-delete" data-action="delete-element" data-element-id="${element.id}">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            if (elements.length === 0) {
+                allContainer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">${i18n.t('messages.noCharacters')}</div></div>`;
+            }
+        }
+
+        // Render characters (sub-tab)
+        const characterElements = elements.filter(el => el.type === 'character');
+        if (charactersContainer) {
+            charactersContainer.innerHTML = characterElements.map(element => `
+                <div class="list-item"
+                     data-element-id="${element.id}" data-element-type="character">
+                    <div class="list-item-header">
+                        <span class="list-item-title">${element.name}</span>
+                        <span class="tag">角色</span>
+                        <div class="list-item-actions">
+                            <button class="btn btn-sm btn-delete" data-action="delete-element" data-element-id="${element.id}">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            if (characterElements.length === 0) {
+                charactersContainer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-text">${i18n.t('messages.noCharacters')}</div></div>`;
+            }
+        }
+
+        // Render items (sub-tab)
+        const itemElements = elements.filter(el => el.type === 'item');
+        if (itemsContainer) {
+            itemsContainer.innerHTML = itemElements.map(element => `
+                <div class="list-item"
+                     data-element-id="${element.id}" data-element-type="item">
+                    <div class="list-item-header">
+                        <span class="list-item-title">${element.name}</span>
+                        <span class="tag">道具</span>
+                        <div class="list-item-actions">
+                            <button class="btn btn-sm btn-delete" data-action="delete-element" data-element-id="${element.id}">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            if (itemElements.length === 0) {
+                itemsContainer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎒</div><div class="empty-state-text">${i18n.t('messages.noItems')}</div></div>`;
+            }
+        }
+
+        // Render settings (sub-tab)
+        const settingElements = elements.filter(el => el.type === 'base' || el.type === 'location');
+        if (settingsContainer) {
+            settingsContainer.innerHTML = settingElements.map(element => `
+                <div class="list-item"
+                     data-element-id="${element.id}" data-element-type="${element.type}">
+                    <div class="list-item-header">
+                        <span class="list-item-title">${element.name}</span>
+                        <span class="tag">${element.type === 'location' ? '地点' : '设定'}</span>
+                        <div class="list-item-actions">
+                            <button class="btn btn-sm btn-delete" data-action="delete-element" data-element-id="${element.id}">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            if (settingElements.length === 0) {
+                settingsContainer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏰</div><div class="empty-state-text">${i18n.t('messages.noSettings')}</div></div>`;
+            }
+        }
+
+        // Bind events for all containers
+        this.bindElementEvents(allContainer);
+        this.bindElementEvents(charactersContainer);
+        this.bindElementEvents(itemsContainer);
+        this.bindElementEvents(settingsContainer);
+    }
+
+    /**
+     * Render element editor based on element type
+     * @param {string} elementId - The element ID
+     * @param {string} elementType - The element type
+     */
+    renderElementEditor(elementId, elementType) {
+        if (!elementId) {
+            // Show placeholder
+            const allEditorPanel = document.getElementById('element-editor-content');
+            if (allEditorPanel) {
+                allEditorPanel.classList.add('hidden');
+                const placeholder = document.getElementById('element-editor-placeholder');
+                if (placeholder) {
+                    placeholder.classList.add('active');
+                }
+            }
+            return;
+        }
+
+        // Call the appropriate editor based on element type
+        switch (elementType) {
+            case 'character':
+                this.state.selectCharacter(elementId);
+                this.renderCharacterEditor(elementId);
+                break;
+            case 'item':
+                this.state.selectItem(elementId);
+                this.renderItemEditor(elementId);
+                break;
+            case 'base':
+            case 'location':
+                this.state.selectSetting(elementId);
+                this.renderSettingEditor(elementId);
+                break;
+            default:
+                console.warn('[UIRenderer] Unknown element type:', elementType);
+        }
+    }
+
+    /**
+     * Bind element-related events
+     * @param {HTMLElement} container - The elements container
+     */
+    bindElementEvents(container) {
+        if (!container) return;
+
+        container.querySelectorAll('.list-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('btn-delete')) {
+                    const elementId = item.dataset.elementId;
+                    const elementType = item.dataset.elementType;
+                    this.state.selectElement(elementId);
+                    this.renderElementEditor(elementId, elementType);
+                }
+            });
+        });
+
+        container.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const elementId = btn.dataset.elementId;
+                if (confirm('确定要删除这个元素吗？')) {
+                    this.state.deleteElement(elementId);
+                    this.renderElements();
+                }
+            });
+        });
+    }
+
     renderCharacters() {
         const container = document.getElementById('characters');
         const story = this.state.currentStory;
@@ -1728,6 +1905,7 @@ class UIRenderer {
         });
 
         if (activeParagraphId) {
+            this.state.selectParagraph(activeParagraphId);
             this.selectedParagraph = activeParagraphId;
             this.highlightTimelineNode(activeParagraphId);
         }
@@ -2326,16 +2504,12 @@ class UIRenderer {
      */
     initGlobalTimelineControls() {
         const toggleBtn = document.getElementById('toggle-all-timelines');
-        const statusEl = document.getElementById('timeline-status');
-        
-        if (!toggleBtn || !statusEl) return;
+
+        if (!toggleBtn) return;
 
         toggleBtn.addEventListener('click', () => {
             this.toggleAllTimelines();
         });
-
-        // Update initial status
-        this.updateTimelineStatus();
     }
 
     /**
@@ -2345,20 +2519,23 @@ class UIRenderer {
         const timelines = document.querySelectorAll('.paragraph-timeline-content');
         const toggleBtn = document.getElementById('toggle-all-timelines');
         const icon = toggleBtn.querySelector('.timeline-toggle-icon');
-        
+
         if (timelines.length === 0) return;
 
         // Check current state (if any timeline is expanded)
         const anyExpanded = Array.from(timelines).some(tl => !tl.classList.contains('collapsed'));
-        
-        // Toggle all timelines
+
+        // Toggle all timelines and update internal state
         timelines.forEach(timeline => {
+            const paragraphId = timeline.getAttribute('data-paragraph-id');
             if (anyExpanded) {
                 // Collapse all
                 timeline.classList.add('collapsed');
+                this.expandedTimelines.delete(paragraphId);
             } else {
                 // Expand all
                 timeline.classList.remove('collapsed');
+                this.expandedTimelines.add(paragraphId);
             }
         });
 
@@ -2373,15 +2550,14 @@ class UIRenderer {
      * Update timeline status text
      */
     updateTimelineStatus() {
-        const statusEl = document.getElementById('timeline-status');
         const toggleBtn = document.getElementById('toggle-all-timelines');
         const icon = toggleBtn?.querySelector('.timeline-toggle-icon');
 
-        if (!statusEl) return;
+        if (!icon) return;
 
         const timelines = document.querySelectorAll('.paragraph-timeline-content');
         if (timelines.length === 0) {
-            statusEl.textContent = i18n.t('timeline.noTimelines');
+            icon.textContent = '▶';
             return;
         }
 
@@ -2389,14 +2565,11 @@ class UIRenderer {
         const totalCount = timelines.length;
 
         if (expandedCount === 0) {
-            statusEl.textContent = i18n.t('timeline.allCollapsed');
-            if (icon) icon.textContent = '▶';
+            icon.textContent = '▶';
         } else if (expandedCount === totalCount) {
-            statusEl.textContent = i18n.t('timeline.allExpanded');
-            if (icon) icon.textContent = '▼';
+            icon.textContent = '▼';
         } else {
-            statusEl.textContent = `${expandedCount}/${totalCount} ${i18n.t('timeline.expanded')}`;
-            if (icon) icon.textContent = '▼';
+            icon.textContent = '▼';
         }
     }
 

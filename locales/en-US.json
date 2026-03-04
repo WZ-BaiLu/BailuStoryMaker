@@ -31,7 +31,9 @@
     "copyPrompt": "Copy to Clipboard",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "addParagraph": "+ Add Paragraph"
+    "addParagraph": "+ Add Paragraph",
+    "previewAnalysisRequest": "Preview Analysis Request",
+    "previewCreationRequest": "Preview Creation Request"
   },
   "header": {
     "noStoryLoaded": "No Story Loaded"

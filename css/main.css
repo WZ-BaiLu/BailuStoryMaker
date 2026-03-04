@@ -18,9 +18,12 @@
     --dark-sidebar: #16213e;
     --light-text: #212529;
     --dark-text: #e9ecef;
+    --light-text-secondary: #6c757d;
+    --dark-text-secondary: #adb5bd;
     --light-border: #dee2e6;
     --dark-border: #343a40;
-    --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --light-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --dark-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     --transition: all 0.3s ease;
 }
 
@@ -38,7 +41,9 @@ body.dark {
     --dark-bg: var(--light-bg);
     --light-sidebar: var(--dark-sidebar);
     --light-text: var(--dark-text);
+    --light-text-secondary: var(--dark-text-secondary);
     --light-border: var(--dark-border);
+    --shadow: var(--dark-shadow);
 }
 
 /* App container */
@@ -254,6 +259,24 @@ body.dark {
     font-size: 1.5rem;
     cursor: pointer;
     color: var(--light-text);
+    background-color: var(--light-bg);
+    border-radius: 4px;
+    padding: 5px 10px;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    background-color: var(--light-sidebar);
+}
+
+/* Dark mode modal close */
+body.dark .modal-close {
+    background-color: var(--dark-sidebar);
+    color: var(--dark-text);
+}
+
+body.dark .modal-close:hover {
+    background-color: var(--dark-bg);
 }
 
 .modal-content h3 {

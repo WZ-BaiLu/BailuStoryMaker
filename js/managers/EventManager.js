@@ -266,6 +266,7 @@ class EventManager {
         const newParagraphInput = document.getElementById('new-paragraph-input');
         newParagraphInput.addEventListener('focus', () => {
             // Clear paragraph selection when focusing on new paragraph input
+            this.app.state.selectParagraph(null);
             this.app.uiRenderer.selectedParagraph = null;
             this.app.uiRenderer.renderParagraphs();
         });

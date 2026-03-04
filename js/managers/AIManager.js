@@ -286,6 +286,7 @@ class AIManager {
             chatArea: document.getElementById('ai-chat-area'),
             inputField: document.getElementById('ai-input'),
             sendButton: document.getElementById('ai-send-button'),
+            previewCreationButton: document.getElementById('ai-preview-creation-btn'),
             settingsButton: document.getElementById('ai-settings-button'),
             collapsedSettingsButton: document.getElementById('ai-collapsed-settings-button'),
             collapseButton: document.getElementById('ai-collapse-button'),
@@ -303,8 +304,18 @@ class AIManager {
      * Bind event listeners
      */
     bindEvents() {
+        console.log('[AIManager] bindEvents called');
+        console.log('[AIManager] previewCreationButton element:', this.elements.previewCreationButton);
+
         if (this.elements.sendButton) {
             this.elements.sendButton.addEventListener('click', () => this.sendMessage());
+        }
+
+        if (this.elements.previewCreationButton) {
+            this.elements.previewCreationButton.addEventListener('click', () => {
+                console.log('[AIManager] Preview creation button clicked');
+                this.previewCreationRequest();
+            });
         }
 
         if (this.elements.inputField) {
@@ -724,14 +735,13 @@ class AIManager {
 
         let insertBeforeId = null;
 
-        // 1. Check if there is a selected paragraph in UIRenderer
-        const uiRenderer = this.app.uiRenderer;
-        if (uiRenderer && uiRenderer.selectedParagraph) {
-            insertBeforeId = uiRenderer.selectedParagraph;
+        // 1. Check if there is a selected paragraph
+        if (this.state.selectedParagraph) {
+            insertBeforeId = this.state.selectedParagraph;
         }
         // 2. Check if there is an editing paragraph
-        else if (uiRenderer && uiRenderer.editingParagraph) {
-            insertBeforeId = uiRenderer.editingParagraph;
+        else if (this.app.uiRenderer && this.app.uiRenderer.editingParagraph) {
+            insertBeforeId = this.app.uiRenderer.editingParagraph;
         }
         // 3. Otherwise, insert at the end (no insertBeforeId needed)
 
@@ -952,13 +962,10 @@ class AIManager {
         const chapter = this.state.currentStory.chapters.find(c => c.id === this.currentChapterId);
         if (!chapter) return null;
 
-        // 如果新的状态上下文组件已初始化，使用它们
+        // 使用状态上下文组件
         if (this.stateContextCache && this.elementManager) {
             return this.buildContextWithStateCache(chapter);
         }
-
-        // 回退到旧版本
-        return this.buildContextLegacy(chapter);
     }
 
     /**
@@ -966,18 +973,27 @@ class AIManager {
      */
     buildContextWithStateCache(chapter) {
         const context = {
-            chapterTitle: chapter.title || '',
-            chapterContent: chapter.paragraphs?.map(p => p.content).join('\n\n') || ''
+            chapterTitle: chapter.title || ''
         };
 
-        // 获取第一个段落 ID（或当前选中段落的 ID）
-        const firstParagraph = chapter.paragraphs?.[0];
-        const paragraphId = this.state.selectedParagraph || (firstParagraph?.id);
+        // 获取当前选中的段落 ID
+        const selectedParagraphId = this.state.selectedParagraph;
 
-        if (paragraphId) {
-            // 获取状态上下文
-            const stateContext = this.stateContextCache.getContext(paragraphId, {
-                useCache: true,
+        if (selectedParagraphId) {
+            // 1. 选中段落时：获取当前段落及之前的内容作为参考
+            const paragraphIndex = chapter.paragraphs.findIndex(p => p.id === selectedParagraphId);
+            if (paragraphIndex >= 0) {
+                // 取选中段落及之前的段落（包含选中段落，但不包含之后的段落）
+                const previousParagraphs = chapter.paragraphs.slice(0, paragraphIndex + 1);
+                context.chapterContent = previousParagraphs.map(p => p.content).join('\n\n') || '';
+            } else {
+                // 如果找不到段落，回退到全部段落
+                context.chapterContent = chapter.paragraphs?.map(p => p.content).join('\n\n') || '';
+            }
+
+            // 获取选中段落的状态上下文（不使用缓存，确保获取最新状态）
+            const stateContext = this.stateContextCache.getContext(selectedParagraphId, {
+                useCache: false,  // 不使用缓存，确保每次都获取最新状态
                 useViewLocation: true
             });
 
@@ -996,11 +1012,51 @@ class AIManager {
             // 添加在场元素
             if (stateContext.presentElements && stateContext.presentElements.length > 0) {
                 context.presentElements = stateContext.presentElements;
+            } else {
+                // 如果 storyViewManager 没有返回在场元素，使用段落状态总结的逻辑
+                const paragraphState = this.getParagraphPresentElements(chapter, selectedParagraphId);
+                context.presentElements = paragraphState;
+            }
+
+            // 格式化当前段落的元素状态总结（始终生成）
+            if (context.presentElements && context.presentElements.length > 0) {
+                context.elementStateSummary = this.formatElementStateSummary(context.presentElements);
+            } else {
+                context.elementStateSummary = '无在场元素';
             }
 
             // 格式化上下文供 AI 使用
             if (this.stateContextCache.formatContextForAI) {
                 context.formattedContext = this.stateContextCache.formatContextForAI(stateContext);
+            }
+        } else {
+            // 2. 没有选中段落时：使用当前章节全部段落为文本参考
+            context.chapterContent = chapter.paragraphs?.map(p => p.content).join('\n\n') || '';
+
+            // 获取最后一个段落的状态上下文（包含所有段落的元素状态）
+            const lastParagraph = chapter.paragraphs?.[chapter.paragraphs.length - 1];
+            if (lastParagraph) {
+                const stateContext = this.stateContextCache.getContext(lastParagraph.id, {
+                    useCache: false,  // 不使用缓存，确保每次都获取最新状态
+                    useViewLocation: true
+                });
+
+                // 添加在场元素
+                if (stateContext.presentElements && stateContext.presentElements.length > 0) {
+                    context.presentElements = stateContext.presentElements;
+                } else {
+                    // 如果 storyViewManager 没有返回在场元素，使用段落状态总结的逻辑
+                    // 使用最后一个段落的 ID，因为它包含了所有段落的元素状态
+                    const paragraphState = this.getParagraphPresentElements(chapter, lastParagraph.id);
+                    context.presentElements = paragraphState;
+                }
+
+                // 格式化当前段落的元素状态总结（始终生成）
+                if (context.presentElements && context.presentElements.length > 0) {
+                    context.elementStateSummary = this.formatElementStateSummary(context.presentElements);
+                } else {
+                    context.elementStateSummary = '无在场元素';
+                }
             }
         }
 
@@ -1008,52 +1064,143 @@ class AIManager {
     }
 
     /**
-     * Build context (legacy version)
+     * Format element state summary (as assistant message)
+     * @param {Array} presentElements - Array of present elements
+     * @returns {string} Formatted element state summary
      */
-    buildContextLegacy(chapter) {
-        const context = {
-            chapterTitle: chapter.title || '',
-            chapterContent: chapter.paragraphs?.map(p => p.content).join('\n\n') || ''
-        };
+    formatElementStateSummary(presentElements) {
+        if (!presentElements || presentElements.length === 0) {
+            return '无在场元素';
+        }
 
-        // Add characters if they appear in this chapter
-        const mentionedCharacters = this.state.currentStory.characters.filter(char => {
-            const content = context.chapterContent.toLowerCase();
-            return content.includes(char.name.toLowerCase());
+        const summary = presentElements.map(element => {
+            let statusText = '';
+
+            // 根据元素类型和状态生成状态描述
+            if (element.type === 'character') {
+                statusText = `角色：${element.name}`;
+                if (element.location) {
+                    statusText += `，位置：${element.location}`;
+                }
+            } else if (element.type === 'location') {
+                statusText = `地点：${element.name}`;
+            } else if (element.type === 'item') {
+                statusText = `道具：${element.name}`;
+            } else {
+                statusText = `${element.name}`;
+            }
+
+            return statusText;
+        }).join('\n');
+
+        return summary;
+    }
+
+    /**
+     * Get present elements at a paragraph position (similar to ParagraphStateSummary logic)
+     * @param {Object} chapter - Chapter object
+     * @param {string} paragraphId - Paragraph ID
+     * @returns {Array} Array of present elements
+     */
+    getParagraphPresentElements(chapter, paragraphId) {
+        const paragraphIndex = chapter.paragraphs.findIndex(p => p.id === paragraphId);
+        if (paragraphIndex === -1) {
+            return [];
+        }
+
+        const presentCharacterIds = new Set();
+        const presentItemIds = new Set();
+        const presentLocationIds = new Set();
+
+        // 收集出现在该段落及之前的元素（包含选中段落本身）
+        for (let i = 0; i <= paragraphIndex; i++) {
+            const p = chapter.paragraphs[i];
+            this._extractElementIdsFromParagraph(p, presentCharacterIds, presentItemIds, presentLocationIds);
+        }
+
+        // 构建在场元素列表
+        const presentElements = [];
+
+        // 添加角色
+        presentCharacterIds.forEach(id => {
+            const element = this.elementManager?.getElement(id);
+            if (element) {
+                presentElements.push({
+                    id: element.id,
+                    type: 'character',
+                    name: element.name,
+                    location: element.location
+                });
+            }
         });
 
-        if (mentionedCharacters.length > 0) {
-            context.characters = mentionedCharacters.map(c => {
-                const charInfo = {
-                    id: c.id,
-                    name: c.name,
-                    description: c.description,
-                    attributes: c.attributes,
-                    abilities: c.abilities
-                };
+        // 添加道具
+        presentItemIds.forEach(id => {
+            const element = this.elementManager?.getElement(id);
+            if (element) {
+                presentElements.push({
+                    id: element.id,
+                    type: 'item',
+                    name: element.name,
+                    location: element.location
+                });
+            }
+        });
 
-                // Add held items information
-                if (c.heldItems && c.heldItems.length > 0) {
-                    charInfo.heldItems = c.heldItems.map(itemId => {
-                        const item = this.state.currentStory.items.find(i => i.id === itemId);
-                        if (item) {
-                            return {
-                                id: item.id,
-                                name: item.name,
-                                type: item.type,
-                                description: item.description,
-                                properties: item.properties
-                            };
-                        }
-                        return null;
-                    }).filter(item => item !== null);
-                }
+        // 添加地点
+        presentLocationIds.forEach(id => {
+            const element = this.elementManager?.getElement(id);
+            if (element) {
+                presentElements.push({
+                    id: element.id,
+                    type: 'location',
+                    name: element.name
+                });
+            }
+        });
 
-                return charInfo;
+        return presentElements;
+    }
+
+    /**
+     * Extract element IDs from paragraph (similar to ParagraphStateSummary._extractElementIds)
+     * @private
+     */
+    _extractElementIdsFromParagraph(paragraph, characterIds, itemIds, locationIds) {
+        if (!paragraph.changes) return;
+
+        // 旧系统
+        if (paragraph.changes.characters) {
+            paragraph.changes.characters.forEach(charChange => {
+                characterIds.add(charChange.characterId);
+            });
+        }
+        if (paragraph.changes.items) {
+            paragraph.changes.items.forEach(itemChange => {
+                itemIds.add(itemChange.itemId);
             });
         }
 
-        return context;
+        // 新系统
+        if (paragraph.changes.elements) {
+            paragraph.changes.elements.forEach(elementChange => {
+                const story = this.state.currentStory;
+                const element = story.elements?.find(e =>
+                    e.id === elementChange.elementId ||
+                    e.name === elementChange.elementName
+                );
+
+                if (element) {
+                    if (element.type === 'character') {
+                        characterIds.add(element.id);
+                    } else if (element.type === 'item') {
+                        itemIds.add(element.id);
+                    } else if (element.type === 'location') {
+                        locationIds.add(element.id);
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -1096,6 +1243,190 @@ class AIManager {
             .join('\n');
 
         return items || '  无';
+    }
+
+    /**
+     * Preview creation request (生成创作请求的预览)
+     */
+    previewCreationRequest() {
+        console.log('[AIManager] previewCreationRequest called');
+
+        const story = this.state.currentStory;
+        if (!story) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noStory'));
+            console.error('[AIManager] No story loaded');
+            return;
+        }
+
+        const chapter = story.chapters.find(c => c.id === this.currentChapterId);
+        if (!chapter) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noChapter'));
+            console.error('[AIManager] No chapter found, currentChapterId:', this.currentChapterId);
+            return;
+        }
+
+        console.log('[AIManager] Chapter found:', chapter.title);
+
+        try {
+            // Build creation context
+            const context = this.buildContext();
+            if (!context) {
+                this.notificationManager.showError('无法构建创作上下文，请确保已选择章节');
+                console.error('[AIManager] Failed to build context');
+                console.error('[AIManager] stateContextCache exists:', !!this.stateContextCache);
+                console.error('[AIManager] elementManager exists:', !!this.elementManager);
+                return;
+            }
+
+            console.log('[AIManager] Context built successfully');
+
+            // Get user input from chat input field (if any)
+            const userMessage = this.elements.inputField.value.trim();
+
+            // Build API request object for creation (using same logic as sendMessage)
+            // If user has entered a message, preview that; otherwise use default creation prompt
+            const apiRequest = this.buildAPIRequestObject(context, userMessage || null);
+
+            // Show preview modal
+            this.showCreationPreviewModal(context, apiRequest);
+
+        } catch (error) {
+            this.notificationManager.showError(`预览失败: ${error.message}`);
+            console.error('[AIManager] Preview creation request error:', error);
+        }
+    }
+
+    /**
+     * Build API request object (used by preview methods to match sendMessage's logic)
+     * @param {Object} context - The context object
+     * @param {string} userMessage - Optional user message (from chat input field)
+     * @returns {Object} API request object
+     */
+    buildAPIRequestObject(context, userMessage = null) {
+        const config = this.configManager.getConfig();
+
+        // If user provided a message, use it; otherwise use default creation prompt
+        const promptText = userMessage || '请根据以下故事背景和上下文，创作一个新的段落或续写故事，注意保持故事的连贯性和人物性格的一致性。';
+
+        // Build messages array (mimics sendMessage's logic)
+        const messages = [
+            { role: 'system', content: '你是一个专业的小说创作助手，擅长根据故事背景和上下文创作符合逻辑、生动的小说内容。' },
+            { role: 'user', content: promptText }
+        ];
+
+        // Add context to messages (same logic as aiService.addContextToMessages)
+        let finalMessages = messages;
+        if (context) {
+            const contextMessages = [];
+
+            // Add system message with chapter title
+            if (context.chapterTitle) {
+                contextMessages.push({
+                    role: 'assistant',
+                    content: `Chapter Title: ${context.chapterTitle}`
+                });
+            }
+
+            // Add assistant message with chapter content as reference
+            if (context.chapterContent && context.chapterContent.trim() !== '') {
+                contextMessages.push({
+                    role: 'assistant',
+                    content: `以下是当前章节已写的内容，作为创作参考：\n\n${context.chapterContent}`
+                });
+            }
+
+            // Add assistant message with element state summary
+            if (context.elementStateSummary) {
+                contextMessages.push({
+                    role: 'assistant',
+                    content: `当前在场元素状态：\n${context.elementStateSummary}`
+                });
+            }
+
+            finalMessages = [...contextMessages, ...messages];
+        }
+
+        // Build API request object (matches what aiService.chat would send)
+        const apiRequest = {
+            model: config.model,
+            temperature: config.temperature,
+            max_tokens: config.maxTokens,
+            messages: finalMessages
+        };
+
+        return apiRequest;
+    }
+
+    /**
+     * Show creation preview modal
+     * @param {Object} context - The creation context
+     * @param {Object} apiRequest - The API request object
+     */
+    showCreationPreviewModal(context, apiRequest) {
+        const modal = document.createElement('div');
+        modal.className = 'modal prompt-preview-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📝 ${i18n.t('buttons.previewCreationRequest')}</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-section">
+                        <h4>创作上下文</h4>
+                        <p><strong>章节:</strong> ${context.chapterTitle}</p>
+                        <p><strong>在场元素:</strong> ${context.presentElements?.map(e => e.name).join(', ') || '无'}</p>
+                    </div>
+                    <div class="preview-section">
+                        <h4>AI创作请求参数</h4>
+                        <pre class="api-request-preview">${this.escapeHtml(JSON.stringify(apiRequest, null, 2))}</pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-cancel">关闭</button>
+                    <button class="btn btn-primary modal-continue">开始创作</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Bind events
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = modal.querySelector('.modal-cancel');
+        const continueBtn = modal.querySelector('.modal-continue');
+
+        const closeModal = () => {
+            modal.remove();
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        continueBtn.addEventListener('click', () => {
+            closeModal();
+            // Prompt user to input their creation request
+            const userInput = this.elements.inputField?.value || '';
+            if (userInput.trim()) {
+                this.sendMessage();
+            } else {
+                this.notificationManager.showError('请在输入框中输入创作要求');
+            }
+        });
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Close on Escape key
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
     }
 
     /**

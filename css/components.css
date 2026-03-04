@@ -14,7 +14,7 @@
     background: none;
     font-size: 14px;
     font-weight: 500;
-    color: var(--light-text-secondary);
+    color: var(--secondary-color);
     cursor: pointer;
     transition: all 0.3s ease;
     border-bottom: 2px solid transparent;
@@ -619,7 +619,7 @@
     background-color: var(--light-bg);
     border: 1px solid var(--light-border);
     border-radius: 4px;
-    color: var(--dark-text);
+    color: var(--light-text);
     font-size: 0.9rem;
     cursor: pointer;
     width: 100%;
@@ -635,5 +635,12 @@
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(26, 179, 148, 0.2);
+}
+
+/* Dark mode language selector */
+body.dark .lang-selector {
+    background-color: var(--dark-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
 }
 

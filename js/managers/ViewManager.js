@@ -66,6 +66,10 @@ class ViewManager {
                 this.app.uiRenderer.renderChapters();
                 this.app.uiRenderer.renderChapterEditor(this.state.selectedChapter);
                 break;
+            case 'elements':
+                // Render elements view
+                this.app.uiRenderer.renderElements();
+                break;
             case 'character':
                 this.app.uiRenderer.renderCharacters();
                 this.app.uiRenderer.renderCharacterEditor(this.state.selectedCharacter);
@@ -114,10 +118,14 @@ class ViewManager {
         const aiPanel = document.getElementById('ai-assistant-panel');
         if (!aiPanel) return;
 
-        // Show AI panel only in story view when a chapter is selected
-        if (viewName === 'story' && this.state.selectedChapter) {
+        // Show AI panel in story and elements views when a chapter is selected
+        // Don't clear chat history when switching views - AI chat serves all views
+        if ((viewName === 'story' || viewName === 'elements') && this.state.selectedChapter) {
             aiPanel.classList.remove('hidden');
-            this.app.aiManager.loadHistory(this.state.selectedChapter);
+            // Only load history if not already loaded for this chapter
+            if (this.app.aiManager.currentChapterId !== this.state.selectedChapter) {
+                this.app.aiManager.loadHistory(this.state.selectedChapter);
+            }
         } else {
             aiPanel.classList.add('hidden');
         }

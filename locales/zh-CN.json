@@ -31,7 +31,9 @@
     "copyPrompt": "复制到剪贴板",
     "confirm": "确认",
     "cancel": "取消",
-    "addParagraph": "+ 添加段落"
+    "addParagraph": "+ 添加段落",
+    "previewAnalysisRequest": "预览分析请求",
+    "previewCreationRequest": "预览创作请求"
   },
   "header": {
     "noStoryLoaded": "未加载故事"

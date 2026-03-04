@@ -713,8 +713,10 @@ class App {
 
         try {
             // Get AI manager and paragraph analyzer
-            if (!this.aiManager.paragraphAnalyzer) {
-                throw new Error('Paragraph analyzer not initialized');
+            if (!this.aiManager || !this.aiManager.paragraphAnalyzer) {
+                this.notificationManager.showError('AI段落分析器未初始化，请稍后再试');
+                console.error('[App] AI Manager or Paragraph Analyzer not initialized');
+                return;
             }
 
             // Build analysis context
@@ -729,11 +731,46 @@ class App {
 
             // Build API request object
             const config = this.aiManager.configManager.getConfig();
+
+            // Build messages array
             const messages = [
                 { role: 'system', content: promptMessages.system },
                 { role: 'assistant', content: promptMessages.assistant },
                 { role: 'user', content: promptMessages.user }
             ];
+
+            // Add context to messages (same logic as aiService.addContextToMessages)
+            let finalMessages = messages;
+            const requestContext = this.aiManager.buildContext();
+            if (requestContext) {
+                const contextMessages = [];
+
+                // Add system message with chapter title
+                if (requestContext.chapterTitle) {
+                    contextMessages.push({
+                        role: 'system',
+                        content: `Chapter: ${requestContext.chapterTitle}`
+                    });
+                }
+
+                // Add assistant message with chapter content as reference
+                if (requestContext.chapterContent && requestContext.chapterContent.trim() !== '') {
+                    contextMessages.push({
+                        role: 'assistant',
+                        content: `以下是当前章节已写的内容，作为创作参考：\n\n${requestContext.chapterContent}`
+                    });
+                }
+
+                // Add assistant message with element state summary
+                if (requestContext.elementStateSummary) {
+                    contextMessages.push({
+                        role: 'assistant',
+                        content: `当前在场元素状态：\n${requestContext.elementStateSummary}`
+                    });
+                }
+
+                finalMessages = [...contextMessages, ...messages];
+            }
 
             // Get tools from AIElementTools if available
             const tools = this.aiManager.aiElementTools?.getToolDefinitions() || [];
@@ -742,7 +779,7 @@ class App {
                 model: config.model,
                 temperature: config.temperature,
                 max_tokens: config.maxTokens,
-                messages: messages,
+                messages: finalMessages,
                 tools: tools.length > 0 ? tools : undefined
             };
 
@@ -828,7 +865,7 @@ class App {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>👁️ AI API 请求预览</h3>
+                    <h3>👁️ ${i18n.t('buttons.previewAnalysisRequest')}</h3>
                     <button class="modal-close">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -837,7 +874,7 @@ class App {
                         <p class="preview-text">${paragraph.content}</p>
                     </div>
                     <div class="preview-section">
-                        <h4>API 请求参数</h4>
+                        <h4>AI分析请求参数</h4>
                         <pre class="api-request-preview">${this.escapeHtml(JSON.stringify(apiRequest, null, 2))}</pre>
                     </div>
                 </div>
