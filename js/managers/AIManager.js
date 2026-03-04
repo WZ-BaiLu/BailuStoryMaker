@@ -1169,19 +1169,7 @@ class AIManager {
     _extractElementIdsFromParagraph(paragraph, characterIds, itemIds, locationIds) {
         if (!paragraph.changes) return;
 
-        // 旧系统
-        if (paragraph.changes.characters) {
-            paragraph.changes.characters.forEach(charChange => {
-                characterIds.add(charChange.characterId);
-            });
-        }
-        if (paragraph.changes.items) {
-            paragraph.changes.items.forEach(itemChange => {
-                itemIds.add(itemChange.itemId);
-            });
-        }
-
-        // 新系统
+        // 使用统一的 elements 系统
         if (paragraph.changes.elements) {
             paragraph.changes.elements.forEach(elementChange => {
                 const story = this.state.currentStory;
@@ -1197,6 +1185,10 @@ class AIManager {
                         itemIds.add(element.id);
                     } else if (element.type === 'location') {
                         locationIds.add(element.id);
+                    }
+                }
+            });
+        }
                     }
                 }
             });
@@ -1643,12 +1635,16 @@ class AIManager {
             const paragraph = chapter.paragraphs?.find(p => p.id === paragraphIdToUse);
             if (paragraph) {
                 if (!paragraph.changes) {
-                    paragraph.changes = { characters: [], items: [] };
+                    paragraph.changes = { elements: [] };
                 }
-                if (!paragraph.changes.characters) {
-                    paragraph.changes.characters = [];
+                if (!paragraph.changes.elements) {
+                    paragraph.changes.elements = [];
                 }
-                paragraph.changes.characters.push(characterChange);
+                // 添加到 elements 数组，并标记为 character 类型
+                paragraph.changes.elements.push({
+                    ...characterChange,
+                    elementType: 'character'
+                });
                 this.state.updateParagraph(this.state.selectedChapter, paragraphIdToUse, { changes: paragraph.changes });
             }
         }
@@ -1745,12 +1741,16 @@ class AIManager {
             const paragraph = chapter.paragraphs?.find(p => p.id === paragraphIdToUse);
             if (paragraph) {
                 if (!paragraph.changes) {
-                    paragraph.changes = { characters: [], items: [] };
+                    paragraph.changes = { elements: [] };
                 }
-                if (!paragraph.changes.items) {
-                    paragraph.changes.items = [];
+                if (!paragraph.changes.elements) {
+                    paragraph.changes.elements = [];
                 }
-                paragraph.changes.items.push(itemChange);
+                // 添加到 elements 数组，并标记为 item 类型
+                paragraph.changes.elements.push({
+                    ...itemChange,
+                    elementType: 'item'
+                });
                 this.state.updateParagraph(this.state.selectedChapter, paragraphIdToUse, { changes: paragraph.changes });
             }
         }
@@ -1844,7 +1844,7 @@ class AIManager {
      * @param {string} paragraphId - Paragraph ID
      * @returns {Promise<Object>} Application result
      */
-    async applyParagraphAnalysis(analysis, paragraphId) {
+    async applyParagraphAnalysis(paragraphId, analysis) {
         if (!this.paragraphAnalyzer) {
             throw new Error('Paragraph analyzer not initialized');
         }

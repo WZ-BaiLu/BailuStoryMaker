@@ -14,6 +14,10 @@ class UIRenderer {
         this.selectedParagraph = null;
         this.editingParagraph = null;
         this.expandedTimelines = new Set(); // Track which timeline sections are expanded
+        this.timelineCacheKey = 'timeline-expanded-state';
+
+        // Load expanded timelines from localStorage
+        this.loadTimelineStateFromStorage();
 
         // Initialize global timeline controls after DOM is ready
         setTimeout(() => {
@@ -224,7 +228,7 @@ class UIRenderer {
         this.bindParagraphEvents(container);
 
         // Show/hide changes tracker
-        if (paragraphs.some(p => p.changes && (p.changes.characters?.length > 0 || p.changes.items?.length > 0))) {
+        if (paragraphs.some(p => p.changes && p.changes.elements?.length > 0)) {
             changesTracker.classList.add('visible');
             this.renderChangesTracker();
         } else {
@@ -380,6 +384,32 @@ class UIRenderer {
                     this.summarizeParagraphState(paragraphId);
                 });
             }
+
+            // Toggle timeline expansion
+            const timelineContent = bubble.querySelector('.paragraph-timeline-content');
+            if (timelineContent) {
+                // Click on timeline content to toggle
+                timelineContent.addEventListener('click', (e) => {
+                    e.stopPropagation();
+
+                    // Only toggle if clicking on the timeline area (not buttons, not empty message)
+                    if (e.target.closest('button')) return;
+                    if (e.target.closest('.timeline-empty-message')) return;
+                    if (e.target.closest('.timeline-actions')) return;
+
+                    const isCollapsed = timelineContent.classList.contains('collapsed');
+                    if (isCollapsed) {
+                        timelineContent.classList.remove('collapsed');
+                        this.expandedTimelines.add(paragraphId);
+                    } else {
+                        timelineContent.classList.add('collapsed');
+                        this.expandedTimelines.delete(paragraphId);
+                    }
+
+                    // Save to localStorage
+                    this.saveTimelineStateToStorage();
+                });
+            }
         });
     }
 
@@ -395,85 +425,86 @@ class UIRenderer {
         //     return '';
         // }
 
+        console.log('[UIRenderer] renderParagraphChanges called for paragraph:', paragraph.id);
+        console.log('[UIRenderer] Paragraph changes:', paragraph.changes);
+
         const story = this.state.currentStory;
         const changes = [];
 
-        // Character changes
-        if (paragraph.changes && paragraph.changes.characters) {
-            paragraph.changes.characters.forEach(charChange => {
-                const character = story?.characters.find(c => c.id === charChange.characterId);
-                if (character) {
-                    const changeDetails = this.formatCharacterChange(charChange);
-                    changes.push(`
-                        <div class="timeline-change-item character" data-change-type="character" data-character-id="${charChange.characterId}">
-                            <span class="timeline-change-icon">👤</span>
-                            <div class="timeline-change-content">
-                                <div class="timeline-change-name">${character.name} <button class="btn-edit-change" data-type="character" data-paragraph-id="${paragraph.id}" data-character-id="${charChange.characterId}">✏️</button></div>
-                                <div class="timeline-change-detail">${changeDetails}</div>
-                            </div>
-                        </div>
-                    `);
-                }
-            });
-        }
-
-        // Item changes
-        if (paragraph.changes && paragraph.changes.items) {
-            paragraph.changes.items.forEach(itemChange => {
-                const item = story?.items.find(i => i.id === itemChange.itemId);
-                if (item) {
-                    const actionLabel = this.getItemActionLabel(itemChange.action);
-                    const changeDetails = this.formatItemChange(itemChange);
-                    changes.push(`
-                        <div class="timeline-change-item item" data-change-type="item" data-item-id="${itemChange.itemId}">
-                            <span class="timeline-change-icon">🎒</span>
-                            <div class="timeline-change-content">
-                                <div class="timeline-change-name">${item.name} <span class="timeline-change-action">${actionLabel}</span> <button class="btn-edit-change" data-type="item" data-paragraph-id="${paragraph.id}" data-item-id="${itemChange.itemId}">✏️</button></div>
-                                <div class="timeline-change-detail">${changeDetails}</div>
-                            </div>
-                        </div>
-                    `);
-                }
-            });
-        }
-
-        // Element changes (new unified element system)
+        // Element changes (unified element system)
         if (paragraph.changes && paragraph.changes.elements) {
             paragraph.changes.elements.forEach(elementChange => {
-                // Resolve element ID or name
                 const elementId = elementChange.elementId;
                 const elementName = elementChange.elementName || elementId;
 
-                // Find element in story.elements
-                const element = story?.elements?.find(e => e.id === elementId);
-
-                // Format change based on property
-                let changeDetail = '';
-                let icon = '📦';
-
-                if (elementChange.property === 'location') {
-                    icon = '📍';
-                    const fromLocation = elementChange.from || '未知';
-                    const toLocation = elementChange.to || elementChange.changes?.location || '未知';
-                    changeDetail = `位置: ${fromLocation} → ${toLocation}`;
-                } else if (elementChange.property === 'description') {
-                    icon = '📝';
-                    changeDetail = `描述已更新`;
+                // Handle different element types
+                if (elementChange.elementType === 'character') {
+                    const character = story?.characters?.find(c => c.id === elementId);
+                    if (character) {
+                        const changeDetails = this.formatCharacterChange({
+                            characterId: elementId,
+                            changes: elementChange.changes
+                        });
+                        changes.push(`
+                            <div class="timeline-change-item character" data-change-type="character" data-character-id="${elementId}">
+                                <span class="timeline-change-icon">👤</span>
+                                <div class="timeline-change-content">
+                                    <div class="timeline-change-name">${character.name} <button class="btn-edit-change" data-type="character" data-paragraph-id="${paragraph.id}" data-character-id="${elementId}">✏️</button></div>
+                                    <div class="timeline-change-detail">${changeDetails}</div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                } else if (elementChange.elementType === 'item') {
+                    const item = story?.items?.find(i => i.id === elementId);
+                    if (item) {
+                        const actionLabel = this.getItemActionLabel(elementChange.action);
+                        const changeDetails = this.formatItemChange({
+                            itemId: elementId,
+                            action: elementChange.action,
+                            changes: elementChange.changes
+                        });
+                        changes.push(`
+                            <div class="timeline-change-item item" data-change-type="item" data-item-id="${elementId}">
+                                <span class="timeline-change-icon">🎒</span>
+                                <div class="timeline-change-content">
+                                    <div class="timeline-change-name">${item.name} <span class="timeline-change-action">${actionLabel}</span> <button class="btn-edit-change" data-type="item" data-paragraph-id="${paragraph.id}" data-item-id="${elementId}">✏️</button></div>
+                                    <div class="timeline-change-detail">${changeDetails}</div>
+                                </div>
+                            </div>
+                        `);
+                    }
                 } else {
-                    changeDetail = JSON.stringify(elementChange.changes || {});
-                }
+                    // Handle other element types (location, memory, base)
+                    const element = story?.elements?.find(e => e.id === elementId);
 
-                const displayName = element?.name || elementName;
+                    let changeDetail = '';
+                    let icon = '📦';
 
-                changes.push(`
-                    <div class="timeline-change-item element" data-change-type="element" data-element-id="${elementId}">
-                        <span class="timeline-change-icon">${icon}</span>
-                        <div class="timeline-change-content">
-                            <div class="timeline-change-name">${displayName}</div>
-                            <div class="timeline-change-detail">${changeDetail}</div>
+                    if (elementChange.property === 'location') {
+                        icon = '📍';
+                        const fromLocation = elementChange.from || '未知';
+                        const toLocation = elementChange.to || elementChange.changes?.location || '未知';
+                        changeDetail = `位置: ${fromLocation} → ${toLocation}`;
+                    } else if (elementChange.property === 'description') {
+                        icon = '📝';
+                        changeDetail = `描述已更新`;
+                    } else {
+                        changeDetail = JSON.stringify(elementChange.changes || {});
+                    }
+
+                    const displayName = element?.name || elementName;
+
+                    changes.push(`
+                        <div class="timeline-change-item element" data-change-type="element" data-element-id="${elementId}">
+                            <span class="timeline-change-icon">${icon}</span>
+                            <div class="timeline-change-content">
+                                <div class="timeline-change-name">${displayName}</div>
+                                <div class="timeline-change-detail">${changeDetail}</div>
+                            </div>
                         </div>
-                    </div>
-                `);
+                    `);
+                }
             });
         }
 
@@ -523,31 +554,31 @@ class UIRenderer {
         const allChanges = [];
 
         paragraphs.forEach((paragraph, index) => {
-            if (!paragraph.changes) return;
+            if (!paragraph.changes || !paragraph.changes.elements) return;
 
-            paragraph.changes.characters?.forEach(charId => {
-                const character = story.characters.find(c => c.id === charId);
-                if (character) {
-                    allChanges.push({
-                        type: 'character',
-                        name: character.name,
-                        id: charId,
-                        paragraphIndex: index,
-                        paragraphId: paragraph.id
-                    });
-                }
-            });
-
-            paragraph.changes.items?.forEach(itemId => {
-                const item = story.items.find(i => i.id === itemId);
-                if (item) {
-                    allChanges.push({
-                        type: 'item',
-                        name: item.name,
-                        id: itemId,
-                        paragraphIndex: index,
-                        paragraphId: paragraph.id
-                    });
+            paragraph.changes.elements.forEach(elementChange => {
+                if (elementChange.elementType === 'character') {
+                    const character = story.characters.find(c => c.id === elementChange.elementId);
+                    if (character) {
+                        allChanges.push({
+                            type: 'character',
+                            name: character.name,
+                            id: elementChange.elementId,
+                            paragraphIndex: index,
+                            paragraphId: paragraph.id
+                        });
+                    }
+                } else if (elementChange.elementType === 'item') {
+                    const item = story.items.find(i => i.id === elementChange.elementId);
+                    if (item) {
+                        allChanges.push({
+                            type: 'item',
+                            name: item.name,
+                            id: elementChange.elementId,
+                            paragraphIndex: index,
+                            paragraphId: paragraph.id
+                        });
+                    }
                 }
             });
         });
@@ -1505,11 +1536,11 @@ class UIRenderer {
      * @returns {string} HTML string for the node
      */
     renderTimelineNode(paragraph, index, filter, story) {
-        const changes = paragraph.changes || { characters: [], items: [] };
+        const changes = paragraph.changes || { elements: [] };
 
         // Check if this paragraph has relevant changes based on filter
-        const hasCharacters = changes.characters && changes.characters.length > 0;
-        const hasItems = changes.items && changes.items.length > 0;
+        const hasCharacters = changes.elements?.some(e => e.elementType === 'character');
+        const hasItems = changes.elements?.some(e => e.elementType === 'item');
 
         const shouldShow = filter === 'all' ||
             (filter === 'characters' && hasCharacters) ||
@@ -1522,43 +1553,42 @@ class UIRenderer {
         // Generate change items HTML
         let changeItemsHtml = '';
 
-        // Render character changes (旧模型支持)
-        if (filter === 'all' || filter === 'characters') {
-            changes.characters?.forEach(charChange => {
-                const character = story?.characters?.find(c => c.id === charChange.characterId);
-                const charName = character?.name || charChange.characterId;
-                changeItemsHtml += `
-                    <div class="timeline-change-item character">
-                        <span class="timeline-change-type-icon new">+</span>
-                        <span class="timeline-change-name">${charName}</span>
-                        <span class="timeline-change-detail">${this.formatCharacterChange(charChange)}</span>
-                    </div>
-                `;
+        // Render element changes from unified elements system
+        if (changes.elements && changes.elements.length > 0) {
+            changes.elements.forEach(elementChange => {
+                if (elementChange.elementType === 'character' && (filter === 'all' || filter === 'characters')) {
+                    const character = story?.characters?.find(c => c.id === elementChange.elementId);
+                    const charName = character?.name || elementChange.elementName || elementChange.elementId;
+                    changeItemsHtml += `
+                        <div class="timeline-change-item character">
+                            <span class="timeline-change-type-icon new">+</span>
+                            <span class="timeline-change-name">${charName}</span>
+                            <span class="timeline-change-detail">${this.formatCharacterChange({
+                                characterId: elementChange.elementId,
+                                changes: elementChange.changes
+                            })}</span>
+                        </div>
+                    `;
+                } else if (elementChange.elementType === 'item' && (filter === 'all' || filter === 'items')) {
+                    const item = story?.items?.find(i => i.id === elementChange.elementId);
+                    const itemName = item?.name || elementChange.elementName || elementChange.elementId;
+                    const actionIcon = this.getItemActionIcon(elementChange.action);
+                    changeItemsHtml += `
+                        <div class="timeline-change-item item">
+                            <span class="timeline-change-type-icon ${elementChange.action}">${actionIcon}</span>
+                            <span class="timeline-change-name">${itemName}</span>
+                            <span class="timeline-change-detail">${this.formatItemChange({
+                                itemId: elementChange.elementId,
+                                action: elementChange.action,
+                                changes: elementChange.changes
+                            })}</span>
+                        </div>
+                    `;
+                }
             });
         }
 
-        // Render item changes (旧模型支持)
-        if (filter === 'all' || filter === 'items') {
-            changes.items?.forEach(itemChange => {
-                const item = story?.items?.find(i => i.id === itemChange.itemId);
-                const itemName = item?.name || itemChange.itemId;
-                const actionIcon = this.getItemActionIcon(itemChange.action);
-                changeItemsHtml += `
-                    <div class="timeline-change-item item">
-                        <span class="timeline-change-type-icon ${itemChange.action}">${actionIcon}</span>
-                        <span class="timeline-change-name">${itemName}</span>
-                        <span class="timeline-change-detail">${this.formatItemChange(itemChange)}</span>
-                    </div>
-                `;
-            });
-        }
-
-        // Render element state changes (新架构支持)
-        if (paragraph.elementStateChanges && paragraph.elementStateChanges.length > 0) {
-            changeItemsHtml += this._renderElementStateChanges(paragraph.elementStateChanges, story);
-        }
-
-        // Render narrative type indicator (新架构支持)
+        // Render narrative type indicator
         const narrativeTypeHtml = paragraph.storyTimestamp
             ? `<div class="timeline-narrative-type">${this._formatNarrativeType(paragraph.storyTimestamp)}</div>`
             : '';
@@ -2106,7 +2136,7 @@ class UIRenderer {
         const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
         if (!paragraph || !paragraph.changes) return;
 
-        const charChange = paragraph.changes.characters?.find(c => c.characterId === characterId);
+        const charChange = paragraph.changes.elements?.find(e => e.elementId === characterId && e.elementType === 'character');
         if (!charChange) {
             this.showAddCharacterChangeModal(paragraphId);
             return;
@@ -2192,7 +2222,7 @@ class UIRenderer {
         const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
         if (!paragraph || !paragraph.changes) return;
 
-        const itemChange = paragraph.changes.items?.find(i => i.itemId === itemId);
+        const itemChange = paragraph.changes.elements?.find(e => e.elementId === itemId && e.elementType === 'item');
         if (!itemChange) {
             this.showAddItemChangeModal(paragraphId);
             return;
@@ -2276,18 +2306,25 @@ class UIRenderer {
         if (!paragraph) return;
 
         if (!paragraph.changes) {
-            paragraph.changes = { characters: [], items: [] };
+            paragraph.changes = { elements: [] };
+        } else if (!paragraph.changes.elements) {
+            paragraph.changes.elements = [];
         }
 
         // Check if character change already exists
-        const existingChange = paragraph.changes.characters.find(c => c.characterId === characterId);
+        const existingChange = paragraph.changes.elements.find(e => e.elementId === characterId && e.elementType === 'character');
         if (existingChange) {
             this.app.notificationManager.showError(i18n.t('timeline.characterChangeExists'));
             return;
         }
 
+        const character = chapter.story?.characters.find(c => c.id === characterId) ||
+                         this.state.currentStory?.characters.find(c => c.id === characterId);
+
         const charChange = {
-            characterId,
+            elementId: characterId,
+            elementName: character?.name || characterId,
+            elementType: 'character',
             changes: {}
         };
 
@@ -2299,7 +2336,7 @@ class UIRenderer {
             charChange.changes.emotionalState = emotion;
         }
 
-        paragraph.changes.characters.push(charChange);
+        paragraph.changes.elements.push(charChange);
         this.state.saveToLocalStorage();
         this.renderParagraphs();
         this.app.notificationManager.showSuccess(i18n.t('timeline.characterChangeAdded'));
@@ -2320,7 +2357,7 @@ class UIRenderer {
         const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
         if (!paragraph || !paragraph.changes) return;
 
-        const charChange = paragraph.changes.characters.find(c => c.characterId === characterId);
+        const charChange = paragraph.changes.elements.find(e => e.elementId === characterId && e.elementType === 'character');
         if (!charChange) return;
 
         charChange.changes = {};
@@ -2350,7 +2387,7 @@ class UIRenderer {
         const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
         if (!paragraph || !paragraph.changes) return;
 
-        paragraph.changes.characters = paragraph.changes.characters.filter(c => c.characterId !== characterId);
+        paragraph.changes.elements = paragraph.changes.elements.filter(e => !(e.elementId === characterId && e.elementType === 'character'));
         this.state.saveToLocalStorage();
         this.renderParagraphs();
         this.app.notificationManager.showSuccess(i18n.t('timeline.characterChangeDeleted'));
@@ -2372,18 +2409,24 @@ class UIRenderer {
         if (!paragraph) return;
 
         if (!paragraph.changes) {
-            paragraph.changes = { characters: [], items: [] };
+            paragraph.changes = { elements: [] };
+        } else if (!paragraph.changes.elements) {
+            paragraph.changes.elements = [];
         }
 
         // Check if item change already exists
-        const existingChange = paragraph.changes.items.find(i => i.itemId === itemId);
+        const existingChange = paragraph.changes.elements.find(e => e.elementId === itemId && e.elementType === 'item');
         if (existingChange) {
             this.app.notificationManager.showError(i18n.t('timeline.itemChangeExists'));
             return;
         }
 
+        const item = this.state.currentStory?.items.find(i => i.id === itemId);
+
         const itemChange = {
-            itemId,
+            elementId: itemId,
+            elementName: item?.name || itemId,
+            elementType: 'item',
             action,
             changes: {}
         };
@@ -2392,7 +2435,7 @@ class UIRenderer {
             itemChange.changes.properties = { [propName]: propValue };
         }
 
-        paragraph.changes.items.push(itemChange);
+        paragraph.changes.elements.push(itemChange);
         this.state.saveToLocalStorage();
         this.renderParagraphs();
         this.app.notificationManager.showSuccess(i18n.t('timeline.itemChangeAdded'));
@@ -2413,7 +2456,7 @@ class UIRenderer {
         const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
         if (!paragraph || !paragraph.changes) return;
 
-        const itemChange = paragraph.changes.items.find(i => i.itemId === itemId);
+        const itemChange = paragraph.changes.elements.find(e => e.elementId === itemId && e.elementType === 'item');
         if (!itemChange) return;
 
         itemChange.action = action;
@@ -2440,7 +2483,7 @@ class UIRenderer {
         const paragraph = chapter.paragraphs.find(p => p.id === paragraphId);
         if (!paragraph || !paragraph.changes) return;
 
-        paragraph.changes.items = paragraph.changes.items.filter(i => i.itemId !== itemId);
+        paragraph.changes.elements = paragraph.changes.elements.filter(e => !(e.elementId === itemId && e.elementType === 'item'));
         this.state.saveToLocalStorage();
         this.renderParagraphs();
         this.app.notificationManager.showSuccess(i18n.t('timeline.itemChangeDeleted'));
@@ -2544,6 +2587,9 @@ class UIRenderer {
 
         // Update status
         this.updateTimelineStatus();
+
+        // Save to localStorage
+        this.saveTimelineStateToStorage();
     }
 
     /**
@@ -2570,6 +2616,36 @@ class UIRenderer {
             icon.textContent = '▼';
         } else {
             icon.textContent = '▼';
+        }
+    }
+
+    /**
+     * Load timeline expanded state from localStorage
+     */
+    loadTimelineStateFromStorage() {
+        try {
+            const saved = localStorage.getItem(this.timelineCacheKey);
+            if (saved) {
+                const expandedIds = JSON.parse(saved);
+                this.expandedTimelines = new Set(expandedIds);
+                console.log(`[UIRenderer] Loaded ${expandedIds.length} expanded timelines from storage`);
+            }
+        } catch (error) {
+            console.error('[UIRenderer] Failed to load timeline state from storage:', error);
+            this.expandedTimelines = new Set();
+        }
+    }
+
+    /**
+     * Save timeline expanded state to localStorage
+     */
+    saveTimelineStateToStorage() {
+        try {
+            const expandedIds = Array.from(this.expandedTimelines);
+            localStorage.setItem(this.timelineCacheKey, JSON.stringify(expandedIds));
+            console.log(`[UIRenderer] Saved ${expandedIds.length} expanded timelines to storage`);
+        } catch (error) {
+            console.error('[UIRenderer] Failed to save timeline state to storage:', error);
         }
     }
 

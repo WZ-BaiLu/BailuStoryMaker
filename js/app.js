@@ -218,6 +218,22 @@ class App {
         }
     }
 
+    /**
+     * Called when a paragraph is updated
+     * Invalidates the paragraph analysis cache
+     * @param {Object} data - Event data containing paragraph
+     */
+    onParagraphUpdated(data) {
+        if (!data || !data.paragraph) return;
+
+        const paragraph = data.paragraph;
+        if (this.aiManager && this.aiManager.paragraphAnalyzer) {
+            // Invalidate cache for the updated paragraph
+            this.aiManager.paragraphAnalyzer.invalidateCache(paragraph.id, paragraph.content);
+            console.log(`[App] Invalidated cache for paragraph ${paragraph.id}`);
+        }
+    }
+
     // Chapter management
     
     /**
@@ -933,7 +949,7 @@ class App {
         this.notificationManager.showLoading(i18n.t('ai.paragraphAnalysis.applying'));
 
         try {
-            const result = await this.aiManager.applyParagraphAnalysis(analysis, paragraphId);
+            const result = await this.aiManager.applyParagraphAnalysis(paragraphId, analysis);
 
             if (!result.success) {
                 throw new Error(result.error || i18n.t('ai.paragraphAnalysis.applyError'));
@@ -966,6 +982,15 @@ class App {
      * @param {Object} analysis - The analysis result
      */
     showAnalysisResultModal(paragraph, analysis) {
+        console.log('[App] showAnalysisResultModal called with:', {
+            paragraphId: paragraph?.id,
+            analysisType: typeof analysis,
+            analysisKeys: analysis ? Object.keys(analysis) : null,
+            elements: analysis?.elements,
+            events: analysis?.events,
+            stateChanges: analysis?.stateChanges
+        });
+
         const modal = document.createElement('div');
         modal.className = 'modal analysis-result-modal';
         modal.innerHTML = `
@@ -1051,9 +1076,14 @@ class App {
         closeBtn.addEventListener('click', closeModal);
         cancelBtn.addEventListener('click', closeModal);
 
+        // Deep copy analysis to avoid closure issues
+        const analysisCopy = JSON.parse(JSON.stringify(analysis));
+        const paragraphId = paragraph.id;
+
         applyBtn.addEventListener('click', () => {
             closeModal();
-            this.applyParagraphAnalysis(paragraph.id, analysis);
+            console.log('[App] Applying analysis:', analysisCopy);
+            this.applyParagraphAnalysis(paragraphId, analysisCopy);
         });
 
         // Close on backdrop click
