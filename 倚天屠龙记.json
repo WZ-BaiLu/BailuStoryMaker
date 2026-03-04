@@ -3,7 +3,7 @@
     "id": "story-1771477496979-8ljt78e35",
     "title": "倚天屠龙记",
     "createdAt": "2026-02-19T05:04:56.979Z",
-    "updatedAt": "2026-03-04T16:34:43.287Z",
+    "updatedAt": "2026-03-04T17:20:44.525Z",
     "author": ""
   },
   "settings": [],
@@ -86,8 +86,38 @@
           "id": "paragraph-1772642012683-95qfpyarj",
           "content": "段誉刚踏入山门，便见那老和尚迎了出来。老和尚身形清瘦，面容慈祥，合十道：“阿弥陀佛，施主远来辛苦，若不嫌弃敝寺简陋，还请入内用些清茶。”\n\n段誉正觉口渴，便欣然道：“如此叨扰了。”跟着老和尚进了寺院。\n\n这庙宇确实不大，却打扫得干干净净。小和尚正在院中扫地，见有客来，好奇地张望了一眼，又低下头继续扫地。老和尚引段誉到一间禅房坐下，不多时，小和尚便端了两碗茶进来，放在桌上。\n\n“施主从何处来？”老和尚问道。",
           "changes": {
-            "characters": [],
-            "items": []
+            "elements": [
+              {
+                "elementId": "character-段誉-1",
+                "elementName": "段誉",
+                "property": "location",
+                "from": "当前位置",
+                "to": "一座庙",
+                "changes": {
+                  "location": "一座庙"
+                }
+              },
+              {
+                "elementId": "character-老和尚-1",
+                "elementName": "老和尚",
+                "property": "location",
+                "from": "当前位置",
+                "to": "一座庙",
+                "changes": {
+                  "location": "一座庙"
+                }
+              },
+              {
+                "elementId": "character-小和尚-1",
+                "elementName": "小和尚",
+                "property": "location",
+                "from": "当前位置",
+                "to": "一座庙",
+                "changes": {
+                  "location": "一座庙"
+                }
+              }
+            ]
           },
           "createdAt": "2026-03-04T16:33:32.683Z"
         },

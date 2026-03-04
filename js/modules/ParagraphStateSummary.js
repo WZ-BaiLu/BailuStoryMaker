@@ -92,12 +92,6 @@ class ParagraphStateSummary {
       });
     }
   }
-            locationIds.add(element.id);
-          }
-        }
-      });
-    }
-  }
 
   /**
    * 初始化角色状态
