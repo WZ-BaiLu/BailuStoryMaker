@@ -336,6 +336,7 @@ class EventManager {
         this.state.on('chapterUpdated', () => this.app.updateSaveStatus());
         this.state.on('paragraphAdded', () => this.app.uiRenderer.renderParagraphs());
         // Don't auto-render on paragraphUpdated to prevent losing focus during editing
+        this.state.on('paragraphUpdated', (data) => this.app.onParagraphUpdated(data));
         this.state.on('paragraphDeleted', () => this.app.uiRenderer.renderParagraphs());
         this.state.on('characterAdded', () => this.app.uiRenderer.renderCharacters());
         this.state.on('characterUpdated', () => this.app.updateSaveStatus());

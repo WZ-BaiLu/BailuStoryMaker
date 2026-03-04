@@ -27,6 +27,10 @@ class ParagraphAnalyzer {
 
         // Analysis cache
         this.analysisCache = new Map();
+        this.cacheStorageKey = 'paragraph-analysis-cache';
+
+        // Load cache from localStorage
+        this.loadCacheFromStorage();
     }
 
     /**
@@ -54,11 +58,21 @@ class ParagraphAnalyzer {
      * @returns {Promise<Object>} Analysis result
      */
     async analyzeParagraph(paragraph, context) {
-        const cacheKey = this.getCacheKey(paragraph.id);
+        // Use paragraph content for cache to handle duplicate requests
+        const cacheKey = this.getCacheKey(paragraph.id, paragraph.content);
 
-        // Check cache - only cache if no tools are available
-        if (this.aiElementTools && this.analysisCache.has(cacheKey)) {
-            return this.analysisCache.get(cacheKey);
+        // Check cache for duplicate requests
+        if (this.analysisCache.has(cacheKey)) {
+            console.log(`[ParagraphAnalyzer] Using cached analysis for paragraph ${paragraph.id}`);
+            const cachedAnalysis = this.analysisCache.get(cacheKey);
+
+            // Validate cached analysis structure
+            if (!this.isValidAnalysis(cachedAnalysis)) {
+                console.warn(`[ParagraphAnalyzer] Invalid cached analysis, removing from cache`);
+                this.invalidateCache(paragraph.id, paragraph.content);
+            } else {
+                return cachedAnalysis;
+            }
         }
 
         // Build analysis context
@@ -74,10 +88,12 @@ class ParagraphAnalyzer {
         // Parse response
         const analysis = this.parseAnalysisResult(aiResponse, paragraph.id);
 
-        // Cache result only if no tools were used (tools modify state, so we shouldn't cache)
-        if (!tools || tools.length === 0) {
-            this.analysisCache.set(cacheKey, analysis);
-        }
+        // Cache result for duplicate requests
+        this.analysisCache.set(cacheKey, analysis);
+        console.log(`[ParagraphAnalyzer] Cached analysis for paragraph ${paragraph.id}, cacheKey: ${cacheKey}`);
+
+        // Save to localStorage for persistence
+        this.saveCacheToStorage();
 
         return analysis;
     }
@@ -616,8 +632,29 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
      * @param {string} paragraphId - Paragraph ID
      * @returns {string} Cache key
      */
-    getCacheKey(paragraphId) {
+    getCacheKey(paragraphId, paragraphContent = null) {
+        // Use paragraph content for cache to avoid duplicate analysis of same content
+        if (paragraphContent) {
+            // Create a hash based on content to identify duplicate requests
+            return `paragraph-analysis-${this.hashContent(paragraphContent)}`;
+        }
         return `paragraph-analysis-${paragraphId}`;
+    }
+
+    /**
+     * Hash content for cache key
+     * @param {string} content - Content to hash
+     * @returns {string} Hash string
+     */
+    hashContent(content) {
+        let hash = 0;
+        if (!content) return hash.toString();
+        for (let i = 0; i < content.length; i++) {
+            const char = content.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash).toString(36);
     }
 
     /**
@@ -625,15 +662,122 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
      */
     clearCache() {
         this.analysisCache.clear();
+        this.saveCacheToStorage();
+    }
+
+    /**
+     * Load cache from localStorage
+     */
+    loadCacheFromStorage() {
+        try {
+            const cached = localStorage.getItem(this.cacheStorageKey);
+            console.log(`[ParagraphAnalyzer] Loading cache from storage, found: ${cached ? 'data' : 'null'}`);
+
+            if (cached) {
+                const cacheData = JSON.parse(cached);
+                this.analysisCache = new Map(Object.entries(cacheData));
+                console.log(`[ParagraphAnalyzer] Parsed ${this.analysisCache.size} cache entries`);
+
+                // Validate and filter out invalid cached analyses
+                let validCount = 0;
+                for (const [key, analysis] of this.analysisCache) {
+                    if (!this.isValidAnalysis(analysis)) {
+                        console.warn(`[ParagraphAnalyzer] Removing invalid cached analysis for key: ${key}`);
+                        this.analysisCache.delete(key);
+                    } else {
+                        validCount++;
+                    }
+                }
+
+                console.log(`[ParagraphAnalyzer] Loaded ${validCount} valid cached analyses from storage`);
+            } else {
+                console.log('[ParagraphAnalyzer] No cached data found in storage');
+            }
+        } catch (error) {
+            console.error('[ParagraphAnalyzer] Failed to load cache from storage:', error);
+            this.analysisCache = new Map();
+        }
+    }
+
+    /**
+     * Validate analysis object structure
+     * @param {Object} analysis - Analysis object to validate
+     * @returns {boolean} True if valid
+     */
+    isValidAnalysis(analysis) {
+        console.log('[ParagraphAnalyzer] isValidAnalysis called with:', {
+            analysisType: typeof analysis,
+            analysisKeys: analysis ? Object.keys(analysis) : null,
+            hasParagraphId: 'paragraphId' in analysis,
+            hasElements: 'elements' in analysis,
+            hasEvents: 'events' in analysis,
+            hasStateChanges: 'stateChanges' in analysis
+        });
+
+        if (!analysis || typeof analysis !== 'object') {
+            console.warn('[ParagraphAnalyzer] Invalid analysis: null or not an object');
+            return false;
+        }
+
+        // Check required fields
+        const requiredFields = ['paragraphId', 'elements', 'events', 'stateChanges'];
+        for (const field of requiredFields) {
+            if (!(field in analysis)) {
+                console.warn(`[ParagraphAnalyzer] Invalid analysis: missing field ${field}`);
+                return false;
+            }
+        }
+
+        // Check that required fields are arrays
+        if (!Array.isArray(analysis.elements)) {
+            console.warn('[ParagraphAnalyzer] Invalid analysis: elements is not an array');
+            return false;
+        }
+        if (!Array.isArray(analysis.events)) {
+            console.warn('[ParagraphAnalyzer] Invalid analysis: events is not an array');
+            return false;
+        }
+        if (!Array.isArray(analysis.stateChanges)) {
+            console.warn('[ParagraphAnalyzer] Invalid analysis: stateChanges is not an array');
+            return false;
+        }
+
+        console.log('[ParagraphAnalyzer] Analysis is valid');
+        return true;
+    }
+
+    /**
+     * Save cache to localStorage
+     */
+    saveCacheToStorage() {
+        try {
+            const cacheData = Object.fromEntries(this.analysisCache);
+            const jsonStr = JSON.stringify(cacheData);
+            console.log(`[ParagraphAnalyzer] Saving ${this.analysisCache.size} cache entries to storage, size: ${jsonStr.length} chars`);
+            localStorage.setItem(this.cacheStorageKey, jsonStr);
+        } catch (error) {
+            console.error('[ParagraphAnalyzer] Failed to save cache to storage:', error);
+        }
     }
 
     /**
      * Invalidate cache for specific paragraph
      * @param {string} paragraphId - Paragraph ID
+     * @param {string} paragraphContent - Paragraph content (optional, for content-based cache)
      */
-    invalidateCache(paragraphId) {
+    invalidateCache(paragraphId, paragraphContent = null) {
+        // Remove old style cache (by ID)
         const cacheKey = this.getCacheKey(paragraphId);
         this.analysisCache.delete(cacheKey);
+
+        // Remove content-based cache if content is provided
+        if (paragraphContent) {
+            const contentCacheKey = this.getCacheKey(paragraphId, paragraphContent);
+            this.analysisCache.delete(contentCacheKey);
+        }
+
+        // Save updated cache to storage
+        this.saveCacheToStorage();
     }
 
     /**
@@ -650,9 +794,27 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
             errors: []
         };
 
+        // Debug logging
+        console.log('[ParagraphAnalyzer] applyAnalysis called with:', {
+            analysisType: typeof analysis,
+            analysisKeys: analysis ? Object.keys(analysis) : null,
+            elements: analysis?.elements,
+            events: analysis?.events,
+            stateChanges: analysis?.stateChanges
+        });
+
+        // Validate analysis object structure
+        if (!analysis || typeof analysis !== 'object') {
+            throw new Error('Invalid analysis object');
+        }
+
+        // Ensure elements, events, and stateChanges are arrays
+        const elements = Array.isArray(analysis.elements) ? analysis.elements : [];
+        const stateChanges = Array.isArray(analysis.stateChanges) ? analysis.stateChanges : [];
+
         // Note: Elements are already created by tool calls during analysis
         // We just need to record them and apply state changes to the paragraph
-        for (const element of analysis.elements) {
+        for (const element of elements) {
             if (element.isNew) {
                 // Element was already created by the tool call
                 result.createdElements.push({
@@ -672,11 +834,11 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                 }
 
                 // Add state changes
-                for (const stateChange of analysis.stateChanges) {
+                for (const stateChange of stateChanges) {
                     paragraph.changes.elements.push(stateChange);
                 }
 
-                result.updatedElements = analysis.stateChanges.length;
+                result.updatedElements = stateChanges.length;
             }
         } catch (error) {
             result.errors.push({

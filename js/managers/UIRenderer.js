@@ -14,6 +14,10 @@ class UIRenderer {
         this.selectedParagraph = null;
         this.editingParagraph = null;
         this.expandedTimelines = new Set(); // Track which timeline sections are expanded
+        this.timelineCacheKey = 'timeline-expanded-state';
+
+        // Load expanded timelines from localStorage
+        this.loadTimelineStateFromStorage();
 
         // Initialize global timeline controls after DOM is ready
         setTimeout(() => {
@@ -378,6 +382,30 @@ class UIRenderer {
                 summarizeBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.summarizeParagraphState(paragraphId);
+                });
+            }
+
+            // Toggle timeline expansion
+            const timelineContent = bubble.querySelector('.paragraph-timeline-content');
+            if (timelineContent) {
+                // Click on timeline content to toggle
+                timelineContent.addEventListener('click', (e) => {
+                    e.stopPropagation();
+
+                    // Only toggle if clicking on the timeline area (not buttons)
+                    if (e.target.closest('button')) return;
+
+                    const isCollapsed = timelineContent.classList.contains('collapsed');
+                    if (isCollapsed) {
+                        timelineContent.classList.remove('collapsed');
+                        this.expandedTimelines.add(paragraphId);
+                    } else {
+                        timelineContent.classList.add('collapsed');
+                        this.expandedTimelines.delete(paragraphId);
+                    }
+
+                    // Save to localStorage
+                    this.saveTimelineStateToStorage();
                 });
             }
         });
@@ -2544,6 +2572,9 @@ class UIRenderer {
 
         // Update status
         this.updateTimelineStatus();
+
+        // Save to localStorage
+        this.saveTimelineStateToStorage();
     }
 
     /**
@@ -2570,6 +2601,36 @@ class UIRenderer {
             icon.textContent = '▼';
         } else {
             icon.textContent = '▼';
+        }
+    }
+
+    /**
+     * Load timeline expanded state from localStorage
+     */
+    loadTimelineStateFromStorage() {
+        try {
+            const saved = localStorage.getItem(this.timelineCacheKey);
+            if (saved) {
+                const expandedIds = JSON.parse(saved);
+                this.expandedTimelines = new Set(expandedIds);
+                console.log(`[UIRenderer] Loaded ${expandedIds.length} expanded timelines from storage`);
+            }
+        } catch (error) {
+            console.error('[UIRenderer] Failed to load timeline state from storage:', error);
+            this.expandedTimelines = new Set();
+        }
+    }
+
+    /**
+     * Save timeline expanded state to localStorage
+     */
+    saveTimelineStateToStorage() {
+        try {
+            const expandedIds = Array.from(this.expandedTimelines);
+            localStorage.setItem(this.timelineCacheKey, JSON.stringify(expandedIds));
+            console.log(`[UIRenderer] Saved ${expandedIds.length} expanded timelines to storage`);
+        } catch (error) {
+            console.error('[UIRenderer] Failed to save timeline state to storage:', error);
         }
     }
 
