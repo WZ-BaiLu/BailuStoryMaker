@@ -155,10 +155,10 @@ class ParagraphAnalyzer {
 - 识别段落中提到的人物、地点、道具、记忆、设定等元素
 - 特别注意地点信息（当前场景发生的地方）
 
-### 第二步：使用工具查询已存在的元素
-- 使用 listElements 工具查询特定类型的元素
-- 查询类型：characters, locations, items, memories, bases
-- 根据查询结果判断哪些元素已存在，哪些需要创建
+### 第二步：检查元素是否存在
+- 根据提供的已存在元素列表，检查段落中提到的元素是否已存在
+- 如果元素已存在，直接使用现有元素
+- 如果元素不存在，需要创建新元素
 
 ### 第三步：创建新元素（如果需要）
 - 使用 addElement 工具创建段落中提到但不存在的新元素
@@ -170,17 +170,17 @@ class ParagraphAnalyzer {
 
 ## 关键要求
 
-1. **必须按顺序调用工具**：
-   - 先调用 listElements 查询已存在的元素
-   - 根据查询结果调用 addElement 创建新元素
-   - 最后调用 updateElementLocation 设置位置
+1. **直接使用已提供的元素信息**：
+   - 编辑器已提供完整的已存在元素列表
+   - 不需要调用 listElements 工具查询
+   - 根据提供的列表判断元素是否存在
 
 2. **所有工具调用必须在同一个响应中完成**：
    - 不要等待工具返回后再调用下一个
    - 一次性列出所有需要的工具调用
 
 3. **避免重复创建元素**：
-   - 通过 listElements 查询结果检查元素是否已存在
+   - 根据已提供的元素列表检查元素是否已存在
    - 已存在的元素直接使用，不要再创建
 
 4. **updateElementLocation 支持使用名称**：
@@ -191,36 +191,33 @@ class ParagraphAnalyzer {
 
 ### 示例 1：分析"张无忌来到光明顶"
 
-假设查询结果：张无忌已存在，光明顶不存在
+假设已存在元素列表中有"张无忌"，但没有"光明顶"
 
 工具调用顺序：
-1. listElements(types: ["locations"])  // 查询地点
-2. addElement(type: "location", name: "光明顶", description: "明教总坛所在地", keywords: ["山峰", "明教"])
-3. updateElementLocation(elementId: "张无忌", location: "光明顶")
+1. addElement(type: "location", name: "光明顶", description: "明教总坛所在地", keywords: ["山峰", "明教"])
+2. updateElementLocation(elementId: "张无忌", location: "光明顶")
 
 ### 示例 2：分析"赵敏在大殿里看到周芷若"
 
-假设查询结果：赵敏已存在，周芷若已存在，大殿不存在
+假设已存在元素列表中有"赵敏"和"周芷若"，但没有"大殿"
 
 工具调用顺序：
-1. listElements(types: ["locations"])  // 查询地点
-2. addElement(type: "location", name: "大殿", description: "建筑", keywords: ["大殿"])
-3. updateElementLocation(elementId: "赵敏", location: "大殿")
-4. updateElementLocation(elementId: "周芷若", location: "大殿")
+1. addElement(type: "location", name: "大殿", description: "建筑", keywords: ["大殿"])
+2. updateElementLocation(elementId: "赵敏", location: "大殿")
+3. updateElementLocation(elementId: "周芷若", location: "大殿")
 
 ### 示例 3：分析"段誉来到一座山"
 
-假设查询结果：段誉已存在，没有任何地点
+假设已存在元素列表中有"段誉"，没有任何地点
 
 工具调用顺序：
-1. listElements(types: ["locations"])  // 查询地点
-2. addElement(type: "location", name: "一座山", description: "地点", keywords: [])
-3. updateElementLocation(elementId: "段誉", location: "一座山")
+1. addElement(type: "location", name: "一座山", description: "地点", keywords: [])
+2. updateElementLocation(elementId: "段誉", location: "一座山")
 
 ## 注意事项
 
 - 完成分析后，不要返回任何文字说明，只通过工具调用更新状态
-- listElements 工具可以查询多个类型，如 types: ["characters", "locations"]
+- 编辑器已提供完整的已存在元素列表，无需查询
 - 地点是理解段落的关键信息，请特别注意识别`;
 
         // Assistant message with context information
@@ -232,11 +229,11 @@ class ParagraphAnalyzer {
 请仔细阅读段落内容，识别其中提到的人物、地点、道具等元素，并使用工具进行操作。
 
 关键步骤：
-1. 使用 listElements 工具查询已存在的元素
-2. 根据查询结果创建新元素（如果需要）
+1. 根据已提供的元素列表检查元素是否存在
+2. 创建新元素（如果需要）
 3. 设置元素位置关系
 
-## 已存在的元素（仅供参考，建议使用 listElements 工具查询最新信息）
+## 已存在的元素（完整列表，请直接使用）
 ${this.formatElementsForPrompt(analysisContext.existingElements)}
 
 ## 前几个段落（上下文）
@@ -541,7 +538,8 @@ ${analysisContext.previousParagraphs.map((p, i) => `${i + 1}. ${p.content}`).joi
                           el.type === 'item' ? '道具' :
                           el.type === 'location' ? '地点' :
                           el.type === 'memory' ? '记忆' : '设定';
-            return `- ${prefix}: ${el.name} (ID: ${el.id})`;
+            const description = el.description ? ` - ${el.description.substring(0, 100)}${el.description.length > 100 ? '...' : ''}` : '';
+            return `- ${prefix}: ${el.name}${description}`;
         }).join('\n');
     }
 

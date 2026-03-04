@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI修复测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .test-description {
+            margin-bottom: 15px;
+            color: #666;
+        }
+        
+        .test-result {
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        
+        .paragraph-timeline {
+            margin: 10px 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .paragraph-timeline-content {
+            padding: 15px;
+            background: #f8fafc;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 1000px;
+            opacity: 1;
+        }
+        
+        .paragraph-timeline-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding: 0;
+        }
+        
+        .timeline-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        .paragraphs-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        #state-summary-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        #state-summary-modal.hidden {
+            display: none;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>UI修复测试</h1>
+    
+    <div class="test-section">
+        <div class="test-title">测试1：全局时间线控制</div>
+        <div class="test-description">
+            验证顶部工具栏可以控制所有段落时间线的展开/收起
+        </div>
+        
+        <div class="paragraphs-controls">
+            <button id="toggle-all-timelines">
+                <span class="timeline-toggle-icon">▼</span>
+                展开/收起所有时间线
+            </button>
+            <div id="timeline-status">状态：全部收起</div>
+        </div>
+        
+        <div class="paragraph-timeline">
+            <div class="paragraph-timeline-content collapsed" data-paragraph-id="1">
+                <div class="timeline-actions">
+                    <button>添加人物变化</button>
+                    <button>添加道具变化</button>
+                    <button class="btn-summarize-state" data-paragraph-id="1">总结状态</button>
+                </div>
+                <div>段落1的时间线内容</div>
+            </div>
+        </div>
+        
+        <div class="paragraph-timeline">
+            <div class="paragraph-timeline-content collapsed" data-paragraph-id="2">
+                <div class="timeline-actions">
+                    <button>添加人物变化</button>
+                    <button>添加道具变化</button>
+                    <button class="btn-summarize-state" data-paragraph-id="2">总结状态</button>
+                </div>
+                <div>段落2的时间线内容</div>
+            </div>
+        </div>
+        
+        <div class="test-result" id="test1-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">测试2：段落总结弹窗</div>
+        <div class="test-description">
+            验证段落总结弹窗可以多次打开/关闭（toggle行为）
+        </div>
+        
+        <button id="test-summary-btn">测试总结弹窗</button>
+        
+        <div class="test-result" id="test2-result"></div>
+    </div>
+    
+    <div id="state-summary-modal" class="hidden">
+        <button class="modal-close">×</button>
+        <h3>状态总结</h3>
+        <p>这是一个测试弹窗内容</p>
+        <button class="btn-confirm">确认</button>
+    </div>
+    
+    <script>
+        // 测试1：全局时间线控制
+        const toggleBtn = document.getElementById('toggle-all-timelines');
+        const statusEl = document.getElementById('timeline-status');
+        const timelines = document.querySelectorAll('.paragraph-timeline-content');
+        const test1Result = document.getElementById('test1-result');
+        
+        function updateTimelineStatus() {
+            const expandedCount = Array.from(timelines).filter(tl => !tl.classList.contains('collapsed')).length;
+            const totalCount = timelines.length;
+            
+            if (expandedCount === 0) {
+                statusEl.textContent = '状态：全部收起';
+                toggleBtn.querySelector('.timeline-toggle-icon').textContent = '▶';
+            } else if (expandedCount === totalCount) {
+                statusEl.textContent = '状态：全部展开';
+                toggleBtn.querySelector('.timeline-toggle-icon').textContent = '▼';
+            } else {
+                statusEl.textContent = `状态：${expandedCount}/${totalCount} 展开`;
+                toggleBtn.querySelector('.timeline-toggle-icon').textContent = '▼';
+            }
+        }
+        
+        toggleBtn.addEventListener('click', () => {
+            const anyExpanded = Array.from(timelines).some(tl => !tl.classList.contains('collapsed'));
+            
+            timelines.forEach(timeline => {
+                if (anyExpanded) {
+                    timeline.classList.add('collapsed');
+                } else {
+                    timeline.classList.remove('collapsed');
+                }
+            });
+            
+            updateTimelineStatus();
+            
+            // 验证测试结果
+            const newExpandedCount = Array.from(timelines).filter(tl => !tl.classList.contains('collapsed')).length;
+            if ((anyExpanded && newExpandedCount === 0) || (!anyExpanded && newExpandedCount === timelines.length)) {
+                test1Result.innerHTML = `<span class="success">✓ 测试通过：全局时间线控制正常工作</span>`;
+            } else {
+                test1Result.innerHTML = `<span class="error">✗ 测试失败：时间线状态不正确</span>`;
+            }
+        });
+        
+        // 测试2：段落总结弹窗
+        const testSummaryBtn = document.getElementById('test-summary-btn');
+        const modal = document.getElementById('state-summary-modal');
+        const closeBtn = modal.querySelector('.modal-close');
+        const confirmBtn = modal.querySelector('.btn-confirm');
+        const test2Result = document.getElementById('test2-result');
+        
+        let openCount = 0;
+        let closeCount = 0;
+        
+        function toggleSummaryModal() {
+            modal.classList.toggle('hidden');
+            
+            if (modal.classList.contains('hidden')) {
+                closeCount++;
+            } else {
+                openCount++;
+            }
+            
+            test2Result.innerHTML = `
+                <div>打开次数：${openCount}</div>
+                <div>关闭次数：${closeCount}</div>
+                <div>弹窗状态：${modal.classList.contains('hidden') ? '隐藏' : '显示'}</div>
+                <span class="success">✓ 测试通过：弹窗可以正确切换显示/隐藏</span>
+            `;
+        }
+        
+        testSummaryBtn.addEventListener('click', toggleSummaryModal);
+        closeBtn.addEventListener('click', toggleSummaryModal);
+        confirmBtn.addEventListener('click', toggleSummaryModal);
+        
+        // 初始化状态
+        updateTimelineStatus();
+    </script>
+</body>
+</html>

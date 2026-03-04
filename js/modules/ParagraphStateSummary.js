@@ -367,7 +367,7 @@ class ParagraphStateSummary {
         <div class="modal-content modal-lg">
           <div class="modal-header">
             <h3>${i18n ? i18n('timeline.stateSummaryTitle') : '状态总结'}</h3>
-            <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+            <button class="modal-close" onclick="document.getElementById('state-summary-modal').classList.add('hidden')">×</button>
           </div>
           <div class="modal-body">
             ${this._formatCharactersHTML(characterStates, i18n, translateEmotion)}
@@ -375,7 +375,7 @@ class ParagraphStateSummary {
             ${this._formatLocationsHTML(locationStates, i18n)}
           </div>
           <div class="modal-footer">
-            <button class="btn btn-primary" onclick="this.closest('.modal').remove()">
+            <button class="btn btn-primary" onclick="document.getElementById('state-summary-modal').classList.add('hidden')">
               ${i18n ? i18n('buttons.confirm') : '确认'}
             </button>
           </div>

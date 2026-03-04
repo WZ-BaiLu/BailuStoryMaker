@@ -233,6 +233,9 @@ class UIRenderer {
         if (paragraphs.length === 0) {
             container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-text">开始输入内容来添加段落...</div></div>`;
         }
+
+        // Update timeline status after rendering paragraphs
+        this.updateTimelineStatus();
     }
 
     /**
@@ -338,18 +341,7 @@ class UIRenderer {
                 });
             }
 
-            // Timeline toggle
-            const timelineToggle = bubble.querySelector('.paragraph-timeline-toggle');
-            if (timelineToggle) {
-                timelineToggle.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const timelineContent = bubble.querySelector(`.paragraph-timeline-content[data-paragraph-id="${paragraphId}"]`);
-                    if (timelineContent) {
-                        timelineContent.classList.toggle('collapsed');
-                        this.updateTimelineArrow(timelineContent);
-                    }
-                });
-            }
+
 
             // Add change buttons
             const addChangeBtns = bubble.querySelectorAll('.btn-add-change');
@@ -493,11 +485,6 @@ class UIRenderer {
 
         return `
             <div class="paragraph-timeline">
-                <div class="paragraph-timeline-toggle" data-paragraph-id="${paragraph.id}">
-                    <span class="timeline-toggle-icon">📊</span>
-                    <span class="timeline-toggle-label">${i18n.t('timeline.panelTitle')}</span>
-                    <span class="timeline-toggle-arrow">▶</span>
-                </div>
                 <div class="paragraph-timeline-content collapsed" data-paragraph-id="${paragraph.id}">
                     <div class="timeline-actions">
                         <button class="btn-add-change" data-paragraph-id="${paragraph.id}" data-type="character">👤 ${i18n.t('timeline.addCharacterChange')}</button>
@@ -2295,6 +2282,13 @@ class UIRenderer {
         const chapterId = this.state.selectedChapter;
         if (!chapterId) return;
 
+        // 检查是否已有弹窗显示，如果有则隐藏它（toggle行为）
+        const existingModal = document.getElementById('state-summary-modal');
+        if (existingModal) {
+            existingModal.classList.toggle('hidden');
+            return;
+        }
+
         // 创建状态总结器
         const summary = new ParagraphStateSummary(story);
 
@@ -2310,12 +2304,6 @@ class UIRenderer {
             (emotion) => this.translateEmotion(emotion),
             (action) => this.getItemActionLabel(action)
         );
-
-        // 关闭现有的状态总结弹窗
-        const existingModal = document.getElementById('state-summary-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
 
         // 显示模态框
         document.body.insertAdjacentHTML('beforeend', summaryHtml);
@@ -2374,11 +2362,6 @@ class UIRenderer {
             }
         });
 
-        // Update toggle arrows
-        document.querySelectorAll('.timeline-toggle-arrow').forEach(arrow => {
-            arrow.textContent = anyExpanded ? '▶' : '▼';
-        });
-
         // Update button icon
         icon.textContent = anyExpanded ? '▶' : '▼';
 
@@ -2391,6 +2374,9 @@ class UIRenderer {
      */
     updateTimelineStatus() {
         const statusEl = document.getElementById('timeline-status');
+        const toggleBtn = document.getElementById('toggle-all-timelines');
+        const icon = toggleBtn?.querySelector('.timeline-toggle-icon');
+
         if (!statusEl) return;
 
         const timelines = document.querySelectorAll('.paragraph-timeline-content');
@@ -2404,22 +2390,14 @@ class UIRenderer {
 
         if (expandedCount === 0) {
             statusEl.textContent = i18n.t('timeline.allCollapsed');
+            if (icon) icon.textContent = '▶';
         } else if (expandedCount === totalCount) {
             statusEl.textContent = i18n.t('timeline.allExpanded');
+            if (icon) icon.textContent = '▼';
         } else {
             statusEl.textContent = `${expandedCount}/${totalCount} ${i18n.t('timeline.expanded')}`;
+            if (icon) icon.textContent = '▼';
         }
     }
 
-    /**
-     * Update individual timeline arrow
-     * @param {HTMLElement} timeline - The timeline element
-     */
-    updateTimelineArrow(timeline) {
-        const arrow = timeline.closest('.paragraph-bubble').querySelector('.timeline-toggle-arrow');
-        if (arrow) {
-            arrow.textContent = timeline.classList.contains('collapsed') ? '▶' : '▼';
-        }
-        this.updateTimelineStatus();
-    }
 }
