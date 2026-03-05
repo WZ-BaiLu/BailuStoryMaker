@@ -37,6 +37,7 @@ class AIManager {
         this.aiElementTools = null;
         this.aiPreviewManager = null;
         this.paragraphAnalyzer = null;
+        this.continuousWritingManager = null;
     }
 
     /**
@@ -122,6 +123,17 @@ class AIManager {
             this.configManager,
             this.aiElementTools
         );
+
+        // Initialize Continuous Writing Manager
+        if (typeof ContinuousWritingManager !== 'undefined') {
+            this.continuousWritingManager = new ContinuousWritingManager(
+                this.state,
+                this,
+                this.notificationManager,
+                this.app.uiRenderer
+            );
+            console.log('[AIManager] ContinuousWritingManager initialized');
+        }
     }
 
     /**
@@ -287,6 +299,8 @@ class AIManager {
             inputField: document.getElementById('ai-input'),
             sendButton: document.getElementById('ai-send-button'),
             previewCreationButton: document.getElementById('ai-preview-creation-btn'),
+            continuousWritingButton: document.getElementById('continuous-writing-btn'),
+            continuousWritingPreviewButton: document.getElementById('continuous-writing-preview-btn'),
             settingsButton: document.getElementById('ai-settings-button'),
             collapsedSettingsButton: document.getElementById('ai-collapsed-settings-button'),
             collapseButton: document.getElementById('ai-collapse-button'),
@@ -315,6 +329,24 @@ class AIManager {
             this.elements.previewCreationButton.addEventListener('click', () => {
                 console.log('[AIManager] Preview creation button clicked');
                 this.previewCreationRequest();
+            });
+        }
+
+        if (this.elements.continuousWritingButton) {
+            this.elements.continuousWritingButton.addEventListener('click', () => {
+                console.log('[AIManager] Continuous writing button clicked');
+                if (this.app && this.app.uiRenderer && this.app.uiRenderer.showContinuousWritingInputDialog) {
+                    this.app.uiRenderer.showContinuousWritingInputDialog();
+                } else {
+                    this.notificationManager.showError('UI渲染器未初始化');
+                }
+            });
+        }
+
+        if (this.elements.continuousWritingPreviewButton) {
+            this.elements.continuousWritingPreviewButton.addEventListener('click', () => {
+                console.log('[AIManager] Continuous writing preview button clicked');
+                this.previewContinuousWritingRequest();
             });
         }
 
@@ -937,11 +969,23 @@ class AIManager {
         const config = this.configManager.getConfig();
         const limit = config.historyLimit || 20;
 
-        const messages = this.currentChatHistory.slice(-limit).map(msg => ({
+        // Add system prompt
+        const messages = [
+            {
+                role: 'system',
+                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
+            }
+        ];
+
+        // Add chat history
+        const historyMessages = this.currentChatHistory.slice(-limit).map(msg => ({
             role: msg.role,
             content: msg.content
         }));
 
+        messages.push(...historyMessages);
+
+        // Add current message
         messages.push({
             role: 'user',
             content: currentMessage
@@ -1294,11 +1338,14 @@ class AIManager {
         const config = this.configManager.getConfig();
 
         // If user provided a message, use it; otherwise use default creation prompt
-        const promptText = userMessage || '请根据以下故事背景和上下文，创作一个新的段落或续写故事，注意保持故事的连贯性和人物性格的一致性。';
+        const promptText = userMessage || '请根据以下故事背景和上下文创作段落。';
 
         // Build messages array (mimics sendMessage's logic)
         const messages = [
-            { role: 'system', content: '你是一个专业的小说创作助手，擅长根据故事背景和上下文创作符合逻辑、生动的小说内容。' },
+            {
+                role: 'system',
+                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
+            },
             { role: 'user', content: promptText }
         ];
 
@@ -1410,6 +1457,159 @@ class AIManager {
         });
 
         // Close on Escape key
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    }
+
+    /**
+     * Preview continuous writing request
+     */
+    previewContinuousWritingRequest() {
+        console.log('[AIManager] previewContinuousWritingRequest called');
+
+        const story = this.state.currentStory;
+        if (!story) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noStory'));
+            console.error('[AIManager] No story loaded');
+            return;
+        }
+
+        const chapter = story.chapters.find(c => c.id === this.currentChapterId);
+        if (!chapter) {
+            this.notificationManager.showError(i18n.t('ai.paragraphAnalysis.noChapter'));
+            console.error('[AIManager] No chapter found, currentChapterId:', this.currentChapterId);
+            return;
+        }
+
+        // Show preview modal
+        this.showContinuousWritingPreviewModal(chapter);
+    }
+
+    /**
+     * Show continuous writing preview modal
+     * @param {Object} chapter - Chapter object
+     */
+    showContinuousWritingPreviewModal(chapter) {
+        const config = this.configManager.getConfig();
+        const skipAnalysis = config.continuousWritingSkipAnalysis || false;
+        const waitTime = config.continuousWritingWaitTime || 5;
+
+        // Build context for continuous writing
+        const context = this.buildContext();
+        if (!context) {
+            this.notificationManager.showError('无法构建创作上下文，请确保已选择章节');
+            return;
+        }
+
+        // Get starting paragraph info
+        const selectedParagraphId = this.state.selectedParagraphId;
+        const selectedParagraph = chapter.paragraphs.find(p => p.id === selectedParagraphId);
+        const startFrom = selectedParagraph
+            ? `段落 ${chapter.paragraphs.indexOf(selectedParagraph) + 1}`
+            : '最新段落';
+
+        // Get user input from chat input field (if any)
+        const userMessage = this.elements.inputField.value.trim();
+
+        // Build API request preview (single paragraph request)
+        const messages = [
+            {
+                role: 'system',
+                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
+            },
+            { role: 'user', content: userMessage || '请根据以下故事背景和上下文创作段落。' }
+        ];
+
+        // Add context to messages
+        let finalMessages = messages;
+        if (context) {
+            const contextMessages = [];
+
+            if (context.chapterTitle) {
+                contextMessages.push({
+                    role: 'assistant',
+                    content: `Chapter Title: ${context.chapterTitle}`
+                });
+            }
+
+            if (context.chapterContent && context.chapterContent.trim() !== '') {
+                contextMessages.push({
+                    role: 'assistant',
+                    content: `以下是当前章节已写的内容，作为创作参考：\n\n${context.chapterContent}`
+                });
+            }
+
+            if (context.elementStateSummary) {
+                contextMessages.push({
+                    role: 'assistant',
+                    content: `当前在场元素状态：\n${context.elementStateSummary}`
+                });
+            }
+
+            finalMessages = [...contextMessages, ...messages];
+        }
+
+        const apiRequest = {
+            model: config.model,
+            temperature: config.temperature,
+            max_tokens: config.maxTokens,
+            messages: finalMessages
+        };
+
+        // Show preview modal
+        const modal = document.createElement('div');
+        modal.className = 'modal prompt-preview-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>⚡ 连续写作预览</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-section">
+                        <h4>写作设置</h4>
+                        <p><strong>起始位置：</strong> ${startFrom}</p>
+                        <p><strong>等待时间：</strong> ${waitTime} 秒</p>
+                        <p><strong>跳过分析：</strong> ${skipAnalysis ? '是' : '否'}</p>
+                    </div>
+                    <div class="preview-section">
+                        <h4>创作上下文</h4>
+                        <p><strong>章节:</strong> ${context.chapterTitle}</p>
+                        <p><strong>在场元素:</strong> ${context.presentElements?.map(e => e.name).join(', ') || '无'}</p>
+                    </div>
+                    <div class="preview-section">
+                        <h4>AI连续写作请求参数</h4>
+                        <pre class="api-request-preview">${this.escapeHtml(JSON.stringify(apiRequest, null, 2))}</pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary modal-cancel">关闭</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Bind events
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = modal.querySelector('.modal-cancel');
+
+        const closeModal = () => {
+            modal.remove();
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
         modal.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
@@ -1832,6 +2032,79 @@ class AIManager {
                 data: []
             };
         }
+    }
+
+    /**
+     * Start continuous writing session
+     * @param {number} paragraphCount - Number of paragraphs to generate
+     * @returns {Promise<boolean>} Success status
+     */
+    async startContinuousWriting(paragraphCount) {
+        if (!this.continuousWritingManager) {
+            this.notificationManager.showError('连续写作管理器未初始化');
+            return false;
+        }
+
+        return await this.continuousWritingManager.startContinuousWriting(paragraphCount);
+    }
+
+    /**
+     * Abort continuous writing session
+     */
+    abortContinuousWriting() {
+        if (this.continuousWritingManager) {
+            this.continuousWritingManager.abort();
+        }
+    }
+
+    /**
+     * Check if continuous writing is running
+     * @returns {boolean} Is running
+     */
+    isContinuousWritingRunning() {
+        return this.continuousWritingManager ? this.continuousWritingManager.isContinuousWritingRunning() : false;
+    }
+
+    /**
+     * Generate a paragraph using AI service
+     * @param {string} prompt - Prompt for paragraph generation
+     * @param {Object} context - Context object
+     * @returns {Promise<Object>} Generated paragraph result
+     */
+    async generateParagraph(prompt, context) {
+        // Build messages array for AI service
+        const messages = [
+            {
+                role: 'system',
+                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
+            },
+            {
+                role: 'user',
+                content: prompt
+            }
+        ];
+
+        // Call AI service
+        const response = await this.aiService.chat(
+            this.configManager.getConfig(),
+            messages,
+            context,
+            null // No tools for paragraph generation
+        );
+
+        if (!response.success) {
+            return response;
+        }
+
+        // Extract content from response
+        const content = response.data.content || response.data.message?.content;
+
+        return {
+            success: true,
+            data: {
+                content: content
+            }
+        };
     }
 
     /**

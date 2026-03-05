@@ -263,28 +263,6 @@ class ParagraphStateSummary {
           };
         }
       } else if (element.type === 'location' && locationStates[element.id]) {
-      const element = this.story.elements?.find(e =>
-        e.id === elementChange.elementId ||
-        e.name === elementChange.elementName
-      );
-
-      if (!element) return;
-
-      if (element.type === 'character' && characterStates[element.id]) {
-        if (elementChange.property === 'location') {
-          characterStates[element.id].location = elementChange.to || elementChange.changes?.location;
-        }
-        if (elementChange.property === 'description' && elementChange.changes) {
-          Object.assign(characterStates[element.id].stateDescription, elementChange.changes);
-        }
-      } else if (element.type === 'item' && itemStates[element.id]) {
-        if (elementChange.property === 'location') {
-          itemStates[element.id].location = elementChange.to || elementChange.changes?.location;
-        }
-        if (elementChange.property === 'description' && elementChange.changes) {
-          Object.assign(itemStates[element.id].stateDescription, elementChange.changes);
-        }
-      } else if (element.type === 'location' && locationStates[element.id]) {
         if (elementChange.property === 'description' && elementChange.changes) {
           Object.assign(locationStates[element.id].stateDescription, elementChange.changes);
         }

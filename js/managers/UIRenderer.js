@@ -2649,4 +2649,301 @@ class UIRenderer {
         }
     }
 
+    // ========== Continuous Writing UI Methods ==========
+
+    /**
+     * Show continuous writing input dialog
+     */
+    showContinuousWritingInputDialog() {
+        // Create modal dialog
+        const modal = document.createElement('div');
+        modal.className = 'modal continuous-writing-input-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3>连续写作</h3>
+                <div class="form-group">
+                    <label for="continuous-writing-count">段落数量：</label>
+                    <input
+                        type="number"
+                        id="continuous-writing-count"
+                        min="1"
+                        max="20"
+                        value="5"
+                        class="form-input"
+                    />
+                    <small class="form-hint">范围：1-20</small>
+                </div>
+                <div class="modal-actions">
+                    <button id="start-continuous-writing" class="btn btn-primary">开始</button>
+                    <button id="cancel-continuous-writing" class="btn btn-secondary">取消</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Bind events
+        const startBtn = modal.querySelector('#start-continuous-writing');
+        const cancelBtn = modal.querySelector('#cancel-continuous-writing');
+        const countInput = modal.querySelector('#continuous-writing-count');
+
+        startBtn.addEventListener('click', () => {
+            const count = parseInt(countInput.value, 10);
+            if (count >= 1 && count <= 20) {
+                this.startContinuousWriting(count);
+                modal.remove();
+            } else {
+                alert('段落数量必须在1-20之间');
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        countInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                startBtn.click();
+            } else if (e.key === 'Escape') {
+                modal.remove();
+            }
+        });
+
+        // Focus input
+        countInput.focus();
+    }
+
+    /**
+     * Start continuous writing
+     * @param {number} count - Number of paragraphs to generate
+     */
+    async startContinuousWriting(count) {
+        if (!this.app.aiManager) {
+            console.error('[UIRenderer] AIManager not found');
+            return;
+        }
+
+        // Disable continuous writing button
+        this.disableContinuousWritingButton();
+
+        try {
+            await this.app.aiManager.startContinuousWriting(count);
+        } catch (error) {
+            console.error('[UIRenderer] Continuous writing error:', error);
+            this.enableContinuousWritingButton();
+        }
+    }
+
+    /**
+     * Show wait overlay
+     * @param {number} current - Current paragraph number
+     * @param {number} total - Total paragraphs
+     * @param {number} remainingTime - Remaining wait time in seconds
+     */
+    showWaitOverlay(current, total, remainingTime) {
+        // Remove existing overlay if any
+        this.hideWaitOverlay();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'continuous-writing-overlay';
+        overlay.innerHTML = `
+            <div class="progress-panel">
+                <div class="progress-info">${current}/${total} 段落</div>
+                <div class="countdown-info">等待：${remainingTime} 秒</div>
+                <button id="interrupt-continuous-writing" class="btn btn-danger">中断</button>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Bind interrupt button
+        const interruptBtn = overlay.querySelector('#interrupt-continuous-writing');
+        interruptBtn.addEventListener('click', () => {
+            const aiManager = window.aiManager;
+            if (aiManager) {
+                aiManager.abortContinuousWriting();
+            }
+        });
+    }
+
+    /**
+     * Update wait overlay countdown
+     * @param {number} remainingSeconds - Remaining seconds
+     */
+    updateWaitOverlay(remainingSeconds) {
+        const countdownEl = document.querySelector('.continuous-writing-overlay .countdown-info');
+        if (countdownEl) {
+            countdownEl.textContent = `等待：${remainingSeconds} 秒`;
+        }
+    }
+
+    /**
+     * Hide wait overlay
+     */
+    hideWaitOverlay() {
+        const overlay = document.querySelector('.continuous-writing-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+
+    /**
+     * Update progress indicator
+     * @param {number} current - Current paragraph number
+     * @param {number} total - Total paragraphs
+     */
+    updateProgressIndicator(current, total) {
+        // Find or create progress container
+        let progressContainer = document.querySelector('.continuous-writing-progress');
+        if (!progressContainer) {
+            progressContainer = document.createElement('div');
+            progressContainer.className = 'continuous-writing-progress';
+            progressContainer.innerHTML = `
+                <div class="progress-header">
+                    <div class="progress-text"></div>
+                    <button class="btn btn-danger btn-sm progress-terminate-btn">停止</button>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            `;
+
+            // Insert after chapter content
+            const chapterContent = document.querySelector('.chapter-content');
+            if (chapterContent) {
+                chapterContent.insertAdjacentElement('afterend', progressContainer);
+            }
+
+            // Bind terminate button
+            const terminateBtn = progressContainer.querySelector('.progress-terminate-btn');
+            if (terminateBtn) {
+                terminateBtn.addEventListener('click', () => {
+                    this.app.aiManager.abortContinuousWriting();
+                });
+            }
+        }
+
+        // Update progress
+        const progressText = progressContainer.querySelector('.progress-text');
+        const progressFill = progressContainer.querySelector('.progress-fill');
+        const percentage = Math.round((current / total) * 100);
+
+        if (progressText) {
+            progressText.textContent = `${current}/${total} 段落 (${percentage}%)`;
+        }
+        if (progressFill) {
+            progressFill.style.width = `${percentage}%`;
+        }
+    }
+
+    /**
+     * Add paragraph to view
+     * @param {Object} paragraph - Paragraph to add
+     */
+    addParagraphToView(paragraph) {
+        // Find chapter content container
+        const chapterContent = document.querySelector('.chapter-content .paragraphs-container');
+        if (!chapterContent) {
+            console.error('[UIRenderer] Chapter content container not found');
+            return;
+        }
+
+        // Create paragraph element
+        const paragraphEl = document.createElement('div');
+        paragraphEl.className = 'paragraph-item';
+        paragraphEl.dataset.id = paragraph.id;
+        paragraphEl.innerHTML = `
+            <div class="paragraph-content">${paragraph.content}</div>
+            <div class="paragraph-meta">
+                <span class="paragraph-time">${new Date(paragraph.createdAt).toLocaleString()}</span>
+            </div>
+        `;
+
+        // Append to container
+        chapterContent.appendChild(paragraphEl);
+
+        // Scroll to new paragraph
+        paragraphEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    /**
+     * Display analysis results on paragraph
+     * @param {Object} paragraph - Paragraph object
+     * @param {Object} analysis - Analysis result
+     */
+    displayAnalysisResults(paragraph, analysis) {
+        const paragraphEl = document.querySelector(`.paragraph-item[data-id="${paragraph.id}"]`);
+        if (!paragraphEl) {
+            return;
+        }
+
+        // Create analysis indicators
+        let indicators = [];
+
+        if (analysis.characters && analysis.characters.length > 0) {
+            indicators.push({
+                type: 'characters',
+                icon: '👤',
+                count: analysis.characters.length,
+                label: '角色变化'
+            });
+        }
+
+        if (analysis.events && analysis.events.length > 0) {
+            indicators.push({
+                type: 'events',
+                icon: '⚡',
+                count: analysis.events.length,
+                label: '事件'
+            });
+        }
+
+        if (analysis.elements && analysis.elements.length > 0) {
+            indicators.push({
+                type: 'elements',
+                icon: '📍',
+                count: analysis.elements.length,
+                label: '元素变化'
+            });
+        }
+
+        // Add indicators to paragraph
+        const metaContainer = paragraphEl.querySelector('.paragraph-meta');
+        if (metaContainer && indicators.length > 0) {
+            const analysisIndicators = document.createElement('div');
+            analysisIndicators.className = 'analysis-indicators';
+
+            indicators.forEach(ind => {
+                const indicator = document.createElement('span');
+                indicator.className = 'analysis-indicator';
+                indicator.title = `${ind.label}: ${ind.count}`;
+                indicator.innerHTML = `${ind.icon} ${ind.count}`;
+                analysisIndicators.appendChild(indicator);
+            });
+
+            metaContainer.appendChild(analysisIndicators);
+        }
+    }
+
+    /**
+     * Disable continuous writing button
+     */
+    disableContinuousWritingButton() {
+        const btn = document.querySelector('#continuous-writing-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '正在进行...';
+        }
+    }
+
+    /**
+     * Enable continuous writing button
+     */
+    enableContinuousWritingButton() {
+        const btn = document.querySelector('#continuous-writing-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '连续写作';
+        }
+    }
 }

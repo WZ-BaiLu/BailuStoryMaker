@@ -676,3 +676,201 @@ body.dark .paragraphs-controls {
     background-color: var(--dark-sidebar);
     border-color: var(--dark-border);
 }
+
+/* ========== Continuous Writing Styles ========== */
+
+.continuous-writing-input-modal {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.continuous-writing-input-modal .modal-content {
+    max-width: 400px;
+    width: 90%;
+}
+
+.continuous-writing-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.progress-panel {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    min-width: 250px;
+}
+
+.progress-info {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.countdown-info {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: var(--accent-color);
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.btn-danger:disabled {
+    background-color: #721c24;
+    cursor: not-allowed;
+}
+
+.continuous-writing-progress {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 9999;
+    min-width: 250px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.progress-terminate-btn {
+    padding: 4px 12px;
+    font-size: 0.875rem;
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.progress-terminate-btn:hover {
+    background-color: #c82333;
+}
+
+.progress-bar {
+    height: 8px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
+.analysis-indicators {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.analysis-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    cursor: help;
+    transition: background-color 0.2s;
+}
+
+.analysis-indicator:hover {
+    background-color: var(--accent-color);
+}
+
+/* Dark theme support for continuous writing */
+body.dark .progress-panel {
+    background-color: var(--dark-sidebar);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+body.dark .progress-panel .progress-info,
+body.dark .progress-panel .countdown-info {
+    color: var(--dark-text);
+}
+
+body.dark .continuous-writing-progress {
+    background-color: var(--dark-sidebar);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+body.dark .continuous-writing-progress .progress-text {
+    color: var(--dark-text);
+}
+
+body.dark .progress-bar {
+    background-color: var(--dark-border);
+}
+
+body.dark .analysis-indicator {
+    background-color: var(--dark-primary);
+}
+
+body.dark .analysis-indicator:hover {
+    background-color: var(--dark-accent);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .progress-panel {
+        padding: 20px;
+        min-width: 200px;
+    }
+
+    .progress-info {
+        font-size: 1rem;
+    }
+
+    .countdown-info {
+        font-size: 1.25rem;
+    }
+
+    .continuous-writing-progress {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+    }
+}
+

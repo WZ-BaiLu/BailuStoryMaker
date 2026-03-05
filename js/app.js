@@ -42,6 +42,10 @@ class App {
         this.bindEvents();
         this.loadTheme();
         this.setupKeyboardShortcuts();
+
+        // Set AI config manager reference in notification manager
+        this.notificationManager.setAIConfigManager(this.aiConfigManager);
+
         this.aiManager.initialize();
         this.showWelcomeMessage();
     }

@@ -257,6 +257,20 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
+}
+
+.ai-button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ai-button-group button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
 #ai-send-button {
@@ -278,6 +292,23 @@
 #ai-send-button:disabled {
     background: var(--disabled-color, #ccc);
     cursor: not-allowed;
+}
+
+.ai-input-footer .btn-sm {
+    padding: 8px;
+    min-width: 32px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.ai-input-footer .btn-secondary {
+    background: var(--secondary-bg, #f5f5f5);
+    border: 1px solid var(--border-color, #e0e0e0);
+    color: var(--text-color, #333);
+}
+
+.ai-input-footer .btn-secondary:hover {
+    background: var(--hover-bg, #e0e0e0);
 }
 
 #ai-character-counter {
@@ -468,4 +499,177 @@ body.dark {
 /* Hidden class */
 .hidden {
     display: none !important;
+}
+
+/* AI Config Divider */
+.ai-config-divider {
+    border: none;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    margin: 20px 0;
+}
+
+/* Continuous Writing Button in AI Input Footer */
+#continuous-writing-btn {
+    font-size: 13px;
+    padding: 4px 12px;
+}
+
+/* Continuous Writing Modal */
+.continuous-writing-input-modal .modal-content {
+    max-width: 400px;
+    padding: 20px;
+}
+
+.continuous-writing-input-modal .modal-body {
+    padding: 20px 0;
+}
+
+.continuous-writing-input-modal .form-group {
+    margin-bottom: 15px;
+}
+
+.continuous-writing-input-modal input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+}
+
+/* Continuous Writing Overlay */
+.continuous-writing-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+}
+
+.continuous-writing-overlay.hidden {
+    display: none;
+}
+
+.progress-panel {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    min-width: 300px;
+    max-width: 400px;
+}
+
+body.dark .progress-panel {
+    background: #2d2d2d;
+    color: #e0e0e0;
+}
+
+.progress-panel h3 {
+    margin: 0 0 20px 0;
+    font-size: 20px;
+    color: var(--primary-color, #4CAF50);
+}
+
+.progress-text {
+    font-size: 18px;
+    margin: 15px 0;
+    font-weight: 500;
+}
+
+.countdown-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--warning-color, #ff9800);
+    margin: 15px 0;
+}
+
+.continuous-writing-progress {
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    margin: 20px 0;
+    overflow: hidden;
+}
+
+.continuous-writing-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.3s ease;
+}
+
+body.dark .continuous-writing-progress {
+    background: #404040;
+}
+
+.interrupt-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.2s;
+}
+
+.interrupt-btn:hover {
+    background: #d32f2f;
+}
+
+.interrupt-btn:active {
+    transform: scale(0.98);
+}
+
+/* Analysis Indicators */
+.analysis-indicators {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.analysis-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.analysis-badge.analyzing {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.analysis-badge.analyzed {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.analysis-badge.failed {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+body.dark .analysis-badge.analyzing {
+    background: #1565c0;
+    color: #e3f2fd;
+}
+
+body.dark .analysis-badge.analyzed {
+    background: #2e7d32;
+    color: #e8f5e9;
+}
+
+body.dark .analysis-badge.failed {
+    background: #c62828;
+    color: #ffebee;
 }

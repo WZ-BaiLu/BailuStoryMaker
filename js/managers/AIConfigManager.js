@@ -138,6 +138,24 @@ class AIConfigManager {
             }
         }
 
+        // Validate continuous writing wait time
+        if (config.continuousWritingWaitTime !== undefined) {
+            const waitTime = parseInt(config.continuousWritingWaitTime);
+            if (isNaN(waitTime) || waitTime < 1 || waitTime > 30) {
+                errors.push('Continuous writing wait time must be between 1 and 30 seconds');
+            }
+        }
+
+        // Validate Telegram settings if enabled
+        if (config.telegramEnabled) {
+            if (!config.telegramBotToken || config.telegramBotToken.trim() === '') {
+                errors.push('Telegram Bot Token is required when Telegram notifications are enabled');
+            }
+            if (!config.telegramChatId || config.telegramChatId.trim() === '') {
+                errors.push('Telegram Chat ID is required when Telegram notifications are enabled');
+            }
+        }
+
         return {
             valid: errors.length === 0,
             errors: errors
@@ -158,7 +176,14 @@ class AIConfigManager {
             maxTokens: 2000,
             historyLimit: 20,
             panelWidth: 300,
-            panelCollapsed: false
+            panelCollapsed: false,
+            // Continuous writing settings
+            continuousWritingWaitTime: 5,
+            continuousWritingSkipAnalysis: false,
+            // Telegram settings
+            telegramEnabled: false,
+            telegramBotToken: '',
+            telegramChatId: ''
         };
     }
 

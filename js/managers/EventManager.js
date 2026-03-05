@@ -48,9 +48,17 @@ class EventManager {
                 this.handleRedo();
             }
 
-            // Escape: Close modal
+            // Escape: Close modal or interrupt continuous writing
             if (e.key === 'Escape') {
-                this.app.modalManager.hideModal();
+                // Check if continuous writing wait overlay is visible
+                const overlay = document.querySelector('.continuous-writing-overlay:not(.hidden)');
+                if (overlay && this.app.aiManager && this.app.aiManager.isContinuousWritingRunning()) {
+                    e.preventDefault();
+                    this.app.aiManager.abortContinuousWriting();
+                    console.log('[EventManager] Interrupted continuous writing via Escape key');
+                } else {
+                    this.app.modalManager.hideModal();
+                }
             }
 
             // Alt + 1-3: Switch views
@@ -199,6 +207,15 @@ class EventManager {
             });
         }
 
+        // Continuous writing wait time slider
+        const continuousWritingWaitTime = document.getElementById('continuous-writing-wait-time');
+        const continuousWritingWaitTimeValue = document.getElementById('continuous-writing-wait-time-value');
+        if (continuousWritingWaitTime && continuousWritingWaitTimeValue) {
+            continuousWritingWaitTime.addEventListener('input', (e) => {
+                continuousWritingWaitTimeValue.textContent = e.target.value;
+            });
+        }
+
         // Toggle password visibility
         const aiToggleKey = document.getElementById('ai-toggle-key');
         if (aiToggleKey) {
@@ -221,6 +238,31 @@ class EventManager {
                 this.app.modalManager.handleTestConnection();
             });
         }
+
+        // Telegram test message
+        const telegramTestBtn = document.getElementById('telegram-send-test');
+        if (telegramTestBtn) {
+            telegramTestBtn.addEventListener('click', () => {
+                this.app.modalManager.handleSendTelegramTest();
+            });
+        }
+
+        // Telegram password toggles
+        document.querySelectorAll('.btn-toggle-password').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (input) {
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        btn.textContent = '🙈';
+                    } else {
+                        input.type = 'password';
+                        btn.textContent = '👁️';
+                    }
+                }
+            });
+        });
 
         // Reset defaults
         const aiResetBtn = document.getElementById('ai-reset-config');

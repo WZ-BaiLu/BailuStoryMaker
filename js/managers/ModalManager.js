@@ -60,6 +60,12 @@ class ModalManager {
         const tempValueEl = document.getElementById('ai-temp-value');
         const maxTokensEl = document.getElementById('ai-max-tokens');
         const historyLimitEl = document.getElementById('ai-history-limit');
+        const continuousWritingWaitTimeEl = document.getElementById('continuous-writing-wait-time');
+        const continuousWritingWaitTimeValueEl = document.getElementById('continuous-writing-wait-time-value');
+        const continuousWritingSkipAnalysisEl = document.getElementById('continuous-writing-skip-analysis');
+        const telegramEnabledEl = document.getElementById('telegram-enabled');
+        const telegramBotTokenEl = document.getElementById('telegram-bot-token');
+        const telegramChatIdEl = document.getElementById('telegram-chat-id');
 
         if (providerEl) providerEl.value = config.provider || 'openai';
         if (apiKeyEl) apiKeyEl.value = config.apiKey || '';
@@ -69,6 +75,12 @@ class ModalManager {
         if (tempValueEl) tempValueEl.textContent = (config.temperature || 0.7).toString();
         if (maxTokensEl) maxTokensEl.value = config.maxTokens || 2000;
         if (historyLimitEl) historyLimitEl.value = config.historyLimit || 20;
+        if (continuousWritingWaitTimeEl) continuousWritingWaitTimeEl.value = config.continuousWritingWaitTime || 5;
+        if (continuousWritingWaitTimeValueEl) continuousWritingWaitTimeValueEl.textContent = (config.continuousWritingWaitTime || 5).toString();
+        if (continuousWritingSkipAnalysisEl) continuousWritingSkipAnalysisEl.checked = config.continuousWritingSkipAnalysis || false;
+        if (telegramEnabledEl) telegramEnabledEl.checked = config.telegramEnabled || false;
+        if (telegramBotTokenEl) telegramBotTokenEl.value = config.telegramBotToken || '';
+        if (telegramChatIdEl) telegramChatIdEl.value = config.telegramChatId || '';
 
         // Show/hide endpoint field based on provider
         this.toggleEndpointField(config.provider || 'openai');
@@ -126,7 +138,12 @@ class ModalManager {
             model: document.getElementById('ai-model').value.trim(),
             temperature: parseFloat(document.getElementById('ai-temperature').value),
             maxTokens: parseInt(document.getElementById('ai-max-tokens').value),
-            historyLimit: parseInt(document.getElementById('ai-history-limit').value)
+            historyLimit: parseInt(document.getElementById('ai-history-limit').value),
+            continuousWritingWaitTime: parseInt(document.getElementById('continuous-writing-wait-time').value),
+            continuousWritingSkipAnalysis: document.getElementById('continuous-writing-skip-analysis').checked,
+            telegramEnabled: document.getElementById('telegram-enabled').checked,
+            telegramBotToken: document.getElementById('telegram-bot-token').value.trim(),
+            telegramChatId: document.getElementById('telegram-chat-id').value.trim()
         };
 
         const validation = this.app.aiConfigManager.validateConfig(config);
@@ -193,6 +210,9 @@ class ModalManager {
         const tempValueEl = document.getElementById('ai-temp-value');
         const maxTokensEl = document.getElementById('ai-max-tokens');
         const historyLimitEl = document.getElementById('ai-history-limit');
+        const continuousWritingWaitTimeEl = document.getElementById('continuous-writing-wait-time');
+        const continuousWritingWaitTimeValueEl = document.getElementById('continuous-writing-wait-time-value');
+        const continuousWritingSkipAnalysisEl = document.getElementById('continuous-writing-skip-analysis');
 
         if (providerEl) providerEl.value = defaults.provider;
         if (apiKeyEl) apiKeyEl.value = '';
@@ -202,6 +222,12 @@ class ModalManager {
         if (tempValueEl) tempValueEl.textContent = defaults.temperature.toString();
         if (maxTokensEl) maxTokensEl.value = defaults.maxTokens;
         if (historyLimitEl) historyLimitEl.value = defaults.historyLimit;
+        if (continuousWritingWaitTimeEl) continuousWritingWaitTimeEl.value = defaults.continuousWritingWaitTime;
+        if (continuousWritingWaitTimeValueEl) continuousWritingWaitTimeValueEl.textContent = defaults.continuousWritingWaitTime.toString();
+        if (continuousWritingSkipAnalysisEl) continuousWritingSkipAnalysisEl.checked = defaults.continuousWritingSkipAnalysis;
+        if (telegramEnabledEl) telegramEnabledEl.checked = defaults.telegramEnabled;
+        if (telegramBotTokenEl) telegramBotTokenEl.value = '';
+        if (telegramChatIdEl) telegramChatIdEl.value = '';
 
         this.toggleEndpointField(defaults.provider);
 
@@ -218,6 +244,13 @@ class ModalManager {
 
         document.getElementById('ai-api-key').value = '';
         this.app.notificationManager.showInfo('API密钥已清除');
+    }
+
+    /**
+     * Handle Telegram test message
+     */
+    async handleSendTelegramTest() {
+        await this.app.notificationManager.sendTestTelegramMessage();
     }
 }
 
