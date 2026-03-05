@@ -17,13 +17,21 @@ class ParagraphAnalyzer {
      * @param {AIService} aiService - AI service for analysis
      * @param {AIConfigManager} configManager - AI config manager
      * @param {AIElementTools} aiElementTools - AI element tools (optional)
+     * @param {AIPromptBuilder} promptBuilder - AI prompt builder (optional)
+     * @param {AIMessageBuilder} messageBuilder - AI message builder (optional)
+     * @param {AIContextBuilder} contextBuilder - AI context builder (optional)
      */
-    constructor(story, elementManager, aiService, configManager, aiElementTools = null) {
+    constructor(story, elementManager, aiService, configManager, aiElementTools = null, promptBuilder = null, messageBuilder = null, contextBuilder = null) {
         this.story = story;
         this.elementManager = elementManager;
         this.aiService = aiService;
         this.configManager = configManager;
         this.aiElementTools = aiElementTools;
+
+        // Initialize new builder components
+        this.promptBuilder = promptBuilder || new AIPromptBuilder();
+        this.messageBuilder = messageBuilder || new AIMessageBuilder(this.promptBuilder);
+        this.contextBuilder = contextBuilder;
 
         // Analysis cache
         this.analysisCache = new Map();

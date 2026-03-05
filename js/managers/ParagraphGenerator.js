@@ -18,12 +18,20 @@ class ParagraphGenerator {
      * @param {AIManager} aiManager - AI manager instance
      * @param {AIService} aiService - AI service instance
      * @param {AIConfigManager} configManager - Configuration manager
+     * @param {AIPromptBuilder} promptBuilder - AI prompt builder (optional)
+     * @param {AIMessageBuilder} messageBuilder - AI message builder (optional)
+     * @param {AIContextBuilder} contextBuilder - AI context builder (optional)
      */
-    constructor(state, aiManager, aiService, configManager) {
+    constructor(state, aiManager, aiService, configManager, promptBuilder = null, messageBuilder = null, contextBuilder = null) {
         this.state = state;
         this.aiManager = aiManager;
         this.aiService = aiService;
         this.configManager = configManager;
+
+        // Initialize new builder components
+        this.promptBuilder = promptBuilder || new AIPromptBuilder();
+        this.messageBuilder = messageBuilder || new AIMessageBuilder(this.promptBuilder);
+        this.contextBuilder = contextBuilder;
     }
 
     /**
@@ -77,10 +85,18 @@ class ParagraphGenerator {
     async generateParagraphContent(userPrompt, context) {
         const config = this.configManager.getConfig();
 
-        // Use centralized AI prompts
-        const messages = AIPrompts.getParagraphMessages(userPrompt);
+        // Use new builder components
+        const request = {
+            type: 'paragraph-generation',
+            config: config,
+            context: context,
+            userPrompt: userPrompt,
+            tools: null
+        };
 
-        const result = await this.aiService.chat(config, messages, context, null);
+        const messages = this.messageBuilder.buildMessages(request);
+
+        const result = await this.aiService.chat(config, messages, null, null);
 
         if (!result.success) {
             throw new Error(result.error?.message || 'AI生成失败');
@@ -132,14 +148,25 @@ class ParagraphGenerator {
 
         const context = this.aiManager.buildContextWithSelectedParagraph(selectedParagraphId);
 
-        // Use centralized AI prompts
-        const messages = AIPrompts.getParagraphMessages(userPrompt);
+        const config = this.configManager.getConfig();
+
+        // Use new builder components
+        const request = {
+            type: 'paragraph-generation',
+            config: config,
+            context: context,
+            userPrompt: userPrompt || this.promptBuilder.getSystemPrompt('paragraph-generation'),
+            tools: null
+        };
+
+        const messages = this.messageBuilder.buildMessages(request);
 
         return {
             context,
-            userPrompt: userPrompt || AIPrompts.DEFAULT_GENERATION,
+            userPrompt: userPrompt || this.promptBuilder.getSystemPrompt('paragraph-generation'),
             messages,
-            includeAnalysis
+            includeAnalysis,
+            request // Include full request object for consistency
         };
     }
 

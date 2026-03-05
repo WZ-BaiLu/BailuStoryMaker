@@ -39,6 +39,12 @@ class AIManager {
         this.paragraphAnalyzer = null;
         this.continuousWritingManager = null;
         this.paragraphGenerator = null;
+
+        // 新的 builder 组件（延迟初始化）
+        this.promptBuilder = null;
+        this.messageBuilder = null;
+        this.contextBuilder = null;
+        this.requestCacheManager = null;
     }
 
     /**
@@ -139,6 +145,57 @@ class AIManager {
             this.configManager
         );
         console.log('[AIManager] ParagraphGenerator initialized');
+
+        // Initialize new builder components
+        this.initializeBuilderComponents();
+    }
+
+    /**
+     * Initialize new builder components
+     */
+    initializeBuilderComponents() {
+        // 检查这些类是否已经加载
+        if (typeof AIPromptBuilder === 'undefined') {
+            console.warn('[AIManager] AIPromptBuilder not loaded yet, skipping initialization');
+            return;
+        }
+        if (typeof AIMessageBuilder === 'undefined') {
+            console.warn('[AIManager] AIMessageBuilder not loaded yet, skipping initialization');
+            return;
+        }
+        if (typeof AIContextBuilder === 'undefined') {
+            console.warn('[AIManager] AIContextBuilder not loaded yet, skipping initialization');
+            return;
+        }
+        if (typeof RequestCacheManager === 'undefined') {
+            console.warn('[AIManager] RequestCacheManager not loaded yet, skipping initialization');
+            return;
+        }
+
+        // Initialize builders
+        this.promptBuilder = new AIPromptBuilder();
+        this.messageBuilder = new AIMessageBuilder(this.promptBuilder);
+        this.contextBuilder = new AIContextBuilder(
+            this.stateContextCache,
+            this.elementManager,
+            this.configManager
+        );
+        this.requestCacheManager = new RequestCacheManager();
+
+        console.log('[AIManager] Builder components initialized');
+
+        // Update ParagraphGenerator and ParagraphAnalyzer with builders
+        if (this.paragraphGenerator) {
+            this.paragraphGenerator.promptBuilder = this.promptBuilder;
+            this.paragraphGenerator.messageBuilder = this.messageBuilder;
+            this.paragraphGenerator.contextBuilder = this.contextBuilder;
+        }
+        if (this.paragraphAnalyzer) {
+            this.paragraphAnalyzer.promptBuilder = this.promptBuilder;
+            this.paragraphAnalyzer.messageBuilder = this.messageBuilder;
+            this.paragraphAnalyzer.contextBuilder = this.contextBuilder;
+        }
+    }
 
         // Initialize Continuous Writing Manager
         if (typeof ContinuousWritingManager !== 'undefined') {
@@ -1562,6 +1619,61 @@ class AIManager {
             .join('\n');
 
         return items || '  无';
+    }
+
+    /**
+     * Preview AI request using new builder components
+     * @param {string} type - Request type ('paragraph-generation' | 'paragraph-analysis')
+     * @param {Object} options - Request options
+     * @param {string} options.userPrompt - User prompt
+     * @param {Object} options.config - Model configuration
+     * @param {Object} options.paragraph - Paragraph object (for analysis)
+     * @returns {Object} AIRequest object
+     */
+    previewRequest(type, options = {}) {
+        console.log(`[AIManager] previewRequest called with type: ${type}`);
+
+        const {
+            userPrompt,
+            config = this.configManager.getConfig(),
+            paragraph = null
+        } = options;
+
+        // Build context based on selected paragraph
+        const selectedParagraphId = this.state.selectedParagraph;
+        let context;
+
+        if (type === 'paragraph-analysis' && paragraph) {
+            // For analysis, build context based on the paragraph being analyzed
+            context = this.buildContextWithSelectedParagraph(paragraph.id);
+        } else {
+            // For generation, build context based on selected paragraph
+            context = this.buildContextWithSelectedParagraph(selectedParagraphId);
+        }
+
+        if (!context) {
+            throw new Error('无法构建创作上下文，请确保已选择章节');
+        }
+
+        // Build AIRequest object
+        const request = {
+            type: type,
+            config: config,
+            context: context,
+            userPrompt: userPrompt || this.promptBuilder.getSystemPrompt(type),
+            paragraph: paragraph,
+            tools: type === 'paragraph-analysis' ? this.aiElementTools.getToolDefinitions() : null
+        };
+
+        // Build messages using new builder
+        const messages = this.messageBuilder.buildMessages(request);
+
+        // Attach messages to request
+        request.messages = messages;
+
+        console.log(`[AIManager] Preview request built, messages count: ${messages.length}`);
+
+        return request;
     }
 
     /**
