@@ -120,13 +120,6 @@ class AIManager {
             this.stateTimeline,
             this.state.currentStory || { chapters: [] }
         );
-        this.aiPreviewManager = new AIPreviewManager(
-            this.state.currentStory || { chapters: [] },
-            this.elementManager,
-            this.stateTimeline,
-            this.stateContextCache,
-            this.aiElementTools
-        );
 
         // Initialize Paragraph Analyzer
         this.paragraphAnalyzer = new ParagraphAnalyzer(
@@ -233,13 +226,6 @@ class AIManager {
             this.elementManager,
             this.stateTimeline,
             this.state.currentStory || { chapters: [] }
-        );
-        this.aiPreviewManager = new AIPreviewManager(
-            this.state.currentStory || { chapters: [] },
-            this.elementManager,
-            this.stateTimeline,
-            this.stateContextCache,
-            this.aiElementTools
         );
 
         // Re-initialize Paragraph Analyzer

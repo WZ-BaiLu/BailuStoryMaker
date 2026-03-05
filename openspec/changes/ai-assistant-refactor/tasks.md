@@ -723,7 +723,7 @@ The refactor will be considered successful when:
 - **Task 5.1:** Removed `addContextToMessages()` from AIService
 - **Task 5.2:** Marked `buildAIMessages()`, `buildContextMessages()`, `formatElementStateSummary()` as deprecated (still used by continuous writing)
 - **Task 5.3:** Deleted `formatAsText()` from ParagraphStateSummary (unused)
-- **Task 5.4:** Analyzed modules (AIPreviewManager unused, PromptGenerator still used)
+- **Task 5.4:** Deleted `AIPreviewManager.js` (fully replaced by new builder components); kept `PromptGenerator.js` (still used)
 - **Task 5.5:** Added new modules to index.html, verified JSDoc comments, checked linter errors
 - **Task 5.6:** Updated tasks.md with completion status
 
