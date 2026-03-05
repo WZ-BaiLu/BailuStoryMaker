@@ -2673,6 +2673,13 @@ class UIRenderer {
                     />
                     <small class="form-hint">范围：1-20</small>
                 </div>
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="continuous-writing-include-analysis" checked>
+                        <span>🔄 分析每一段落并应用事件</span>
+                    </label>
+                    <small class="form-hint">勾选后将自动分析每段生成的内容并应用事件变化</small>
+                </div>
                 <div class="modal-actions">
                     <button id="start-continuous-writing" class="btn btn-primary">开始</button>
                     <button id="cancel-continuous-writing" class="btn btn-secondary">取消</button>
@@ -2686,11 +2693,14 @@ class UIRenderer {
         const startBtn = modal.querySelector('#start-continuous-writing');
         const cancelBtn = modal.querySelector('#cancel-continuous-writing');
         const countInput = modal.querySelector('#continuous-writing-count');
+        const includeAnalysisCheckbox = modal.querySelector('#continuous-writing-include-analysis');
 
         startBtn.addEventListener('click', () => {
             const count = parseInt(countInput.value, 10);
+            const includeAnalysis = includeAnalysisCheckbox.checked;
+
             if (count >= 1 && count <= 20) {
-                this.startContinuousWriting(count);
+                this.startContinuousWriting(count, includeAnalysis);
                 modal.remove();
             } else {
                 alert('段落数量必须在1-20之间');
@@ -2716,8 +2726,9 @@ class UIRenderer {
     /**
      * Start continuous writing
      * @param {number} count - Number of paragraphs to generate
+     * @param {boolean} includeAnalysis - Whether to include analysis for each paragraph
      */
-    async startContinuousWriting(count) {
+    async startContinuousWriting(count, includeAnalysis = true) {
         if (!this.app.aiManager) {
             console.error('[UIRenderer] AIManager not found');
             return;
@@ -2727,7 +2738,7 @@ class UIRenderer {
         this.disableContinuousWritingButton();
 
         try {
-            await this.app.aiManager.startContinuousWriting(count);
+            await this.app.aiManager.startContinuousWriting(count, includeAnalysis);
         } catch (error) {
             console.error('[UIRenderer] Continuous writing error:', error);
             this.enableContinuousWritingButton();

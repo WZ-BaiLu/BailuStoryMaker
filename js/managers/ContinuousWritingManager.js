@@ -1,9 +1,8 @@
 /**
  * ContinuousWritingManager
  *
- * Manages continuous writing functionality by calling single paragraph generation
- * multiple times. Simplifies the architecture by reusing existing single paragraph
- * generation logic.
+ * Manages continuous writing functionality by calling ParagraphGenerator
+ * multiple times. Automatically inserts generated content to the story.
  */
 class ContinuousWritingManager {
     /**
@@ -32,9 +31,10 @@ class ContinuousWritingManager {
     /**
      * Start continuous writing session
      * @param {number} paragraphCount - Number of paragraphs to generate
+     * @param {boolean} includeAnalysis - Whether to include analysis for each paragraph
      * @returns {Promise<boolean>} Success status
      */
-    async startContinuousWriting(paragraphCount) {
+    async startContinuousWriting(paragraphCount, includeAnalysis = true) {
         // Validate paragraph count
         if (typeof paragraphCount !== 'number' || paragraphCount < 1 || paragraphCount > 20) {
             this.notificationManager.showError('段落数量必须在1-20之间');
@@ -61,11 +61,13 @@ class ContinuousWritingManager {
 
         console.log('[ContinuousWriting] Starting continuous writing:', paragraphCount, 'paragraphs');
 
+        // Set analysis option
+        this.skipAnalysis = !includeAnalysis;
+
         // Load current settings from AIConfigManager
         const config = this.aiManager.configManager.getConfig();
         this.waitTime = config.continuousWritingWaitTime || 5;
-        this.skipAnalysis = config.continuousWritingSkipAnalysis || false;
-        console.log('[ContinuousWriting] Settings - Wait time:', this.waitTime, 'Skip analysis:', this.skipAnalysis);
+        console.log('[ContinuousWriting] Settings - Wait time:', this.waitTime, 'Include analysis:', includeAnalysis);
 
         // Show start notification
         const analysisMode = this.skipAnalysis ? '（不分析）' : '（每段分析）';
@@ -93,23 +95,12 @@ class ContinuousWritingManager {
                 // Update progress
                 this.updateProgress(i + 1, paragraphCount);
 
-                // Generate single paragraph (reuses existing single paragraph generation logic)
+                // Generate single paragraph (includes analysis and auto-insert)
                 const success = await this.generateSingleParagraph();
                 if (!success) {
                     console.log('[ContinuousWriting] Paragraph generation failed, stopping');
                     break;
                 }
-
-                // Analyze and apply paragraph (if not skipped) - analyze each paragraph, not just last
-                if (!this.skipAnalysis) {
-                    // Get the newly generated paragraph
-                    const currentParagraphs = this.state.currentStory.chapters.find(c => c.id === this.state.selectedChapter).paragraphs;
-                    const newParagraph = currentParagraphs[currentParagraphs.length - 1];
-                    await this.analyzeAndApplyParagraph(newParagraph, chapter);
-                }
-
-                // Save story
-                this.aiManager.app.updateSaveStatus();
 
                 // Wait before next paragraph (if not last)
                 if (i < paragraphCount - 1) {
@@ -145,47 +136,39 @@ class ContinuousWritingManager {
     }
 
     /**
-     * Generate a single paragraph by reusing existing AI generation logic
-     * This uses the same logic as the "Send" button in the AI panel
+     * Generate a single paragraph using ParagraphGenerator
+     * Automatically inserts content to story and applies analysis
      * @returns {Promise<boolean>} Success status
      */
     async generateSingleParagraph() {
         try {
-            // Get context (reuses AIManager's buildContext)
-            const context = this.aiManager.buildContext();
-            if (!context) {
-                throw new Error('无法构建创作上下文');
+            if (!this.aiManager.paragraphGenerator) {
+                throw new Error('段落生成器未初始化');
             }
 
             // Get user input from AI input field (if any)
             const userMessage = this.aiManager.elements.inputField?.value?.trim() || '';
-            const prompt = userMessage || '请根据以下故事背景和上下文创作段落。';
 
-            // Generate paragraph using AIManager's generateParagraph method
-            const response = await this.aiManager.generateParagraph(prompt, context);
-            if (!response || !response.success) {
-                throw new Error(response?.error?.message || 'AI generation failed');
+            // Generate paragraph with analysis
+            const result = await this.aiManager.paragraphGenerator.generateParagraph(userMessage, {
+                includeAnalysis: !this.skipAnalysis,
+                selectedParagraphId: this.state.selectedParagraph
+            });
+
+            // Insert paragraph to story
+            const paragraph = this.aiManager.paragraphGenerator.insertParagraphToStory(
+                result.content,
+                this.state.selectedParagraph || null
+            );
+
+            // Apply analysis if available
+            if (result.analysis && !this.skipAnalysis) {
+                await this.aiManager.paragraphGenerator.applyAnalysisToParagraph(paragraph.id, result.analysis);
             }
-
-            // Get content
-            const content = response.data.content;
-            if (!content) {
-                throw new Error('AI returned empty content');
-            }
-
-            // Add paragraph to story (using StateManager's addParagraph)
-            const chapter = this.state.currentStory.chapters.find(c => c.id === this.state.selectedChapter);
-            if (!chapter) {
-                throw new Error('章节不存在');
-            }
-
-            // Insert at the end or after selected paragraph
-            const insertBeforeId = this.state.selectedParagraph || null;
-            const paragraph = this.state.addParagraph(this.state.selectedChapter, insertBeforeId);
-            this.state.updateParagraph(this.state.selectedChapter, paragraph.id, { content });
 
             // Update UI
             this.aiManager.app.uiRenderer.renderParagraphs();
+            this.aiManager.app.updateSaveStatus();
 
             console.log('[ContinuousWriting] Generated paragraph:', paragraph.id);
             return true;
@@ -201,42 +184,6 @@ class ContinuousWritingManager {
             }
 
             return false; // Skip this paragraph but continue
-        }
-    }
-
-    /**
-     * Analyze and apply a paragraph
-     * @param {Object} paragraph - Paragraph object to analyze
-     * @param {Object} chapter - Chapter object
-     * @returns {Promise<void>}
-     */
-    async analyzeAndApplyParagraph(paragraph, chapter) {
-        if (!paragraph) {
-            console.warn('[ContinuousWriting] No paragraph to analyze');
-            return;
-        }
-
-        try {
-            console.log('[ContinuousWriting] Analyzing paragraph:', paragraph.id);
-
-            // Call AIManager's analyzeParagraph method
-            const context = { chapterId: chapter.id };
-            const result = await this.aiManager.analyzeParagraph(paragraph, context);
-
-            if (!result || !result.success) {
-                console.warn('[ContinuousWriting] Analysis failed:', result?.error);
-                return;
-            }
-
-            // Apply analysis results using AIManager's applyParagraphAnalysis method
-            const applyResult = await this.aiManager.applyParagraphAnalysis(paragraph.id, result.data);
-            if (applyResult && applyResult.success) {
-                console.log('[ContinuousWriting] Analysis applied successfully');
-            }
-
-        } catch (error) {
-            console.error('[ContinuousWriting] Analysis error:', error);
-            this.notificationManager.showWarning(`段落分析失败: ${error.message}`);
         }
     }
 

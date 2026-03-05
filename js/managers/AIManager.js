@@ -38,6 +38,7 @@ class AIManager {
         this.aiPreviewManager = null;
         this.paragraphAnalyzer = null;
         this.continuousWritingManager = null;
+        this.paragraphGenerator = null;
     }
 
     /**
@@ -97,6 +98,12 @@ class AIManager {
             return;
         }
 
+        // 检查 ParagraphGenerator 是否已加载
+        if (typeof ParagraphGenerator === 'undefined') {
+            console.warn('[AIManager] ParagraphGenerator not loaded yet, skipping initialization');
+            return;
+        }
+
         // 创建管理器实例
         this.elementManager = new ElementManager(this.state.currentStory || { elements: [] });
         this.stateTimeline = new StateTimeline(this.elementManager, this.state.currentStory || { chapters: [] });
@@ -123,6 +130,15 @@ class AIManager {
             this.configManager,
             this.aiElementTools
         );
+
+        // Initialize Paragraph Generator
+        this.paragraphGenerator = new ParagraphGenerator(
+            this.state,
+            this,
+            this.aiService,
+            this.configManager
+        );
+        console.log('[AIManager] ParagraphGenerator initialized');
 
         // Initialize Continuous Writing Manager
         if (typeof ContinuousWritingManager !== 'undefined') {
@@ -301,6 +317,7 @@ class AIManager {
             previewCreationButton: document.getElementById('ai-preview-creation-btn'),
             continuousWritingButton: document.getElementById('continuous-writing-btn'),
             continuousWritingPreviewButton: document.getElementById('continuous-writing-preview-btn'),
+            includeAnalysisCheckbox: document.getElementById('ai-include-analysis'),
             settingsButton: document.getElementById('ai-settings-button'),
             collapsedSettingsButton: document.getElementById('ai-collapsed-settings-button'),
             collapseButton: document.getElementById('ai-collapse-button'),
@@ -577,28 +594,29 @@ class AIManager {
         this.updateCharacterCounter();
         this.autoResizeInput();
 
+        // Get analysis option from checkbox
+        const includeAnalysis = this.elements.includeAnalysisCheckbox?.checked || true;
+
         // Show loading
         this.showLoadingIndicator();
         this.isRequestPending = true;
 
-        // Get context
-        const context = this.buildContext();
-
-        // Build message history
-        const messages = this.buildMessageHistory(message);
-
         try {
-            const config = this.configManager.getConfig();
-            const result = await this.aiService.chat(config, messages, context);
-
-            if (result.success) {
-                // Display AI response
-                this.displayMessage(result.data.content, 'assistant');
-                this.saveHistory();
-            } else {
-                // Show error
-                this.showError(result.error);
+            // Check if ParagraphGenerator is available
+            if (!this.paragraphGenerator) {
+                throw new Error('段落生成器未初始化');
             }
+
+            // Generate paragraph with optional analysis
+            const result = await this.paragraphGenerator.generateParagraph(message, {
+                includeAnalysis: includeAnalysis,
+                selectedParagraphId: this.state.selectedParagraph
+            });
+
+            // Display paragraph unit in chat
+            this.displayParagraphUnit(result);
+            this.saveHistory();
+
         } catch (error) {
             this.showError({
                 type: 'unknown_error',
@@ -666,6 +684,157 @@ class AIManager {
                     this.copyToClipboard(content);
                 });
             }
+        }
+    }
+
+    /**
+     * Display paragraph unit in chat area (content + analysis)
+     * @param {Object} result - Generation result { content, analysis, paragraphId, context }
+     */
+    displayParagraphUnit(result) {
+        const chatArea = this.elements.chatArea;
+        if (!chatArea) return;
+
+        const { content, analysis, paragraphId } = result;
+        const timestamp = new Date().toLocaleTimeString();
+
+        const unitDiv = document.createElement('div');
+        unitDiv.className = 'ai-message ai-message-paragraph-unit';
+        unitDiv.dataset.content = this.escapeHtml(content);
+        unitDiv.dataset.paragraphId = paragraphId || '';
+
+        // Build analysis summary
+        let analysisSummary = '';
+        if (analysis) {
+            analysisSummary = this.formatAnalysisSummary(analysis);
+        }
+
+        unitDiv.innerHTML = `
+            <div class="ai-message-header">
+                <span class="ai-message-role">段落单元 📝</span>
+                <span class="ai-message-time">${timestamp}</span>
+            </div>
+            <div class="ai-paragraph-content">${this.escapeHtml(content)}</div>
+            ${analysisSummary ? `
+                <div class="ai-paragraph-analysis">
+                    <div class="ai-analysis-header">事件状态变化 🔄</div>
+                    <div class="ai-analysis-summary">${analysisSummary}</div>
+                </div>
+            ` : ''}
+            <div class="ai-message-actions">
+                <button class="ai-action-btn ai-btn-insert-content">📝 插入文字</button>
+                ${analysis ? `<button class="ai-action-btn ai-btn-apply-analysis">🔄 应用分析</button>` : ''}
+                <button class="ai-action-btn ai-btn-insert-all">✨ 插入全部</button>
+                <button class="ai-action-btn ai-btn-copy">复制</button>
+            </div>
+        `;
+
+        chatArea.appendChild(unitDiv);
+        this.autoScrollToBottom();
+
+        // Bind action buttons
+        this.bindParagraphUnitActions(unitDiv, result);
+    }
+
+    /**
+     * Bind action buttons for paragraph unit
+     * @param {HTMLElement} unitDiv - Paragraph unit element
+     * @param {Object} result - Generation result
+     */
+    bindParagraphUnitActions(unitDiv, result) {
+        const { content, analysis } = result;
+
+        // Insert content only
+        const insertContentBtn = unitDiv.querySelector('.ai-btn-insert-content');
+        if (insertContentBtn) {
+            insertContentBtn.addEventListener('click', () => {
+                this.insertToEditor(content);
+            });
+        }
+
+        // Apply analysis only
+        const applyAnalysisBtn = unitDiv.querySelector('.ai-btn-apply-analysis');
+        if (applyAnalysisBtn && analysis) {
+            applyAnalysisBtn.addEventListener('click', () => {
+                this.applyAnalysisToSelectedParagraph(analysis);
+            });
+        }
+
+        // Insert all (content + apply analysis)
+        const insertAllBtn = unitDiv.querySelector('.ai-btn-insert-all');
+        if (insertAllBtn) {
+            insertAllBtn.addEventListener('click', async () => {
+                // Insert content first
+                const paragraph = this.insertToEditor(content);
+                // Then apply analysis
+                if (analysis && paragraph) {
+                    await this.applyAnalysisToParagraph(paragraph.id, analysis);
+                }
+            });
+        }
+
+        // Copy
+        const copyBtn = unitDiv.querySelector('.ai-btn-copy');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                this.copyToClipboard(content);
+            });
+        }
+    }
+
+    /**
+     * Format analysis summary for display
+     * @param {Object} analysis - Analysis result
+     * @returns {string} Formatted summary
+     */
+    formatAnalysisSummary(analysis) {
+        const summaries = [];
+
+        if (analysis.changes && analysis.changes.length > 0) {
+            summaries.push(`✅ ${analysis.changes.length} 个事件变化`);
+        }
+
+        if (analysis.elements && analysis.elements.length > 0) {
+            summaries.push(`🎭 ${analysis.elements.length} 个元素变化`);
+        }
+
+        if (analysis.locations && analysis.locations.length > 0) {
+            summaries.push(`📍 ${analysis.locations.length} 个地点变化`);
+        }
+
+        return summaries.length > 0 ? summaries.join(' | ') : '无显著变化';
+    }
+
+    /**
+     * Apply analysis to selected paragraph
+     * @param {Object} analysis - Analysis result
+     */
+    async applyAnalysisToSelectedParagraph(analysis) {
+        if (!this.state.selectedParagraph) {
+            this.notificationManager.showError('请先选择段落以应用分析');
+            return;
+        }
+
+        try {
+            await this.paragraphGenerator.applyAnalysisToParagraph(this.state.selectedParagraph, analysis);
+            this.notificationManager.showSuccess('已应用段落分析');
+            this.app.uiRenderer.renderParagraphs();
+        } catch (error) {
+            this.notificationManager.showError(`应用分析失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * Apply analysis to specific paragraph
+     * @param {string} paragraphId - Paragraph ID
+     * @param {Object} analysis - Analysis result
+     */
+    async applyAnalysisToParagraph(paragraphId, analysis) {
+        try {
+            await this.paragraphGenerator.applyAnalysisToParagraph(paragraphId, analysis);
+            this.app.updateSaveStatus();
+        } catch (error) {
+            throw error;
         }
     }
 
@@ -762,7 +931,7 @@ class AIManager {
         // Check if there is a selected chapter
         if (!this.state.selectedChapter) {
             this.notificationManager.showError('请先选择一个章节');
-            return;
+            return null;
         }
 
         let insertBeforeId = null;
@@ -788,6 +957,7 @@ class AIManager {
         this.app.updateSaveStatus();
 
         this.notificationManager.showSuccess('已插入为新段落');
+        return paragraph;
     }
 
     /**
@@ -961,6 +1131,80 @@ class AIManager {
     }
 
     /**
+     * Build AI API request messages
+     * @param {Object} options - Options object
+     * @param {string} options.systemPrompt - System prompt (defaults to PARAGRAPH_GENERATION)
+     * @param {string} options.userPrompt - User prompt/message
+     * @param {Object} options.context - Context object
+     * @param {Array} options.chatHistory - Optional chat history
+     * @returns {Array} Messages array for API request
+     */
+    buildAIMessages({ 
+        systemPrompt = null,
+        userPrompt,
+        context = null,
+        chatHistory = []
+    }) {
+        const messages = [];
+
+        // Add system prompt
+        messages.push({
+            role: 'system',
+            content: systemPrompt || AIPrompts.PARAGRAPH_GENERATION
+        });
+
+        // Add context if provided
+        if (context) {
+            const contextMessages = this.buildContextMessages(context);
+            messages.push(...contextMessages);
+        }
+
+        // Add chat history if provided
+        if (chatHistory.length > 0) {
+            messages.push(...chatHistory);
+        }
+
+        // Add user prompt
+        if (userPrompt) {
+            messages.push({ role: 'user', content: userPrompt });
+        }
+
+        return messages;
+    }
+
+    /**
+     * Build context messages array
+     * @param {Object} context - Context object
+     * @returns {Array} Context messages
+     */
+    buildContextMessages(context) {
+        const contextMessages = [];
+
+        if (context.chapterTitle) {
+            contextMessages.push({
+                role: 'assistant',
+                content: `Chapter Title: ${context.chapterTitle}`
+            });
+        }
+
+        if (context.chapterContent && context.chapterContent.trim() !== '') {
+            contextMessages.push({
+                role: 'assistant',
+                content: `以下是当前章节已写的内容，作为创作参考：\n\n${context.chapterContent}`
+            });
+        }
+
+        if (context.elementStateSummary) {
+            contextMessages.push({
+                role: 'assistant',
+                content: `当前在场元素状态：\n${context.elementStateSummary}`
+            });
+        }
+
+        return contextMessages;
+    }
+
+    /**
      * Build message history for API request
      * @param {string} currentMessage - Current user message
      * @returns {Array} Message history array
@@ -969,29 +1213,17 @@ class AIManager {
         const config = this.configManager.getConfig();
         const limit = config.historyLimit || 20;
 
-        // Add system prompt
-        const messages = [
-            {
-                role: 'system',
-                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
-            }
-        ];
-
-        // Add chat history
+        // Build chat history messages
         const historyMessages = this.currentChatHistory.slice(-limit).map(msg => ({
             role: msg.role,
             content: msg.content
         }));
 
-        messages.push(...historyMessages);
-
-        // Add current message
-        messages.push({
-            role: 'user',
-            content: currentMessage
+        // Use unified buildAIMessages method
+        return this.buildAIMessages({
+            userPrompt: currentMessage,
+            chatHistory: historyMessages
         });
-
-        return messages;
     }
 
     /**
@@ -1006,22 +1238,72 @@ class AIManager {
         const chapter = this.state.currentStory.chapters.find(c => c.id === this.currentChapterId);
         if (!chapter) return null;
 
+        // 防御性检查：确保 paragraphs 存在
+        if (!chapter.paragraphs || !Array.isArray(chapter.paragraphs)) {
+            console.error('[AIManager] buildContext: Chapter paragraphs not found', chapter);
+            return {
+                chapterTitle: chapter.title || '',
+                chapterContent: '',
+                elements: [],
+                presentElements: []
+            };
+        }
+
         // 使用状态上下文组件
         if (this.stateContextCache && this.elementManager) {
             return this.buildContextWithStateCache(chapter);
         }
+
+        return null;
+    }
+
+    /**
+     * Build context with selected paragraph (for ParagraphGenerator)
+     * @param {string} selectedParagraphId - Paragraph ID to use as context
+     * @returns {Object} Context object
+     */
+    buildContextWithSelectedParagraph(selectedParagraphId) {
+        if (!this.state.currentStory || !this.currentChapterId) {
+            return null;
+        }
+
+        const chapter = this.state.currentStory.chapters.find(c => c.id === this.currentChapterId);
+        if (!chapter) return null;
+
+        // 防御性检查：确保 paragraphs 存在
+        if (!chapter.paragraphs || !Array.isArray(chapter.paragraphs)) {
+            console.error('[AIManager] buildContextWithSelectedParagraph: Chapter paragraphs not found', chapter);
+            return null;
+        }
+
+        // 使用状态上下文组件
+        if (this.stateContextCache && this.elementManager) {
+            return this.buildContextWithStateCache(chapter, selectedParagraphId);
+        }
+
+        return null;
     }
 
     /**
      * Build context with state cache (new Element/Event/State driven)
+     * @param {Object} chapter - Chapter object
+     * @param {string} customSelectedParagraphId - Optional custom paragraph ID (defaults to state.selectedParagraph)
      */
-    buildContextWithStateCache(chapter) {
+    buildContextWithStateCache(chapter, customSelectedParagraphId = null) {
+        // 防御性检查：确保 chapter 和 paragraphs 存在
+        if (!chapter || !chapter.paragraphs || !Array.isArray(chapter.paragraphs)) {
+            console.error('[AIManager] buildContextWithStateCache: Invalid chapter or paragraphs', chapter);
+            return null;
+        }
+
         const context = {
             chapterTitle: chapter.title || ''
         };
 
-        // 获取当前选中的段落 ID
-        const selectedParagraphId = this.state.selectedParagraph;
+        // 获取当前选中的段落 ID (优先使用自定义 ID)
+        const selectedParagraphId = customSelectedParagraphId !== null
+            ? customSelectedParagraphId
+            : this.state.selectedParagraphId;
 
         if (selectedParagraphId) {
             // 1. 选中段落时：获取当前段落及之前的内容作为参考
@@ -1147,6 +1429,11 @@ class AIManager {
      * @returns {Array} Array of present elements
      */
     getParagraphPresentElements(chapter, paragraphId) {
+        // 防御性检查
+        if (!chapter || !chapter.paragraphs || !Array.isArray(chapter.paragraphs)) {
+            return [];
+        }
+
         const paragraphIndex = chapter.paragraphs.findIndex(p => p.id === paragraphId);
         if (paragraphIndex === -1) {
             return [];
@@ -1338,55 +1625,20 @@ class AIManager {
         const config = this.configManager.getConfig();
 
         // If user provided a message, use it; otherwise use default creation prompt
-        const promptText = userMessage || '请根据以下故事背景和上下文创作段落。';
+        const promptText = userMessage || AIPrompts.DEFAULT_GENERATION;
 
-        // Build messages array (mimics sendMessage's logic)
-        const messages = [
-            {
-                role: 'system',
-                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
-            },
-            { role: 'user', content: promptText }
-        ];
-
-        // Add context to messages (same logic as aiService.addContextToMessages)
-        let finalMessages = messages;
-        if (context) {
-            const contextMessages = [];
-
-            // Add system message with chapter title
-            if (context.chapterTitle) {
-                contextMessages.push({
-                    role: 'assistant',
-                    content: `Chapter Title: ${context.chapterTitle}`
-                });
-            }
-
-            // Add assistant message with chapter content as reference
-            if (context.chapterContent && context.chapterContent.trim() !== '') {
-                contextMessages.push({
-                    role: 'assistant',
-                    content: `以下是当前章节已写的内容，作为创作参考：\n\n${context.chapterContent}`
-                });
-            }
-
-            // Add assistant message with element state summary
-            if (context.elementStateSummary) {
-                contextMessages.push({
-                    role: 'assistant',
-                    content: `当前在场元素状态：\n${context.elementStateSummary}`
-                });
-            }
-
-            finalMessages = [...contextMessages, ...messages];
-        }
+        // Build messages using unified method
+        const messages = this.buildAIMessages({
+            userPrompt: promptText,
+            context: context
+        });
 
         // Build API request object (matches what aiService.chat would send)
         const apiRequest = {
             model: config.model,
             temperature: config.temperature,
             max_tokens: config.maxTokens,
-            messages: finalMessages
+            messages: messages
         };
 
         return apiRequest;
@@ -1506,7 +1758,9 @@ class AIManager {
 
         // Get starting paragraph info
         const selectedParagraphId = this.state.selectedParagraphId;
-        const selectedParagraph = chapter.paragraphs.find(p => p.id === selectedParagraphId);
+        const selectedParagraph = chapter.paragraphs && chapter.paragraphs.find
+            ? chapter.paragraphs.find(p => p.id === selectedParagraphId)
+            : null;
         const startFrom = selectedParagraph
             ? `段落 ${chapter.paragraphs.indexOf(selectedParagraph) + 1}`
             : '最新段落';
@@ -1514,49 +1768,17 @@ class AIManager {
         // Get user input from chat input field (if any)
         const userMessage = this.elements.inputField.value.trim();
 
-        // Build API request preview (single paragraph request)
-        const messages = [
-            {
-                role: 'system',
-                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
-            },
-            { role: 'user', content: userMessage || '请根据以下故事背景和上下文创作段落。' }
-        ];
-
-        // Add context to messages
-        let finalMessages = messages;
-        if (context) {
-            const contextMessages = [];
-
-            if (context.chapterTitle) {
-                contextMessages.push({
-                    role: 'assistant',
-                    content: `Chapter Title: ${context.chapterTitle}`
-                });
-            }
-
-            if (context.chapterContent && context.chapterContent.trim() !== '') {
-                contextMessages.push({
-                    role: 'assistant',
-                    content: `以下是当前章节已写的内容，作为创作参考：\n\n${context.chapterContent}`
-                });
-            }
-
-            if (context.elementStateSummary) {
-                contextMessages.push({
-                    role: 'assistant',
-                    content: `当前在场元素状态：\n${context.elementStateSummary}`
-                });
-            }
-
-            finalMessages = [...contextMessages, ...messages];
-        }
+        // Build messages using unified method
+        const messages = this.buildAIMessages({
+            userPrompt: userMessage || AIPrompts.DEFAULT_GENERATION,
+            context: context
+        });
 
         const apiRequest = {
             model: config.model,
             temperature: config.temperature,
             max_tokens: config.maxTokens,
-            messages: finalMessages
+            messages: messages
         };
 
         // Show preview modal
@@ -2037,15 +2259,16 @@ class AIManager {
     /**
      * Start continuous writing session
      * @param {number} paragraphCount - Number of paragraphs to generate
+     * @param {boolean} includeAnalysis - Whether to include analysis for each paragraph
      * @returns {Promise<boolean>} Success status
      */
-    async startContinuousWriting(paragraphCount) {
+    async startContinuousWriting(paragraphCount, includeAnalysis = true) {
         if (!this.continuousWritingManager) {
             this.notificationManager.showError('连续写作管理器未初始化');
             return false;
         }
 
-        return await this.continuousWritingManager.startContinuousWriting(paragraphCount);
+        return await this.continuousWritingManager.startContinuousWriting(paragraphCount, includeAnalysis);
     }
 
     /**
@@ -2072,17 +2295,11 @@ class AIManager {
      * @returns {Promise<Object>} Generated paragraph result
      */
     async generateParagraph(prompt, context) {
-        // Build messages array for AI service
-        const messages = [
-            {
-                role: 'system',
-                content: '你是一个专业的小说创作助手。一次只生成一个段落。只有调节阅读节奏的极小段落允许一次生成多行。'
-            },
-            {
-                role: 'user',
-                content: prompt
-            }
-        ];
+        // Build messages using unified method
+        const messages = this.buildAIMessages({
+            userPrompt: prompt,
+            context: context
+        });
 
         // Call AI service
         const response = await this.aiService.chat(

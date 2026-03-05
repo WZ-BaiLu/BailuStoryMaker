@@ -124,6 +124,12 @@
                                 <div class="ai-input-area">
                                     <textarea id="ai-input" placeholder="输入消息... (Shift+Enter换行, Enter发送)" rows="3"></textarea>
                                     <div class="ai-input-footer">
+                                        <div class="ai-options">
+                                            <label class="ai-option-checkbox">
+                                                <input type="checkbox" id="ai-include-analysis" checked>
+                                                <span>🔄 分析段落</span>
+                                            </label>
+                                        </div>
                                         <div class="ai-button-group send-group">
                                             <button id="ai-send-button" data-i18n="ai.send" class="btn btn-primary">发送</button>
                                             <button id="ai-preview-creation-btn" title="预览创作请求" class="btn btn-secondary btn-sm">📝</button>
@@ -464,6 +470,7 @@
     <script src="js/utils/constants.js"></script>
     <script src="js/utils/validators.js"></script>
     <script src="js/utils/formatters.js"></script>
+    <script src="js/utils/ai-prompts.js"></script>
     <script src="js/modules/I18nManager.js"></script>
     <script src="js/modules/FileManager.js"></script>
     <script src="js/modules/ContextBuilder.js"></script>
@@ -495,6 +502,8 @@
     <script src="js/managers/StateContextCache.js"></script>
     <script src="js/managers/AIElementTools.js"></script>
     <script src="js/managers/AIPreviewManager.js"></script>
+    <!-- Paragraph Generator -->
+    <script src="js/managers/ParagraphGenerator.js"></script>
     <!-- Continuous Writing -->
     <script src="js/managers/ContinuousWritingManager.js"></script>
     <!-- AI Manager (must be loaded after AIConfigManager and AIService) -->
