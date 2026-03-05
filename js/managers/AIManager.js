@@ -375,6 +375,7 @@ class AIManager {
             continuousWritingButton: document.getElementById('continuous-writing-btn'),
             continuousWritingPreviewButton: document.getElementById('continuous-writing-preview-btn'),
             includeAnalysisCheckbox: document.getElementById('ai-include-analysis'),
+            skipPreviewCheckbox: document.getElementById('ai-skip-preview'),
             settingsButton: document.getElementById('ai-settings-button'),
             collapsedSettingsButton: document.getElementById('ai-collapsed-settings-button'),
             collapseButton: document.getElementById('ai-collapse-button'),
@@ -622,6 +623,7 @@ class AIManager {
 
     /**
      * Send message to AI
+     * Uses new builder components and implements preview flow
      */
     async sendMessage() {
         const input = this.elements.inputField;
@@ -652,20 +654,139 @@ class AIManager {
         this.autoResizeInput();
 
         // Get analysis option from checkbox
-        const includeAnalysis = this.elements.includeAnalysisCheckbox?.checked || true;
+        const includeAnalysis = this.elements.includeAnalysisCheckbox?.checked !== false;
+
+        // Check if user selected "Remember choice, don't preview"
+        const skipPreview = this.elements.skipPreviewCheckbox?.checked || false;
+
+        try {
+            if (skipPreview) {
+                // Direct send mode
+                await this.sendDirectly(message, includeAnalysis);
+            } else {
+                // Preview flow
+                await this.sendWithPreview(message, includeAnalysis);
+            }
+        } catch (error) {
+            this.showError({
+                type: 'unknown_error',
+                message: error.message
+            });
+        }
+    }
+
+    /**
+     * Send with preview flow
+     * @param {string} userPrompt - User's prompt
+     * @param {boolean} includeAnalysis - Whether to include analysis
+     */
+    async sendWithPreview(userPrompt, includeAnalysis) {
+        console.log('[AIManager] sendWithPreview called');
+
+        // Generate preview using new builder components
+        const request = this.previewRequest('paragraph-generation', {
+            userPrompt: userPrompt
+        });
+
+        if (!request) {
+            throw new Error('无法生成预览请求');
+        }
+
+        // Save preview to cache
+        const requestId = this.requestCacheManager.generateRequestId();
+        this.requestCacheManager.savePreview(requestId, request);
+
+        // Show preview UI and wait for user confirmation
+        const confirmed = await this.showParagraphGenerationPreviewModal(request, requestId);
+
+        if (!confirmed) {
+            console.log('[AIManager] User cancelled preview');
+            return;
+        }
 
         // Show loading
         this.showLoadingIndicator();
         this.isRequestPending = true;
 
         try {
-            // Check if ParagraphGenerator is available
-            if (!this.paragraphGenerator) {
-                throw new Error('段落生成器未初始化');
+            // Extract messages from preview
+            const messages = request.messages;
+
+            // Call AI service
+            const config = this.configManager.getConfig();
+            const result = await this.aiService.chat(config, messages, null, null);
+
+            if (!result.success) {
+                throw new Error(result.error?.message || 'AI生成失败');
             }
 
-            // Generate paragraph with optional analysis
-            const result = await this.paragraphGenerator.generateParagraph(message, {
+            const generatedContent = result.data.content || result.data.message?.content;
+
+            // Generate analysis if requested
+            let analysis = null;
+            if (includeAnalysis && this.paragraphAnalyzer) {
+                console.log('[AIManager] Starting paragraph analysis...');
+
+                // Create temporary paragraph object
+                const tempParagraph = {
+                    id: 'temp-' + Date.now(),
+                    content: generatedContent
+                };
+
+                // Build analysis request
+                const analysisRequest = this.previewRequest('paragraph-analysis', {
+                    paragraph: tempParagraph
+                });
+
+                // Analyze paragraph
+                const analysisResult = await this.paragraphAnalyzer.analyzeParagraph(tempParagraph);
+
+                if (analysisResult.success) {
+                    analysis = analysisResult.analysis;
+                    console.log('[AIManager] Analysis completed:', analysis);
+                } else {
+                    console.warn('[AIManager] Analysis failed:', analysisResult.error);
+                }
+            }
+
+            // Build result object
+            const resultObject = {
+                content: generatedContent,
+                analysis: analysis,
+                paragraphId: null,
+                context: request.context
+            };
+
+            // Save result to cache
+            this.requestCacheManager.saveResult(requestId, resultObject);
+
+            // Display paragraph unit in chat
+            this.displayParagraphUnit(resultObject);
+            this.saveHistory();
+
+        } catch (error) {
+            throw error;
+        } finally {
+            this.hideLoadingIndicator();
+            this.isRequestPending = false;
+        }
+    }
+
+    /**
+     * Send directly without preview
+     * @param {string} userPrompt - User's prompt
+     * @param {boolean} includeAnalysis - Whether to include analysis
+     */
+    async sendDirectly(userPrompt, includeAnalysis) {
+        console.log('[AIManager] sendDirectly called');
+
+        // Show loading
+        this.showLoadingIndicator();
+        this.isRequestPending = true;
+
+        try {
+            // Use paragraph generator directly
+            const result = await this.paragraphGenerator.generateParagraph(userPrompt, {
                 includeAnalysis: includeAnalysis,
                 selectedParagraphId: this.state.selectedParagraph
             });
@@ -675,14 +796,117 @@ class AIManager {
             this.saveHistory();
 
         } catch (error) {
-            this.showError({
-                type: 'unknown_error',
-                message: error.message
-            });
+            throw error;
         } finally {
             this.hideLoadingIndicator();
             this.isRequestPending = false;
         }
+    }
+
+    /**
+     * Show paragraph generation preview modal
+     * @param {Object} request - AI request object
+     * @param {string} requestId - Request ID for caching
+     * @returns {Promise<boolean>} True if confirmed, false if cancelled
+     */
+    showParagraphGenerationPreviewModal(request, requestId) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'modal prompt-preview-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📝 段落生成预览</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="preview-section collapsible" data-collapsed="false">
+                            <h4 class="collapsible-header">
+                                <span class="toggle-icon">▼</span>
+                                创作上下文
+                            </h4>
+                            <div class="collapsible-content">
+                                <p><strong>章节:</strong> ${request.context?.chapterTitle || '未知'}</p>
+                                <p><strong>选中段落:</strong> ${request.context?.selectedParagraphId || '无'}</p>
+                                <p><strong>用户提示:</strong> ${this.escapeHtml(request.userPrompt || '')}</p>
+                            </div>
+                        </div>
+                        <div class="preview-section collapsible" data-collapsed="true">
+                            <h4 class="collapsible-header">
+                                <span class="toggle-icon">▶</span>
+                                AI消息 (${request.messages?.length || 0}条)
+                            </h4>
+                            <div class="collapsible-content" style="display: none;">
+                                <pre class="api-request-preview">${this.escapeHtml(JSON.stringify(request.messages, null, 2))}</pre>
+                            </div>
+                        </div>
+                        <div class="preview-section collapsible" data-collapsed="true">
+                            <h4 class="collapsible-header">
+                                <span class="toggle-icon">▶</span>
+                                元素状态摘要
+                            </h4>
+                            <div class="collapsible-content" style="display: none;">
+                                <pre class="api-request-preview">${this.escapeHtml(request.context?.elementStateSummary || '无')}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary modal-cancel">取消</button>
+                        <button class="btn btn-primary modal-confirm">确认发送</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Bind events
+            const closeBtn = modal.querySelector('.modal-close');
+            const cancelBtn = modal.querySelector('.modal-cancel');
+            const confirmBtn = modal.querySelector('.modal-confirm');
+
+            const closeModal = (confirmed = false) => {
+                modal.remove();
+                resolve(confirmed);
+            };
+
+            closeBtn.addEventListener('click', () => closeModal(false));
+            cancelBtn.addEventListener('click', () => closeModal(false));
+            confirmBtn.addEventListener('click', () => closeModal(true));
+
+            // Bind collapsible sections
+            modal.querySelectorAll('.collapsible-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const section = header.parentElement;
+                    const content = section.querySelector('.collapsible-content');
+                    const icon = header.querySelector('.toggle-icon');
+                    const isCollapsed = section.dataset.collapsed === 'true';
+
+                    if (isCollapsed) {
+                        content.style.display = 'block';
+                        icon.textContent = '▼';
+                        section.dataset.collapsed = 'false';
+                    } else {
+                        content.style.display = 'none';
+                        icon.textContent = '▶';
+                        section.dataset.collapsed = 'true';
+                    }
+                });
+            });
+
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal(false);
+                }
+            });
+
+            // Close on Escape key
+            modal.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal(false);
+                }
+            });
+        });
     }
 
     /**
