@@ -163,6 +163,54 @@ class AIConfigManager {
     }
 
     /**
+     * Get default configuration for a specific provider
+     * @param {string} provider - Provider name
+     * @returns {Object} Provider-specific default configuration
+     */
+    getProviderDefaults(provider) {
+        const providerConfigs = {
+            openai: {
+                endpoint: 'https://api.openai.com/v1/chat/completions',
+                model: 'gpt-3.5-turbo'
+            },
+            anthropic: {
+                endpoint: 'https://api.anthropic.com/v1/messages',
+                model: 'claude-3-sonnet-20240229'
+            },
+            deepseek: {
+                endpoint: 'https://api.deepseek.com/v1/chat/completions',
+                model: 'deepseek-chat'
+            },
+            grok: {
+                endpoint: 'https://api.x.ai/v1/chat/completions',
+                model: 'grok-beta'
+            },
+            custom: {
+                endpoint: '',
+                model: ''
+            }
+        };
+
+        return providerConfigs[provider] || providerConfigs.openai;
+    }
+
+    /**
+     * Set provider and automatically update endpoint and model
+     * @param {string} provider - Provider name
+     * @returns {boolean} True if successful
+     */
+    setProvider(provider) {
+        const defaults = this.getProviderDefaults(provider);
+        const newConfig = {
+            ...this.config,
+            provider: provider,
+            endpoint: defaults.endpoint,
+            model: defaults.model
+        };
+        return this.saveConfig(newConfig);
+    }
+
+    /**
      * Get default configuration
      * @returns {Object} Default configuration object
      */
