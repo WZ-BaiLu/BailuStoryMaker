@@ -271,67 +271,6 @@ class ParagraphStateSummary {
   }
 
   /**
-   * 格式化状态为可读文本
-   * @param {Object} characterStates - 角色状态
-   * @param {Object} itemStates - 道具状态
-   * @param {Object} locationStates - 地点状态
-   * @returns {string} 格式化的状态文本
-   */
-  formatAsText(characterStates, itemStates, locationStates = {}) {
-    let text = '';
-
-    // 角色状态
-    text += '## 角色状态\n';
-    const chars = Object.values(characterStates);
-    if (chars.length === 0) {
-      text += '无角色\n';
-    } else {
-      chars.forEach(char => {
-        text += `\n${char.name}\n`;
-        if (char.location) text += `  位置: ${char.location}\n`;
-        if (char.description) text += `  描述: ${char.description}\n`;
-        if (char.keywords && char.keywords.length > 0) {
-          text += `  关键词: ${char.keywords.join(', ')}\n`;
-        }
-      });
-    }
-
-    // 道具状态
-    text += '\n## 道具状态\n';
-    const items = Object.values(itemStates);
-    if (items.length === 0) {
-      text += '无道具\n';
-    } else {
-      items.forEach(item => {
-        text += `\n${item.name}\n`;
-        if (item.location) text += `  位置: ${item.location}\n`;
-        if (item.description) text += `  描述: ${item.description}\n`;
-        if (item.keywords && item.keywords.length > 0) {
-          text += `  关键词: ${item.keywords.join(', ')}\n`;
-        }
-      });
-    }
-
-    // 地点状态
-    text += '\n## 地点状态\n';
-    const locations = Object.values(locationStates);
-    if (locations.length === 0) {
-      text += '无地点\n';
-    } else {
-      locations.forEach(loc => {
-        text += `\n${loc.name}\n`;
-        if (loc.location) text += `  所在位置: ${loc.location}\n`;
-        if (loc.description) text += `  描述: ${loc.description}\n`;
-        if (loc.keywords && loc.keywords.length > 0) {
-          text += `  关键词: ${loc.keywords.join(', ')}\n`;
-        }
-      });
-    }
-
-    return text;
-  }
-
-  /**
    * 格式化状态为 HTML
    * @param {Object} characterStates - 角色状态
    * @param {Object} itemStates - 道具状态

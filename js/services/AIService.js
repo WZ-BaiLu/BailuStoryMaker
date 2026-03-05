@@ -69,11 +69,10 @@ class AIService {
                 };
             }
 
-            // Build request with context if provided
-            const messagesWithContext = this.addContextToMessages(messages, context);
-
             // Build request
-            const request = adapter.buildRequest(config, messagesWithContext, tools);
+            // Note: Messages should be pre-built by business layer (AIMessageBuilder)
+            // AIService only handles communication, should not add context to messages
+            const request = adapter.buildRequest(config, messages, tools);
 
             const endpoint = config.endpoint || adapter.getDefaultEndpoint();
 
@@ -91,56 +90,6 @@ class AIService {
             console.error('[AIService] Chat request error:', error);
             return this.handleError(error);
         }
-    }
-
-    /**
-     * Add context to messages
-     * @param {Array} messages - Original messages
-     * @param {Object} context - Context information
-     * @returns {Array} Messages with context added
-     */
-    addContextToMessages(messages, context) {
-        if (!context) {
-            return messages;
-        }
-
-        const contextMessages = [];
-
-        // Add system message with chapter title if available
-        if (context.chapterTitle) {
-            const systemMessage = {
-                role: 'system',
-                content: `Chapter: ${context.chapterTitle}`
-            };
-            contextMessages.push(systemMessage);
-        }
-
-        // Add assistant message with chapter content as reference (paragraph text reference)
-        // 使用 assistant 角色发送段落文本参考
-        if (context.chapterContent && context.chapterContent.trim() !== '') {
-            const contentMessage = {
-                role: 'assistant',
-                content: `以下是当前章节已写的内容，作为创作参考：\n\n${context.chapterContent}`
-            };
-            contextMessages.push(contentMessage);
-        }
-
-        // Add assistant message with element state summary (element state of current paragraph)
-        // 使用 assistant 角色发送当前段落的元素状态总结
-        if (context.elementStateSummary) {
-            const elementStateMessage = {
-                role: 'assistant',
-                content: `当前在场元素状态：\n${context.elementStateSummary}`
-            };
-            contextMessages.push(elementStateMessage);
-        }
-
-        // Only append context messages if there are any
-        if (contextMessages.length > 0) {
-            return [...contextMessages, ...messages];
-        }
-
-        return messages;
     }
 
     /**
