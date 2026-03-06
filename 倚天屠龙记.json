@@ -3,7 +3,7 @@
     "id": "story-1771477496979-8ljt78e35",
     "title": "倚天屠龙记",
     "createdAt": "2026-02-19T05:04:56.979Z",
-    "updatedAt": "2026-03-04T17:20:44.525Z",
+    "updatedAt": "2026-03-06T00:23:02.877Z",
     "author": ""
   },
   "settings": [],
@@ -145,7 +145,111 @@
       "order": 2,
       "content": "傻逼编辑器",
       "createdAt": "2026-02-19T05:05:14.713Z",
-      "updatedAt": "2026-02-19T05:31:22.166Z"
+      "updatedAt": "2026-03-05T14:02:57.335Z",
+      "paragraphs": [
+        {
+          "id": "paragraph-1772688491928-s133rx680",
+          "content": "他指尖微旋，内力在掌心聚成气旋，却见那竹枝如活物般绕过漩涡，轻飘飘点向他肋下三寸——正是斗转星移新旧劲力转换的刹那空隙。",
+          "changes": {
+            "characters": [],
+            "items": []
+          },
+          "createdAt": "2026-03-05T05:28:11.928Z"
+        },
+        {
+          "id": "paragraph-1772688503882-ptg3hjkbk",
+          "content": "就在那竹枝即将触到衣袍的刹那，慕容复足尖一点，身形竟如风中落叶般向后飘开三丈，堪堪避过这看似随意却暗藏玄机的一击。他眼中掠过一丝惊疑——这女子的剑法，竟隐隐克制着斗转星移借力打力的精要？",
+          "changes": {
+            "characters": [],
+            "items": []
+          },
+          "createdAt": "2026-03-05T05:28:23.882Z"
+        },
+        {
+          "id": "paragraph-1772688522088-blp4s8qtl",
+          "content": "青衫少女的竹枝在空中划出清越的弧线，忽而转为直刺——这一剑看似平平无奇，却恰好封住了慕容复准备施展斗转星移第七式的起手方位。",
+          "changes": {
+            "characters": [],
+            "items": []
+          },
+          "createdAt": "2026-03-05T05:28:42.088Z"
+        },
+        {
+          "id": "paragraph-1772688538856-mj3x7my8r",
+          "content": "竹林间的晨雾被剑气搅动，慕容复借着竹枝点地的反弹之力凌空折身，青衫少女的竹尖却如影随形般追至——这一剑刺出的时机，竟是在他旧力已尽、新力未生的瞬息之间。",
+          "changes": {
+            "characters": [],
+            "items": []
+          },
+          "createdAt": "2026-03-05T05:28:58.856Z"
+        },
+        {
+          "id": "paragraph-1772719377332-o5j85je8e",
+          "content": "（续写段落）\n\n慕容复心中警铃大作——这剑法看似稚拙，实则暗合天道至理。他忽然想起家传典籍中一段残篇记载：“上古剑道，不重招式变幻，唯求时机精准。”眼前这青衫少女的竹枝每一次递出，都恰好在他斗转星移气机转换的刹那。",
+          "changes": {
+            "characters": [],
+            "items": []
+          },
+          "createdAt": "2026-03-05T14:02:57.332Z"
+        },
+        {
+          "id": "paragraph-1772688481000-meuiub341",
+          "content": "竹林深处，慕容复的斗转星移如无形漩涡，将小青的剑气尽数卸开，却见她竹枝轻颤，竟似春蚕吐丝般绵绵不绝——那是最质朴的越女剑法，却在千年传承中化繁为简，每一刺都直指他气劲流转的间隙。",
+          "changes": {
+            "elements": [
+              {
+                "elementId": "character-慕容复-1",
+                "elementName": "慕容复",
+                "property": "location",
+                "from": "当前位置",
+                "to": "竹林深处",
+                "changes": {
+                  "location": "竹林深处"
+                }
+              },
+              {
+                "elementId": "character-青衫少女-1",
+                "elementName": "青衫少女",
+                "property": "location",
+                "from": "当前位置",
+                "to": "竹林深处",
+                "changes": {
+                  "location": "竹林深处"
+                }
+              },
+              {
+                "elementId": "character-慕容复-1",
+                "elementName": "慕容复",
+                "property": "location",
+                "from": "当前位置",
+                "to": "竹林深处",
+                "changes": {
+                  "location": "竹林深处"
+                }
+              },
+              {
+                "elementId": "character-小青-1",
+                "elementName": "小青",
+                "property": "location",
+                "from": "当前位置",
+                "to": "竹林深处",
+                "changes": {
+                  "location": "竹林深处"
+                }
+              }
+            ]
+          },
+          "createdAt": "2026-03-05T05:28:01.000Z"
+        }
+      ]
+    },
+    {
+      "id": "chapter-1772719444101-h9hjcdzqm",
+      "title": "暂无章节",
+      "order": 3,
+      "paragraphs": [],
+      "createdAt": "2026-03-05T14:04:04.101Z",
+      "updatedAt": "2026-03-05T14:04:04.101Z"
     }
   ],
   "timeline": [],
@@ -246,6 +350,86 @@
         "小和尚"
       ],
       "location": "location-一座庙-1",
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "character-慕容复-1",
+      "type": "character",
+      "name": "慕容复",
+      "description": "紫袍猎猎，手持折扇的武林高手",
+      "keywords": [
+        "紫袍",
+        "折扇",
+        "武林高手",
+        "燕子坞",
+        "人物",
+        "慕容复"
+      ],
+      "location": "location-燕子坞-1",
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "character-青衫少女-1",
+      "type": "character",
+      "name": "青衫少女",
+      "description": "身着青衫的少女，与慕容复对峙",
+      "keywords": [
+        "青衫",
+        "少女",
+        "对峙",
+        "人物",
+        "青衫少女"
+      ],
+      "location": "location-燕子坞-1",
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "location-燕子坞-1",
+      "type": "location",
+      "name": "燕子坞",
+      "description": "湖水环绕的地方，有青砖地面",
+      "keywords": [
+        "湖水",
+        "青砖",
+        "燕子坞",
+        "地点"
+      ],
+      "location": null,
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "location-竹林深处-1",
+      "type": "location",
+      "name": "竹林深处",
+      "description": "茂密的竹林深处，环境幽静",
+      "keywords": [
+        "竹林",
+        "深处",
+        "幽静",
+        "地点",
+        "竹林深处"
+      ],
+      "location": null,
+      "stateDescription": {},
+      "stateHistory": []
+    },
+    {
+      "id": "character-小青-1",
+      "type": "character",
+      "name": "小青",
+      "description": "使用竹枝施展越女剑法的青衫少女",
+      "keywords": [
+        "青衫少女",
+        "越女剑法",
+        "竹枝",
+        "人物",
+        "小青"
+      ],
+      "location": "location-竹林深处-1",
       "stateDescription": {},
       "stateHistory": []
     }
