@@ -188,7 +188,6 @@ class AIManager {
             this.paragraphAnalyzer.messageBuilder = this.messageBuilder;
             this.paragraphAnalyzer.contextBuilder = this.contextBuilder;
         }
-    }
 
         // Initialize Continuous Writing Manager
         if (typeof ContinuousWritingManager !== 'undefined') {
