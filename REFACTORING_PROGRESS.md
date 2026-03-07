@@ -128,9 +128,40 @@
 
 3. 添加全局错误处理
 
----
+### ✅ 任务 4: 重构 state.js (已完成)
 
-### ⏳ 任务 4: 重构 state.js (待开始)
+**完成状态**: 已完成重构草案
+
+**主要改进**:
+1. **提取状态转换器为纯函数**:
+   - `js/state/paragraphState.js` - 段落状态转换
+   - `js/state/characterState.js` - 角色状态转换
+   - `js/state/itemState.js` - 道具状态转换
+   - 所有函数都是纯函数，易于测试
+
+2. **简化 AppState**:
+   - 使用模块化的状态转换器
+   - `updateItem` 复杂度从 11 降至 <5
+   - 统一的事件通知系统
+   - 改进的错误处理
+
+3. **改进的状态管理**:
+   - 分离关注点：段落、角色、道具
+   - 易于扩展新的状态类型
+   - 历史记录和持久化集中管理
+
+**新文件**: 
+- `js/state/paragraphState.js` (新)
+- `js/state/characterState.js` (新)
+- `js/state/itemState.js` (新)
+- `js/state/AppState.refactored.js` (重构版本)
+
+**预期改进**:
+- 文件行数: 745 -> ~600 (减少 20%)
+- 最大函数复杂度: ≤5
+- 状态转换函数: 100% 可测试
+
+---
 
 **糟糕指数**: 19.4
 
