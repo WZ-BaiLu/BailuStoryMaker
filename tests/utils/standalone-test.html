@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UIErrorHandler & ModalFormSubmitter - 独立测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #2196F3;
+            margin-top: 0;
+        }
+        .test-case {
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #1976D2;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .result.success {
+            background: #C8E6C9;
+            color: #2E7D32;
+            border-left: 4px solid #4CAF50;
+        }
+        .result.error {
+            background: #FFCDD2;
+            color: #C62828;
+            border-left: 4px solid #f44336;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .progress {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .progress-item {
+            background: #e3f2fd;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .progress-item.completed {
+            background: #C8E6C9;
+        }
+        .console-output {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .summary h3 {
+            margin-top: 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>✅ UIErrorHandler & ModalFormSubmitter - 功能测试</h1>
+
+    <div class="summary">
+        <h3>📊 测试概览</h3>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalTests">0</div>
+                <div>总测试数</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="passedTests" style="color: #69f0ae">0</div>
+                <div>通过</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="failedTests" style="color: #ff5252">0</div>
+                <div>失败</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="passRate">0%</div>
+                <div>通过率</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="progress" id="progress"></div>
+
+    <!-- UIErrorHandler 测试 -->
+    <div class="test-section">
+        <h2>1. UIErrorHandler - safeExecute()</h2>
+        
+        <div class="test-case">
+            <h3>测试用例 1.1: 成功执行异步函数</h3>
+            <button onclick="testUIErrorHandler.safeExecuteSuccess()">测试</button>
+            <div id="result-1.1" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 1.2: 捕获异步错误</h3>
+            <button onclick="testUIErrorHandler.safeExecuteError()">测试</button>
+            <div id="result-1.2" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 1.3: 不提供上下文</h3>
+            <button onclick="testUIErrorHandler.safeExecuteNoContext()">测试</button>
+            <div id="result-1.3" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. UIErrorHandler - safeExecuteSync()</h2>
+        
+        <div class="test-case">
+            <h3>测试用例 2.1: 成功执行同步函数</h3>
+            <button onclick="testUIErrorHandler.safeExecuteSyncSuccess()">测试</button>
+            <div id="result-2.1" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 2.2: 捕获同步错误</h3>
+            <button onclick="testUIErrorHandler.safeExecuteSyncError()">测试</button>
+            <div id="result-2.2" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. UIErrorHandler - showError()</h2>
+        
+        <div class="test-case">
+            <h3>测试用例 3.1: 使用通知管理器</h3>
+            <button onclick="testUIErrorHandler.showErrorWithManager()">测试</button>
+            <div id="result-3.1" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 3.2: 无通知管理器（回退到控制台）</h3>
+            <button onclick="testUIErrorHandler.showErrorWithoutManager()">测试</button>
+            <div id="result-3.2" class="result"></div>
+        </div>
+    </div>
+
+    <!-- ModalFormSubmitter 测试 -->
+    <div class="test-section">
+        <h2>4. ModalFormSubmitter - validateForm()</h2>
+        
+        <div class="test-case">
+            <h3>测试用例 4.1: 验证通过</h3>
+            <button onclick="testModalFormSubmitter.validateFormPass()">测试</button>
+            <div id="result-4.1" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 4.2: 必填字段为空</h3>
+            <button onclick="testModalFormSubmitter.validateFormRequired()">测试</button>
+            <div id="result-4.2" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 4.3: 字段太短</h3>
+            <button onclick="testModalFormSubmitter.validateFormMinLength()">测试</button>
+            <div id="result-4.3" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 4.4: 字段太长</h3>
+            <button onclick="testModalFormSubmitter.validateFormMaxLength()">测试</button>
+            <div id="result-4.4" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 4.5: 正则表达式验证</h3>
+            <button onclick="testModalFormSubmitter.validateFormPattern()">测试</button>
+            <div id="result-4.5" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 4.6: 多字段验证</h3>
+            <button onclick="testModalFormSubmitter.validateFormMultiple()">测试</button>
+            <div id="result-4.6" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. 边界测试</h2>
+        
+        <div class="test-case">
+            <h3>测试用例 5.1: 空函数处理</h3>
+            <button onclick="testBoundary.emptyFunction()">测试</button>
+            <div id="result-5.1" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 5.2: null 参数处理</h3>
+            <button onclick="testBoundary.nullParameter()">测试</button>
+            <div id="result-5.2" class="result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 5.3: 空验证规则</h3>
+            <button onclick="testBoundary.emptyRules()">测试</button>
+            <div id="result-5.3" class="result"></div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 控制台输出</h2>
+        <div class="console-output" id="consoleOutput">
+            <div>> 等待测试执行...</div>
+        </div>
+    </div>
+
+    <!-- 加载工具模块 -->
+    <script src="../js/utils/UIErrorHandler.js"></script>
+    <script src="../js/utils/ModalFormSubmitter.js"></script>
+
+    <script>
+        // 测试统计
+        const testStats = {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            tests: []
+        };
+
+        // 更新统计显示
+        function updateStats() {
+            document.getElementById('totalTests').textContent = testStats.total;
+            document.getElementById('passedTests').textContent = testStats.passed;
+            document.getElementById('failedTests').textContent = testStats.failed;
+            const rate = testStats.total > 0 ? 
+                Math.round((testStats.passed / testStats.total) * 100) : 0;
+            document.getElementById('passRate').textContent = rate + '%';
+        }
+
+        // 添加到进度条
+        function addProgress(testId, name) {
+            const progress = document.getElementById('progress');
+            const item = document.createElement('div');
+            item.className = 'progress-item';
+            item.id = `progress-${testId}`;
+            item.textContent = `⏳ ${name}`;
+            progress.appendChild(item);
+        }
+
+        // 更新进度项
+        function updateProgress(testId, passed) {
+            const item = document.getElementById(`progress-${testId}`);
+            if (item) {
+                item.classList.add('completed');
+                item.textContent = `${passed ? '✅' : '❌'} ${item.textContent.substring(2)}`;
+            }
+        }
+
+        // 记录测试结果
+        function recordResult(testId, passed, message) {
+            const resultDiv = document.getElementById(`result-${testId}`);
+            if (resultDiv) {
+                resultDiv.className = `result ${passed ? 'success' : 'error'}`;
+                resultDiv.innerHTML = `
+                    <strong>${passed ? '✅ 通过' : '❌ 失败'}</strong><br>
+                    ${message}
+                `;
+            }
+
+            updateProgress(testId, passed);
+
+            testStats.total++;
+            if (passed) {
+                testStats.passed++;
+            } else {
+                testStats.failed++;
+            }
+            testStats.tests.push({ testId, passed, message });
+            updateStats();
+
+            logToConsole(`测试 ${testId}: ${passed ? '通过' : '失败'} - ${message}`);
+        }
+
+        // 记录到控制台
+        function logToConsole(message) {
+            const consoleDiv = document.getElementById('consoleOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            consoleDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        // UIErrorHandler 测试套件
+        const testUIErrorHandler = {
+            safeExecuteSuccess: async function() {
+                const testId = '1.1';
+                addProgress(testId, '成功执行异步函数');
+                
+                try {
+                    const fn = async () => 'success';
+                    const result = await UIErrorHandler.safeExecute(fn);
+                    
+                    const passed = result.success === true && result.data === 'success';
+                    recordResult(testId, passed, 
+                        passed ? '正确返回成功结果和数据' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            safeExecuteError: async function() {
+                const testId = '1.2';
+                addProgress(testId, '捕获异步错误');
+                
+                try {
+                    const fn = async () => {
+                        throw new Error('Async error');
+                    };
+                    const result = await UIErrorHandler.safeExecute(fn, { operation: 'TestOperation' });
+                    
+                    const passed = result.success === false && 
+                                  result.error === 'Async error' &&
+                                  result.context.operation === 'TestOperation';
+                    recordResult(testId, passed,
+                        passed ? '正确捕获错误并返回上下文' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            safeExecuteNoContext: async function() {
+                const testId = '1.3';
+                addProgress(testId, '不提供上下文');
+                
+                try {
+                    const fn = async () => {
+                        throw new Error('No context error');
+                    };
+                    const result = await UIErrorHandler.safeExecute(fn);
+                    
+                    const passed = result.success === false && 
+                                  result.error === 'No context error' &&
+                                  result.context !== undefined;
+                    recordResult(testId, passed,
+                        passed ? '正确处理无上下文情况' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            safeExecuteSyncSuccess: function() {
+                const testId = '2.1';
+                addProgress(testId, '成功执行同步函数');
+                
+                try {
+                    const fn = () => 'sync success';
+                    const result = UIErrorHandler.safeExecuteSync(fn);
+                    
+                    const passed = result.success === true && result.data === 'sync success';
+                    recordResult(testId, passed,
+                        passed ? '正确返回成功结果和数据' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            safeExecuteSyncError: function() {
+                const testId = '2.2';
+                addProgress(testId, '捕获同步错误');
+                
+                try {
+                    const fn = () => {
+                        throw new Error('Sync error');
+                    };
+                    const result = UIErrorHandler.safeExecuteSync(fn, { operation: 'TestSync' });
+                    
+                    const passed = result.success === false && 
+                                  result.error === 'Sync error' &&
+                                  result.context.operation === 'TestSync';
+                    recordResult(testId, passed,
+                        passed ? '正确捕获同步错误' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            showErrorWithManager: function() {
+                const testId = '3.1';
+                addProgress(testId, '使用通知管理器');
+                
+                try {
+                    let called = false;
+                    let message = '';
+                    const mockNotificationManager = {
+                        showError: function(msg) {
+                            called = true;
+                            message = msg;
+                        }
+                    };
+                    
+                    UIErrorHandler.showError('Test error', mockNotificationManager);
+                    
+                    const passed = called && message === 'Test error';
+                    recordResult(testId, passed,
+                        passed ? '正确调用通知管理器' : `通知管理器未正确调用`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            showErrorWithoutManager: function() {
+                const testId = '3.2';
+                addProgress(testId, '无通知管理器');
+                
+                try {
+                    // 这个测试会输出到控制台，我们只验证不抛出异常
+                    UIErrorHandler.showError('Test error', null);
+                    
+                    recordResult(testId, true, '正确处理无通知管理器情况');
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            }
+        };
+
+        // ModalFormSubmitter 测试套件
+        const testModalFormSubmitter = {
+            createMockForm: function(data) {
+                return {
+                    get: function(key) {
+                        return data[key];
+                    }
+                };
+            },
+
+            validateFormPass: function() {
+                const testId = '4.1';
+                addProgress(testId, '验证通过');
+                
+                try {
+                    const form = this.createMockForm({
+                        name: 'Test Name',
+                        email: 'test@example.com'
+                    });
+                    
+                    const rules = {
+                        name: { required: true, label: 'Name' },
+                        email: { required: true, label: 'Email' }
+                    };
+                    
+                    const result = ModalFormSubmitter.validateForm(form, rules);
+                    
+                    const passed = result.valid === true && Object.keys(result.errors).length === 0;
+                    recordResult(testId, passed,
+                        passed ? '验证通过，无错误' : `验证失败: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            validateFormRequired: function() {
+                const testId = '4.2';
+                addProgress(testId, '必填字段为空');
+                
+                try {
+                    const form = this.createMockForm({
+                        name: '',
+                        email: 'test@example.com'
+                    });
+                    
+                    const rules = {
+                        name: { required: true, label: 'Name' },
+                        email: { required: true, label: 'Email' }
+                    };
+                    
+                    const result = ModalFormSubmitter.validateForm(form, rules);
+                    
+                    const passed = result.valid === false && result.errors.name === 'Name is required';
+                    recordResult(testId, passed,
+                        passed ? '正确捕获必填字段错误' : `验证错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            validateFormMinLength: function() {
+                const testId = '4.3';
+                addProgress(testId, '字段太短');
+                
+                try {
+                    const form = this.createMockForm({
+                        password: '123'
+                    });
+                    
+                    const rules = {
+                        password: { minLength: 6, label: 'Password' }
+                    };
+                    
+                    const result = ModalFormSubmitter.validateForm(form, rules);
+                    
+                    const passed = result.valid === false && 
+                                  result.errors.password === 'Password must be at least 6 characters';
+                    recordResult(testId, passed,
+                        passed ? '正确捕获最小长度错误' : `验证错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            validateFormMaxLength: function() {
+                const testId = '4.4';
+                addProgress(testId, '字段太长');
+                
+                try {
+                    const form = this.createMockForm({
+                        name: 'This is a very long name'
+                    });
+                    
+                    const rules = {
+                        name: { maxLength: 10, label: 'Name' }
+                    };
+                    
+                    const result = ModalFormSubmitter.validateForm(form, rules);
+                    
+                    const passed = result.valid === false && 
+                                  result.errors.name === 'Name must be at most 10 characters';
+                    recordResult(testId, passed,
+                        passed ? '正确捕获最大长度错误' : `验证错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            validateFormPattern: function() {
+                const testId = '4.5';
+                addProgress(testId, '正则表达式验证');
+                
+                try {
+                    // 测试无效邮箱
+                    const form = this.createMockForm({
+                        email: 'invalid-email'
+                    });
+                    
+                    const rules = {
+                        email: {
+                            pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            label: 'Email'
+                        }
+                    };
+                    
+                    const result = ModalFormSubmitter.validateForm(form, rules);
+                    
+                    const passed = result.valid === false && 
+                                  result.errors.email === 'Email has invalid format';
+                    recordResult(testId, passed,
+                        passed ? '正确捕获格式错误' : `验证错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            validateFormMultiple: function() {
+                const testId = '4.6';
+                addProgress(testId, '多字段验证');
+                
+                try {
+                    const form = this.createMockForm({
+                        name: '',
+                        email: 'invalid',
+                        age: '15'
+                    });
+                    
+                    const rules = {
+                        name: { required: true, label: 'Name' },
+                        email: { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, label: 'Email' },
+                        age: { minLength: 18, label: 'Age' }
+                    };
+                    
+                    const result = ModalFormSubmitter.validateForm(form, rules);
+                    
+                    const passed = result.valid === false && 
+                                  Object.keys(result.errors).length === 3 &&
+                                  result.errors.name === 'Name is required' &&
+                                  result.errors.email === 'Email has invalid format';
+                    recordResult(testId, passed,
+                        passed ? '正确验证多个字段' : `验证错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            }
+        };
+
+        // 边界测试套件
+        const testBoundary = {
+            emptyFunction: async function() {
+                const testId = '5.1';
+                addProgress(testId, '空函数处理');
+                
+                try {
+                    const fn = async () => {};
+                    const result = await UIErrorHandler.safeExecute(fn);
+                    
+                    const passed = result.success === true && result.data === undefined;
+                    recordResult(testId, passed,
+                        passed ? '正确处理空函数' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            nullParameter: async function() {
+                const testId = '5.2';
+                addProgress(testId, 'null 参数处理');
+                
+                try {
+                    const result = await UIErrorHandler.safeExecute(null);
+                    
+                    const passed = result.success === false;
+                    recordResult(testId, passed,
+                        passed ? '正确处理 null 参数' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            },
+
+            emptyRules: function() {
+                const testId = '5.3';
+                addProgress(testId, '空验证规则');
+                
+                try {
+                    const form = testModalFormSubmitter.createMockForm({});
+                    const result = ModalFormSubmitter.validateForm(form, {});
+                    
+                    const passed = result.valid === true && Object.keys(result.errors).length === 0;
+                    recordResult(testId, passed,
+                        passed ? '正确处理空规则' : `返回错误: ${JSON.stringify(result)}`
+                    );
+                } catch (error) {
+                    recordResult(testId, false, `异常: ${error.message}`);
+                }
+            }
+        };
+
+        // 运行所有测试
+        async function runAllTests() {
+            logToConsole('开始运行所有测试...');
+            
+            const tests = [
+                testUIErrorHandler.safeExecuteSuccess,
+                testUIErrorHandler.safeExecuteError,
+                testUIErrorHandler.safeExecuteNoContext,
+                testUIErrorHandler.safeExecuteSyncSuccess,
+                testUIErrorHandler.safeExecuteSyncError,
+                testUIErrorHandler.showErrorWithManager,
+                testUIErrorHandler.showErrorWithoutManager,
+                testModalFormSubmitter.validateFormPass,
+                testModalFormSubmitter.validateFormRequired,
+                testModalFormSubmitter.validateFormMinLength,
+                testModalFormSubmitter.validateFormMaxLength,
+                testModalFormSubmitter.validateFormPattern,
+                testModalFormSubmitter.validateFormMultiple,
+                testBoundary.emptyFunction,
+                testBoundary.nullParameter,
+                testBoundary.emptyRules
+            ];
+
+            for (const test of tests) {
+                await test();
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            logToConsole(`测试完成！总计: ${testStats.total}, 通过: ${testStats.passed}, 失败: ${testStats.failed}`);
+        }
+
+        // 页面加载完成后自动运行所有测试
+        window.addEventListener('load', () => {
+            logToConsole('页面加载完成，等待手动测试...');
+            // 可选：取消注释以自动运行所有测试
+            // setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>

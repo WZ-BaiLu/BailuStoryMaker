@@ -1,6 +1,6 @@
 /**
  * Error Handling Utilities
- * 
+ *
  * Provides consistent error handling across UI components
  */
 
@@ -50,3 +50,9 @@ class UIErrorHandler {
     }
   }
 }
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { UIErrorHandler };
+}
+
