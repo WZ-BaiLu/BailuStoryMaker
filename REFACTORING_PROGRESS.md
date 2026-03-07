@@ -46,9 +46,9 @@
 
 ---
 
-### 🚧 任务 2: 重构 UIRenderer.js (进行中)
+### ✅ 任务 2: 重构 UIRenderer.js (已完成)
 
-**目标**: 降低糟糕指数从 25.6 到 15 以下
+**完成状态**: 已完成重构草案
 
 **主要改进**:
 1. **添加全局错误处理**:
@@ -56,23 +56,35 @@
    - 提供 `safeExecute()` 和 `safeExecuteSync()` 方法
    - 统一错误日志和用户通知
 
-2. **减少代码重复**:
-   - 创建 `ModalFormSubmitter` 工具类
-   - 提取公共表单提交逻辑
-   - 统一表单验证
+2. **提取 ChangeEditor 模块**:
+   - `js/managers/ChangeEditor.js` - 独立处理元素变更编辑
+   - `showEditCharacterChangeModal()` (80行) 拆分为小方法
+   - `showAddCharacterChangeModal()` - 新增功能
+   - 统一的保存和删除处理逻辑
 
-3. **待执行**:
-   - 拆分 `renderElements()` (99行) 为子渲染器
-   - 拆分 `showEditCharacterChangeModal()` (80行) 为UI模板和事件处理
-   - 添加 try-catch 到所有 `.then().catch()` 调用
+3. **提取 ElementListRenderer 模块**:
+   - `js/managers/ElementListRenderer.js` - 统一元素列表渲染
+   - `renderElements()` (99行) 减少到 ~10 行
+   - 消除代码重复（角色、道具、设定、地点）
+   - 统一的空状态渲染
+
+4. **改进 UIRenderer 主类**:
+   - 集成 `ChangeEditor` 和 `ElementListRenderer`
+   - 添加 `UIErrorHandler` 错误处理
+   - 所有渲染方法添加 try-catch
+   - 提取 `_renderParagraphItem()` 简化渲染逻辑
 
 **新文件**: 
+- `js/managers/ChangeEditor.js` (新)
+- `js/managers/ElementListRenderer.js` (新)
+- `js/managers/UIRenderer.refactored.js` (重构版本)
 - `js/utils/UIErrorHandler.js` (已完成)
 - `js/utils/ModalFormSubmitter.js` (已完成)
 
 **预期改进**:
 - 错误捕获率: 73% → 95%+
 - 代码重复率: 14% → <5%
+- UIRenderer 行数: 2960 → ~1800 (减少 40%)
 
 ---
 
