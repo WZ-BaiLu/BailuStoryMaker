@@ -88,22 +88,40 @@
 
 ---
 
-### ⏳ 任务 3: 重构 AIManager.js (待开始)
+### ✅ 任务 3: 重构 AIManager.js (已完成)
 
-**糟糕指数**: 25.0
+**完成状态**: 已完成重构草案
 
-**主要问题**:
-1. `updateItemState` - 93行，17个决策点，5个参数
-2. `bindEvents` - 101行，职责过多
-3. 全局错误处理缺失 - 60% 错误被忽略
+**主要改进**:
+1. **提取 AIEventManager 模块**:
+   - `js/managers/AIEventManager.js` - 独立处理所有事件绑定
+   - `bindEvents()` (101行) 拆分为小方法
+   - 按职责分组：UI事件、工具事件、面板事件
+   - 易于测试和维护
 
-**重构计划**:
-1. 拆分 `AIManager` 类为:
-   - `EventManager` - 事件管理
-   - `StateManager` - 状态管理
-   - `MessageService` - 消息服务
+2. **提取 AIStateManager 模块**:
+   - `js/managers/AIStateManager.js` - 独立处理状态更新
+   - `updateItemState()` (93行) 减少到 ~30 行
+   - `updateCharacterState()` - 提取并简化
+   - 统一的变更记录逻辑
 
-2. 将 `updateItemState` 拆分为:
+3. **改进 AIManager 主类**:
+   - 集成 `AIEventManager` 和 `AIStateManager`
+   - 添加 `UIErrorHandler` 错误处理
+   - 所有异步方法添加 try-catch
+   - 简化工具注册逻辑
+
+**新文件**: 
+- `js/managers/AIEventManager.js` (新)
+- `js/managers/AIStateManager.js` (新)
+- `js/managers/AIManager.refactored.js` (重构版本)
+
+**预期改进**:
+- 错误捕获率: 60% → 95%+
+- AIManager 行数: 2674 → ~700 (减少 75%)
+- 最大函数复杂度: ≤10
+
+---
    - `updateItem()` - 更新
    - `resetItem()` - 重置
    - `syncItemState()` - 同步
