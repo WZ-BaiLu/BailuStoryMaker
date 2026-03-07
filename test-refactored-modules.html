@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重构模块测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            margin-top: 0;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .console {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .progress {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            flex: 1;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin-right: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #28a745;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 重构模块测试页面</h1>
+    
+    <div class="test-section">
+        <h2>测试进度</h2>
+        <div class="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            <div class="progress-text" id="progressText">0/6</div>
+        </div>
+        <button onclick="runAllTests()">运行所有测试</button>
+        <button onclick="clearResults()">清除结果</button>
+    </div>
+
+    <div class="test-section">
+        <h2>测试结果</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>控制台日志</h2>
+        <div class="console" id="console"></div>
+    </div>
+
+    <!-- 加载必要的模块 -->
+    <script src="js/i18n.js"></script>
+    <script src="js/utils/Formatters.js"></script>
+    <script src="js/utils/UIErrorHandler.js"></script>
+    <script src="js/utils/ModalFormSubmitter.js"></script>
+
+    <script>
+        // 简单的通知管理器模拟
+        class MockNotificationManager {
+            showSuccess(message) {
+                log(`[Success] ${message}`);
+            }
+            showError(message) {
+                log(`[Error] ${message}`);
+            }
+            showWarning(message) {
+                log(`[Warning] ${message}`);
+            }
+        }
+
+        const notificationManager = new MockNotificationManager();
+
+        // 日志函数
+        function log(message) {
+            const consoleDiv = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            consoleDiv.innerHTML += `<div>[${time}] ${message}</div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            console.log(message);
+        }
+
+        // 清除结果
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('console').innerHTML = '';
+            updateProgress(0, 6);
+        }
+
+        // 更新进度
+        function updateProgress(current, total) {
+            const percent = (current / total) * 100;
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = `${current}/${total}`;
+        }
+
+        // 显示测试结果
+        function showResult(testName, passed, message) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultClass = passed ? 'success' : 'error';
+            const icon = passed ? '✅' : '❌';
+            resultsDiv.innerHTML += `
+                <div class="test-result ${resultClass}">
+                    <strong>${icon} ${testName}</strong><br>
+                    ${message}
+                </div>
+            `;
+        }
+
+        // 测试计数器
+        let testCount = 0;
+        const totalTests = 6;
+
+        // 测试 1: UIErrorHandler - safeExecute
+        async function test1() {
+            log('测试 1: UIErrorHandler.safeExecute...');
+            try {
+                const errorHandler = new UIErrorHandler('TestModule');
+                
+                // 测试成功情况
+                await errorHandler.safeExecute(
+                    async () => {
+                        return 'success';
+                    },
+                    'test1-success'
+                );
+                
+                // 测试错误情况
+                await errorHandler.safeExecute(
+                    async () => {
+                        throw new Error('Test error');
+                    },
+                    'test1-error',
+                    {
+                        silent: false,
+                        message: '测试错误消息'
+                    }
+                );
+
+                showResult('UIErrorHandler.safeExecute', true, '成功和错误情况都正确处理');
+                return true;
+            } catch (error) {
+                showResult('UIErrorHandler.safeExecute', false, error.message);
+                return false;
+            } finally {
+                testCount++;
+                updateProgress(testCount, totalTests);
+            }
+        }
+
+        // 测试 2: UIErrorHandler - safeExecuteSync
+        function test2() {
+            log('测试 2: UIErrorHandler.safeExecuteSync...');
+            try {
+                const errorHandler = new UIErrorHandler('TestModule');
+                
+                // 测试成功情况
+                errorHandler.safeExecuteSync(
+                    () => {
+                        return 'sync success';
+                    },
+                    'test2-success'
+                );
+                
+                // 测试错误情况
+                errorHandler.safeExecuteSync(
+                    () => {
+                        throw new Error('Sync test error');
+                    },
+                    'test2-error',
+                    {
+                        silent: false,
+                        message: '同步测试错误消息'
+                    }
+                );
+
+                showResult('UIErrorHandler.safeExecuteSync', true, '同步成功和错误情况都正确处理');
+                return true;
+            } catch (error) {
+                showResult('UIErrorHandler.safeExecuteSync', false, error.message);
+                return false;
+            } finally {
+                testCount++;
+                updateProgress(testCount, totalTests);
+            }
+        }
+
+        // 测试 3: ModalFormSubmitter - 创建
+        function test3() {
+            log('测试 3: ModalFormSubmitter 创建...');
+            try {
+                const submitter = new ModalFormSubmitter(notificationManager);
+                
+                if (typeof submitter.submit === 'function') {
+                    showResult('ModalFormSubmitter 创建', true, '实例创建成功，方法存在');
+                    return true;
+                } else {
+                    showResult('ModalFormSubmitter 创建', false, 'submit 方法不存在');
+                    return false;
+                }
+            } catch (error) {
+                showResult('ModalFormSubmitter 创建', false, error.message);
+                return false;
+            } finally {
+                testCount++;
+                updateProgress(testCount, totalTests);
+            }
+        }
+
+        // 测试 4: 辅助函数 - generateId
+        function test4() {
+            log('测试 4: 辅助函数可用性...');
+            try {
+                // 测试 Formatters
+                if (typeof Formatters.generateId === 'function') {
+                    const id = Formatters.generateId('test');
+                    if (typeof id === 'string' && id.startsWith('test-')) {
+                        showResult('辅助函数 generateId', true, `生成正确格式的 ID: ${id}`);
+                        return true;
+                    } else {
+                        showResult('辅助函数 generateId', false, `ID 格式不正确: ${id}`);
+                        return false;
+                    }
+                } else {
+                    showResult('辅助函数 generateId', false, 'Formatters.generateId 不存在');
+                    return false;
+                }
+            } catch (error) {
+                showResult('辅助函数可用性', false, error.message);
+                return false;
+            } finally {
+                testCount++;
+                updateProgress(testCount, totalTests);
+            }
+        }
+
+        // 测试 5: i18n - 翻译功能
+        function test5() {
+            log('测试 5: i18n 翻译功能...');
+            try {
+                if (typeof i18n === 'object' && typeof i18n.t === 'function') {
+                    const translated = i18n.t('buttons.save');
+                    if (typeof translated === 'string') {
+                        showResult('i18n 翻译功能', true, `翻译功能正常: "save" -> "${translated}"`);
+                        return true;
+                    } else {
+                        showResult('i18n 翻译功能', false, '翻译结果不是字符串');
+                        return false;
+                    }
+                } else {
+                    showResult('i18n 翻译功能', false, 'i18n 对象或 t 方法不存在');
+                    return false;
+                }
+            } catch (error) {
+                showResult('i18n 翻译功能', false, error.message);
+                return false;
+            } finally {
+                testCount++;
+                updateProgress(testCount, totalTests);
+            }
+        }
+
+        // 测试 6: 错误处理 - 完整流程
+        async function test6() {
+            log('测试 6: 错误处理完整流程...');
+            try {
+                const errorHandler = new UIErrorHandler('TestModule');
+                let errorCaught = false;
+                let loggedError = false;
+
+                // 拦截 console.error
+                const originalError = console.error;
+                console.error = (...args) => {
+                    loggedError = true;
+                    originalError.apply(console, args);
+                };
+
+                try {
+                    await errorHandler.safeExecute(
+                        async () => {
+                            throw new Error('Complete flow error');
+                        },
+                        'test6-flow',
+                        { silent: false, message: '完整流程错误' }
+                    );
+                } catch (e) {
+                    errorCaught = true;
+                }
+
+                // 恢复 console.error
+                console.error = originalError;
+
+                if (errorCaught && loggedError) {
+                    showResult('错误处理完整流程', true, '错误被捕获并正确记录');
+                    return true;
+                } else {
+                    showResult('错误处理完整流程', false, `错误捕获: ${errorCaught}, 日志记录: ${loggedError}`);
+                    return false;
+                }
+            } catch (error) {
+                showResult('错误处理完整流程', false, error.message);
+                return false;
+            } finally {
+                testCount++;
+                updateProgress(testCount, totalTests);
+            }
+        }
+
+        // 运行所有测试
+        async function runAllTests() {
+            clearResults();
+            log('开始运行所有测试...');
+            
+            const results = [
+                await test1(),
+                test2(),
+                test3(),
+                test4(),
+                test5(),
+                await test6()
+            ];
+
+            const passed = results.filter(r => r).length;
+            const failed = results.filter(r => !r).length;
+
+            log(`\n测试完成! 通过: ${passed}, 失败: ${failed}`);
+
+            const summaryDiv = document.getElementById('testResults');
+            summaryDiv.innerHTML = `
+                <div class="test-result ${failed === 0 ? 'success' : 'error'}">
+                    <strong>📊 测试总结</strong><br>
+                    总计: ${totalTests} | 通过: ${passed} | 失败: ${failed} | 成功率: ${Math.round(passed/totalTests*100)}%
+                </div>
+            ` + summaryDiv.innerHTML;
+        }
+
+        // 页面加载时显示欢迎信息
+        log('测试页面已加载。点击"运行所有测试"开始测试。');
+    </script>
+</body>
+</html>
