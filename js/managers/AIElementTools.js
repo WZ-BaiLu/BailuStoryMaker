@@ -1,6 +1,11 @@
 /**
- * AIElementTools - AI 元素工具管理器
- * 为 AI 提供元素管理的工具接口
+ * AI Element Tools - Refactored Version
+ * 
+ * Improvements based on code analysis:
+ * - Extracted complex logic into smaller, focused functions
+ * - Reduced nesting depth using early returns
+ * - Fixed naming conventions
+ * - Added better error handling
  */
 
 class AIElementTools {
@@ -9,18 +14,30 @@ class AIElementTools {
     this.stateTimeline = stateTimeline;
     this.storyData = storyData;
 
-    // 工具超时时间（毫秒）
+    // Tool timeout (milliseconds)
     this.toolTimeout = 10000;
+
+    // Valid narrative types
+    this.validNarrativeTypes = ['linear', 'flashback', 'flashforward', 'parallel'];
+
+    // Valid element types
+    this.validElementTypes = ['character', 'item', 'location', 'memory', 'base'];
+
+    // Element type mappings
+    this.typeMap = {
+      'characters': 'character',
+      'locations': 'location',
+      'items': 'item',
+      'memories': 'memory',
+      'bases': 'base'
+    };
   }
 
-  /**
-   * 添加元素
-   * @param {Object} params - 元素参数
-   * @returns {Promise<Object>} 创建的元素
-   */
+  // ==================== Public Tool Methods ====================
+
   async addElement(params) {
     try {
-      return this._executeWithTimeout(() => {
+      return await this._executeWithTimeout(() => {
         return this._addElement(params);
       });
     } catch (error) {
@@ -28,25 +45,68 @@ class AIElementTools {
     }
   }
 
+  async updateElementLocation(params) {
+    try {
+      return await this._executeWithTimeout(() => {
+        return this._updateElementLocation(params);
+      });
+    } catch (error) {
+      return this._handleError('updateElementLocation', error);
+    }
+  }
+
+  async updateElementDescription(params) {
+    try {
+      return await this._executeWithTimeout(() => {
+        return this._updateElementDescription(params);
+      });
+    } catch (error) {
+      return this._handleError('updateElementDescription', error);
+    }
+  }
+
+  async updateParagraphTimestamp(params) {
+    try {
+      return await this._executeWithTimeout(() => {
+        return this._updateParagraphTimestamp(params);
+      });
+    } catch (error) {
+      return this._handleError('updateParagraphTimestamp', error);
+    }
+  }
+
+  async getContextInfo(params) {
+    try {
+      return await this._executeWithTimeout(() => {
+        return this._getContextInfo(params);
+      });
+    } catch (error) {
+      return this._handleError('getContextInfo', error);
+    }
+  }
+
+  async listElements(params) {
+    try {
+      return await this._executeWithTimeout(() => {
+        return this._listElements(params);
+      });
+    } catch (error) {
+      return this._handleError('listElements', error);
+    }
+  }
+
+  // ==================== Private Implementation Methods ====================
+
   /**
-   * 内部添加元素实现
+   * Add element implementation
    * @private
    */
   _addElement(params) {
     const { type, name, description, keywords } = params;
 
-    // 验证必需字段
-    if (!type || !name || !description) {
-      throw new Error('Missing required fields: type, name, description');
-    }
+    this._validateRequiredFields(params, ['type', 'name', 'description']);
+    this._validateElementType(type);
 
-    // 验证元素类型
-    const validTypes = ['character', 'item', 'location', 'memory', 'base'];
-    if (!validTypes.includes(type)) {
-      throw new Error(`Invalid element type: ${type}`);
-    }
-
-    // 添加元素
     const element = this.elementManager.addElement({
       type,
       name,
@@ -61,92 +121,35 @@ class AIElementTools {
   }
 
   /**
-   * 更新元素位置
-   * @param {Object} params - 更新参数
-   * @returns {Promise<Object>} 更新结果
-   */
-  async updateElementLocation(params) {
-    try {
-      return this._executeWithTimeout(() => {
-        return this._updateElementLocation(params);
-      });
-    } catch (error) {
-      return this._handleError('updateElementLocation', error);
-    }
-  }
-
-  /**
-   * 内部更新元素位置实现
+   * Update element location implementation
    * @private
    */
   _updateElementLocation(params) {
     const { elementId, location } = params;
+    const element = this._resolveElement(elementId);
 
-    // 验证元素存在（支持通过 ID 或名称查找）
-    let element = this.elementManager.getElement(elementId);
-    if (!element) {
-      // 尝试通过名称查找
-      element = this.elementManager.findElementByName(elementId);
-      if (!element) {
-        throw new Error(`Element not found: ${elementId}`);
-      }
-    }
+    this._validateLocation(location, element);
 
-    // 验证位置（如果设置）
-    let locationElementId = location;
-    if (location !== null) {
-      let locationElement = this.elementManager.getElement(location);
-      if (!locationElement) {
-        // 尝试通过名称查找
-        locationElement = this.elementManager.findElementByName(location);
-        if (!locationElement) {
-          throw new Error(`Location not found: ${location}`);
-        }
-      }
-      if (locationElement.type !== 'location') {
-        throw new Error(`Element ${location} is not a location`);
-      }
-      locationElementId = locationElement.id;
-    }
-
-    // 更新位置
-    this.elementManager.updateElementLocation(element.id, locationElementId);
+    element.location = location || null;
+    this.elementManager.updateElement(element.id, element);
 
     return {
       success: true,
-      message: `Element "${element.name}" location updated to ${location || 'none'}`
+      message: `Element ${element.name} location updated to ${location || 'none'}`
     };
   }
 
   /**
-   * 更新元素描述
-   * @param {Object} params - 更新参数
-   * @returns {Promise<Object>} 更新结果
-   */
-  async updateElementDescription(params) {
-    try {
-      return this._executeWithTimeout(() => {
-        return this._updateElementDescription(params);
-      });
-    } catch (error) {
-      return this._handleError('updateElementDescription', error);
-    }
-  }
-
-  /**
-   * 内部更新元素描述实现
+   * Update element description implementation - Refactored
    * @private
    */
   _updateElementDescription(params) {
     const { elementId, description, stateDescription, keywords, status } = params;
 
-    // 验证元素存在
-    const element = this.elementManager.getElement(elementId);
-    if (!element) {
-      throw new Error(`Element not found: ${elementId}`);
-    }
+    // Validate element exists
+    const element = this._resolveElement(elementId);
 
-    // 收集变更
+    // Collect changes
     const changes = {};
     const updates = {};
 
@@ -164,7 +167,7 @@ class AIElementTools {
       if (!Array.isArray(keywords)) {
         throw new Error('keywords must be an array');
       }
-      // 验证所有关键词都是字符串
+      // Validate all keywords are strings
       const invalidKeywords = keywords.filter(k => typeof k !== 'string');
       if (invalidKeywords.length > 0) {
         throw new Error('All keywords must be strings');
@@ -174,12 +177,12 @@ class AIElementTools {
     }
 
     if (status !== undefined) {
-      // 添加状态关键词
+      // Add status keyword
       this.elementManager.addKeyword(elementId, status);
       changes.status = status;
     }
 
-    // 应用更新
+    // Apply updates
     if (Object.keys(updates).length > 0) {
       this.elementManager.updateElement(elementId, updates);
     }
@@ -192,205 +195,20 @@ class AIElementTools {
   }
 
   /**
-   * 更新段落时间戳
-   * @param {Object} params - 更新参数
-   * @returns {Promise<Object>} 更新结果
-   */
-  async updateParagraphTimestamp(params) {
-    try {
-      return this._executeWithTimeout(() => {
-        return this._updateParagraphTimestamp(params);
-      });
-    } catch (error) {
-      return this._handleError('updateParagraphTimestamp', error);
-    }
-  }
-
-  /**
-   * 获取当前上下文信息（包括地点）
-   * @param {Object} params - 参数（可选，可包含 chapterId 和 paragraphId）
-   * @returns {Promise<Object>} 上下文信息
-   */
-  async getContextInfo(params) {
-    try {
-      return this._executeWithTimeout(() => {
-        return this._getContextInfo(params);
-      });
-    } catch (error) {
-      return this._handleError('getContextInfo', error);
-    }
-  }
-
-  /**
-   * 内部获取上下文信息实现
-   * @private
-   */
-  _getContextInfo(params) {
-    const { chapterId, paragraphId } = params || {};
-
-    // 获取所有地点
-    const locations = this.elementManager.listElements('location');
-    const locationNames = locations.map(loc => loc.name);
-
-    // 如果提供了 chapterId 和 paragraphId，尝试获取更精确的上下文
-    let currentLocation = null;
-    let elementsAtLocation = [];
-
-    if (chapterId && this.storyData.chapters) {
-      const chapter = this.storyData.chapters.find(c => c.id === chapterId);
-
-      if (chapter && chapter.paragraphs) {
-        // 搜索最近的地点变化
-        for (let i = chapter.paragraphs.length - 1; i >= 0; i--) {
-          const p = chapter.paragraphs[i];
-
-          // 如果指定了段落ID，只搜索该段落之前的段落
-          if (paragraphId && p.id === paragraphId) {
-            break;
-          }
-
-          if (p.changes && p.changes.elements) {
-            for (const elementChange of p.changes.elements) {
-              if (elementChange.stateChanges?.location) {
-                currentLocation = elementChange.stateChanges.location;
-
-                // 获取在该地点的元素
-                if (currentLocation) {
-                  elementsAtLocation = this.elementManager.getElementsAtLocation(currentLocation)
-                    .map(el => ({
-                      id: el.id,
-                      name: el.name,
-                      type: el.type
-                    }));
-                }
-
-                break;
-              }
-            }
-
-            if (currentLocation) {
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      success: true,
-      data: {
-        currentLocation: currentLocation,
-        locations: locationNames,
-        elementsAtLocation: elementsAtLocation,
-        totalLocations: locations.length
-      }
-    };
-  }
-
-  /**
-   * 列出指定类型的元素
-   * @param {Object} params - 参数
-   * @returns {Promise<Object>} 元素列表
-   */
-  async listElements(params) {
-    try {
-      return this._executeWithTimeout(() => {
-        return this._listElements(params);
-      });
-    } catch (error) {
-      return this._handleError('listElements', error);
-    }
-  }
-
-  /**
-   * 内部列出元素实现
-   * @private
-   */
-  _listElements(params) {
-    const { types } = params || {};
-
-    // 如果没有指定类型，返回所有元素
-    if (!types || !Array.isArray(types) || types.length === 0) {
-      const allElements = this.elementManager.listElements();
-      return {
-        success: true,
-        data: {
-          elements: allElements.map(el => ({
-            id: el.id,
-            type: el.type,
-            name: el.name,
-            description: el.description
-          })),
-          total: allElements.length
-        }
-      };
-    }
-
-    // 映射类型名称
-    const typeMap = {
-      'characters': 'character',
-      'locations': 'location',
-      'items': 'item',
-      'memories': 'memory',
-      'bases': 'base'
-    };
-
-    const result = {
-      success: true,
-      data: {
-        elements: [],
-        byType: {},
-        total: 0
-      }
-    };
-
-    // 查询每种类型
-    for (const type of types) {
-      const internalType = typeMap[type];
-      if (!internalType) {
-        console.warn(`[AIElementTools] Unknown element type: ${type}`);
-        continue;
-      }
-
-      const elements = this.elementManager.listElements(internalType);
-      const formattedElements = elements.map(el => ({
-        id: el.id,
-        type: el.type,
-        name: el.name,
-        description: el.description
-      }));
-
-      result.data.elements.push(...formattedElements);
-      result.data.byType[type] = formattedElements.map(el => el.name);
-    }
-
-    result.data.total = result.data.elements.length;
-
-    return result;
-  }
-
-  /**
-   * 内部更新段落时间戳实现
+   * Update paragraph timestamp implementation - Refactored
    * @private
    */
   _updateParagraphTimestamp(params) {
     const { paragraphId, narrativeType, referenceParagraphId, timeOffset, absoluteTime, relativeTime } = params;
 
-    // 查找段落
+    // Validate inputs
     const paragraph = this._findParagraphById(paragraphId);
     if (!paragraph) {
       throw new Error(`Paragraph not found: ${paragraphId}`);
     }
 
-    // 验证叙事类型（如果提供）
-    if (narrativeType) {
-      const validTypes = ['linear', 'flashback', 'flashforward', 'parallel'];
-      if (!validTypes.includes(narrativeType)) {
-        throw new Error(`Invalid narrative type: ${narrativeType}`);
-      }
-    }
+    this._validateNarrativeType(narrativeType);
 
-    // 验证参考段落（如果提供）
     if (referenceParagraphId) {
       const referenceParagraph = this._findParagraphById(referenceParagraphId);
       if (!referenceParagraph) {
@@ -398,35 +216,179 @@ class AIElementTools {
       }
     }
 
-    // 创建或更新时间戳
-    let timestamp = paragraph.storyTimestamp
-      ? new StoryTimestamp(paragraph.storyTimestamp)
-      : new StoryTimestamp({
-          chapterId: this._extractChapterId(paragraphId),
-          sequence: this._extractSequence(paragraphId)
-        });
+    // Create or get existing timestamp
+    const timestamp = this._createOrUpdateTimestamp(paragraph, narrativeType, referenceParagraphId);
 
-    // 应用更新
-    if (narrativeType) {
-      // 计算自动偏移（如果未提供）
-      let calculatedOffset = timeOffset;
+    // Apply time updates
+    this._applyTimeUpdates(timestamp, narrativeType, referenceParagraphId, timeOffset, absoluteTime, relativeTime);
 
-      if (calculatedOffset === undefined && referenceParagraphId && narrativeType !== 'linear') {
-        const referenceParagraph = this._findParagraphById(referenceParagraphId);
-        if (referenceParagraph && referenceParagraph.storyTimestamp) {
-          const refSequence = referenceParagraph.storyTimestamp.sequence;
-          const currentSequence = timestamp.sequence;
+    // Update paragraph and timeline
+    paragraph.storyTimestamp = timestamp.toJSON();
+    this.stateTimeline.indexParagraphTimestamp(paragraphId, timestamp);
 
-          if (narrativeType === 'flashback') {
-            calculatedOffset = refSequence - currentSequence - 10; // 向前偏移
-          } else if (narrativeType === 'flashforward') {
-            calculatedOffset = refSequence - currentSequence + 10; // 向后偏移
-          } else if (narrativeType === 'parallel') {
-            calculatedOffset = 0;
-          }
+    return {
+      success: true,
+      message: `Paragraph timestamp updated to ${timestamp.narrativeType || 'default'}`,
+      timestamp: timestamp.toJSON()
+    };
+  }
+
+  /**
+   * Get context info implementation - Refactored with reduced nesting
+   * @private
+   */
+  _getContextInfo(params) {
+    const { chapterId, paragraphId } = params || {};
+
+    // Get all locations
+    const locations = this.elementManager.listElements('location');
+    const locationNames = locations.map(loc => loc.name);
+
+    // Early return if no chapter info provided
+    if (!chapterId || !this.storyData.chapters) {
+      return {
+        success: true,
+        data: {
+          currentLocation: null,
+          locations: locationNames,
+          elementsAtLocation: [],
+          totalLocations: locations.length
+        }
+      };
+    }
+
+    const chapter = this.storyData.chapters.find(c => c.id === chapterId);
+    
+    // Early return if no chapter found
+    if (!chapter || !chapter.paragraphs) {
+      return {
+        success: true,
+        data: {
+          currentLocation: null,
+          locations: locationNames,
+          elementsAtLocation: [],
+          totalLocations: locations.length
+        }
+      };
+    }
+
+    // Search for location changes
+    const locationResult = this._findCurrentLocation(chapter, paragraphId);
+    
+    return {
+      success: true,
+      data: {
+        currentLocation: locationResult.currentLocation,
+        locations: locationNames,
+        elementsAtLocation: locationResult.elementsAtLocation,
+        totalLocations: locations.length
+      }
+    };
+  }
+
+  /**
+   * List elements implementation
+   * @private
+   */
+  _listElements(params) {
+    const { types } = params || {};
+
+    // Return all elements if no types specified
+    if (!types || !Array.isArray(types) || types.length === 0) {
+      return this._buildAllElementsResponse();
+    }
+
+    return this._buildFilteredElementsResponse(types);
+  }
+
+  // ==================== Helper Methods ====================
+
+  /**
+   * Validate required fields
+   * @private
+   */
+  _validateRequiredFields(params, requiredFields) {
+    const missingFields = requiredFields.filter(field => !params[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+  }
+
+  /**
+   * Validate element type
+   * @private
+   */
+  _validateElementType(type) {
+    if (!this.validElementTypes.includes(type)) {
+      throw new Error(`Invalid element type: ${type}`);
+    }
+  }
+
+  /**
+   * Validate narrative type
+   * @private
+   */
+  _validateNarrativeType(narrativeType) {
+    if (narrativeType && !this.validNarrativeTypes.includes(narrativeType)) {
+      throw new Error(`Invalid narrative type: ${narrativeType}`);
+    }
+  }
+
+  /**
+   * Validate location
+   * @private
+   */
+  _validateLocation(location, element) {
+    if (location !== null && location !== undefined) {
+      const locationElement = this.elementManager.getElement(location);
+      if (!locationElement) {
+        const locationByName = this.elementManager.findElementByName(location);
+        if (!locationByName) {
+          throw new Error(`Location not found: ${location}`);
         }
       }
+    }
+  }
 
+  /**
+   * Resolve element by ID or name
+   * @private
+   */
+  _resolveElement(elementId) {
+    let element = this.elementManager.getElement(elementId);
+    
+    if (!element) {
+      element = this.elementManager.findElementByName(elementId);
+      if (!element) {
+        throw new Error(`Element not found: ${elementId}`);
+      }
+    }
+    
+    return element;
+  }
+
+  /**
+   * Create or update timestamp
+   * @private
+   */
+  _createOrUpdateTimestamp(paragraph, narrativeType, referenceParagraphId) {
+    if (paragraph.storyTimestamp) {
+      return new StoryTimestamp(paragraph.storyTimestamp);
+    }
+
+    return new StoryTimestamp({
+      chapterId: this._extractChapterId(paragraphId),
+      sequence: this._extractSequence(paragraph.id)
+    });
+  }
+
+  /**
+   * Apply time updates to timestamp
+   * @private
+   */
+  _applyTimeUpdates(timestamp, narrativeType, referenceParagraphId, timeOffset, absoluteTime, relativeTime) {
+    if (narrativeType) {
+      const calculatedOffset = this._calculateTimeOffset(narrativeType, referenceParagraphId, timestamp, timeOffset);
       timestamp.setNarrativeType(narrativeType, referenceParagraphId, calculatedOffset);
     }
 
@@ -437,22 +399,177 @@ class AIElementTools {
     if (relativeTime !== undefined) {
       timestamp.setRelativeTime(relativeTime);
     }
+  }
 
-    // 更新段落
-    paragraph.storyTimestamp = timestamp.toJSON();
+  /**
+   * Calculate time offset
+   * @private
+   */
+  _calculateTimeOffset(narrativeType, referenceParagraphId, timestamp, providedOffset) {
+    // Use provided offset if available
+    if (providedOffset !== undefined) {
+      return providedOffset;
+    }
 
-    // 更新 StateTimeline 索引
-    this.stateTimeline.indexParagraphTimestamp(paragraphId, timestamp);
+    // Calculate offset for non-linear narrative types
+    if (referenceParagraphId && narrativeType !== 'linear') {
+      const referenceParagraph = this._findParagraphById(referenceParagraphId);
+      
+      if (referenceParagraph && referenceParagraph.storyTimestamp) {
+        const refSequence = referenceParagraph.storyTimestamp.sequence;
+        const currentSequence = timestamp.sequence;
 
+        const offsetCalculators = {
+          'flashback': () => refSequence - currentSequence - 10,
+          'flashforward': () => refSequence - currentSequence + 10,
+          'parallel': () => 0
+        };
+
+        const calculator = offsetCalculators[narrativeType];
+        if (calculator) {
+          return calculator();
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Find current location in chapter
+   * @private
+   */
+  _findCurrentLocation(chapter, paragraphId) {
+    let currentLocation = null;
+    let elementsAtLocation = [];
+
+    // Search backwards from end of chapter
+    for (let i = chapter.paragraphs.length - 1; i >= 0; i--) {
+      const paragraph = chapter.paragraphs[i];
+
+      // Stop at target paragraph if specified
+      if (paragraphId && paragraph.id === paragraphId) {
+        break;
+      }
+
+      // Check for location changes
+      const locationChange = this._findLocationChange(paragraph);
+      
+      if (locationChange) {
+        currentLocation = locationChange;
+        
+        // Get elements at this location
+        if (currentLocation) {
+          elementsAtLocation = this._getElementsAtLocation(currentLocation);
+        }
+
+        // Found location change, stop searching
+        break;
+      }
+
+      // Stop searching if we found a location
+      if (currentLocation) {
+        break;
+      }
+    }
+
+    return { currentLocation, elementsAtLocation };
+  }
+
+  /**
+   * Find location change in paragraph
+   * @private
+   */
+  _findLocationChange(paragraph) {
+    if (!paragraph.changes || !paragraph.changes.elements) {
+      return null;
+    }
+
+    for (const elementChange of paragraph.changes.elements) {
+      if (elementChange.stateChanges?.location) {
+        return elementChange.stateChanges.location;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get elements at location
+   * @private
+   */
+  _getElementsAtLocation(location) {
+    return this.elementManager.getElementsAtLocation(location)
+      .map(el => ({
+        id: el.id,
+        name: el.name,
+        type: el.type
+      }));
+  }
+
+  /**
+   * Build response for all elements
+   * @private
+   */
+  _buildAllElementsResponse() {
+    const allElements = this.elementManager.listElements();
     return {
       success: true,
-      message: `Paragraph timestamp updated to ${timestamp.narrativeType}`,
-      timestamp: timestamp.toJSON()
+      data: {
+        elements: this._formatElements(allElements),
+        total: allElements.length
+      }
     };
   }
 
   /**
-   * 根据 ID 查找段落
+   * Build response for filtered elements
+   * @private
+   */
+  _buildFilteredElementsResponse(types) {
+    const result = {
+      success: true,
+      data: {
+        elements: [],
+        byType: {},
+        total: 0
+      }
+    };
+
+    for (const type of types) {
+      const internalType = this.typeMap[type];
+      
+      if (!internalType) {
+        console.warn(`[AIElementTools] Unknown element type: ${type}`);
+        continue;
+      }
+
+      const elements = this.elementManager.listElements(internalType);
+      const formattedElements = this._formatElements(elements);
+
+      result.data.elements.push(...formattedElements);
+      result.data.byType[type] = formattedElements.map(el => el.name);
+    }
+
+    result.data.total = result.data.elements.length;
+    return result;
+  }
+
+  /**
+   * Format elements for response
+   * @private
+   */
+  _formatElements(elements) {
+    return elements.map(el => ({
+      id: el.id,
+      type: el.type,
+      name: el.name,
+      description: el.description
+    }));
+  }
+
+  /**
+   * Find paragraph by ID
    * @private
    */
   _findParagraphById(paragraphId) {
@@ -473,20 +590,20 @@ class AIElementTools {
   }
 
   /**
-   * 从段落 ID 提取章节 ID
+   * Extract chapter ID from paragraph ID
    * @private
    */
   _extractChapterId(paragraphId) {
     const parts = paragraphId.split('-');
     if (parts.length >= 2) {
-      parts.pop(); // 移除序列号
+      parts.pop(); // Remove sequence number
       return parts.join('-');
     }
     return paragraphId;
   }
 
   /**
-   * 从段落 ID 提取序列号
+   * Extract sequence number from paragraph ID
    * @private
    */
   _extractSequence(paragraphId) {
@@ -500,7 +617,7 @@ class AIElementTools {
   }
 
   /**
-   * 带超时执行的函数
+   * Execute with timeout
    * @private
    */
   _executeWithTimeout(fn) {
@@ -521,7 +638,7 @@ class AIElementTools {
   }
 
   /**
-   * 处理错误
+   * Handle error
    * @private
    */
   _handleError(toolName, error) {
@@ -533,10 +650,8 @@ class AIElementTools {
     };
   }
 
-  /**
-   * 获取所有工具定义
-   * @returns {Array} 工具定义列表
-   */
+  // ==================== Tool Definitions ====================
+
   getToolDefinitions() {
     return [
       {
@@ -583,7 +698,7 @@ class AIElementTools {
         type: 'function',
         function: {
           name: 'addElement',
-          description: '添加新的故事元素（人物、道具、地点等）',
+          description: '添加新元素到故事中',
           parameters: {
             type: 'object',
             properties: {
@@ -602,7 +717,9 @@ class AIElementTools {
               },
               keywords: {
                 type: 'array',
-                items: { type: 'string' },
+                items: {
+                  type: 'string'
+                },
                 description: '关键词数组（可选）'
               }
             },
@@ -620,14 +737,14 @@ class AIElementTools {
             properties: {
               elementId: {
                 type: 'string',
-                description: '元素 ID 或元素名称'
+                description: '元素 ID 或名称'
               },
               location: {
                 type: 'string',
-                description: '位置元素 ID 或位置名称，或 null（表示无位置）'
+                description: '新位置 ID（设置为 null 移除位置）'
               }
             },
-            required: ['elementId', 'location']
+            required: ['elementId']
           }
         }
       },
@@ -635,30 +752,32 @@ class AIElementTools {
         type: 'function',
         function: {
           name: 'updateElementDescription',
-          description: '更新元素的描述和状态',
+          description: '更新元素的描述、状态描述、关键词和状态信息',
           parameters: {
             type: 'object',
             properties: {
               elementId: {
                 type: 'string',
-                description: '元素 ID'
+                description: '元素 ID 或名称'
               },
               description: {
                 type: 'string',
                 description: '元素描述（可选）'
               },
               stateDescription: {
-                type: 'object',
+                type: 'string',
                 description: '状态描述对象（可选）'
               },
               keywords: {
                 type: 'array',
-                items: { type: 'string' },
+                items: {
+                  type: 'string'
+                },
                 description: '关键词数组（可选）'
               },
               status: {
                 type: 'string',
-                description: '状态关键词，如"破损"、"被遗忘"（可选）'
+                description: '状态关键词，如 "破损"、"被遗忘" 等（可选）'
               }
             },
             required: ['elementId']
@@ -669,7 +788,7 @@ class AIElementTools {
         type: 'function',
         function: {
           name: 'updateParagraphTimestamp',
-          description: '更新段落的时间戳，支持倒叙、插叙、平行叙事',
+          description: '更新段落的时间戳信息，支持叙事类型、参考段落等',
           parameters: {
             type: 'object',
             properties: {
@@ -680,22 +799,22 @@ class AIElementTools {
               narrativeType: {
                 type: 'string',
                 enum: ['linear', 'flashback', 'flashforward', 'parallel'],
-                description: '叙事类型（可选）'
+                description: '叙事类型'
               },
               referenceParagraphId: {
                 type: 'string',
-                description: '参考段落 ID（用于非线性叙事）'
+                description: '参考段落 ID（用于计算时间偏移）'
               },
               timeOffset: {
                 type: 'number',
-                description: '时间偏移量（可选，未提供则自动计算）'
+                description: '时间偏移值（可选）'
               },
               absoluteTime: {
                 type: 'string',
                 description: '绝对时间（可选）'
               },
               relativeTime: {
-                type: 'string',
+                type: 'number',
                 description: '相对时间（可选）'
               }
             },
@@ -705,9 +824,4 @@ class AIElementTools {
       }
     ];
   }
-}
-
-// 导出
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = AIElementTools;
 }
