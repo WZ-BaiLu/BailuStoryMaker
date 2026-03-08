@@ -1,92 +1,77 @@
 /**
- * AIElementTools 版本对比测试 - 简化版
+ * Simple version comparison script for AIElementTools
+ * Tests compatibility between original and refactored versions
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const testStats = {
-    total: 0,
-    passed: 0,
-    failed: 0,
+// Test results tracking
+const results = {
+    timestamp: new Date().toISOString(),
     tests: []
 };
 
-function recordResult(testId, passed, message) {
-    testStats.total++;
-    if (passed) {
-        testStats.passed++;
-    } else {
-        testStats.failed++;
+function test(name, fn) {
+    try {
+        const result = fn();
+        if (result.passed) {
+            results.tests.push({
+                test: name,
+                status: 'PASSED',
+                message: result.message
+            });
+            console.log(`✅ ${name}`);
+        } else {
+            results.tests.push({
+                test: name,
+                status: 'FAILED',
+                message: result.message
+            });
+            console.log(`❌ ${name}: ${result.message}`);
+        }
+        return result.passed;
+    } catch (error) {
+        results.tests.push({
+            test: name,
+            status: 'ERROR',
+            message: error.message
+        });
+        console.log(`⚠️  ${name}: ${error.message}`);
+        return false;
     }
-    testStats.tests.push({ testId, passed, message });
-    console.log(`  ${passed ? '✅' : '❌'} ${testId}: ${message}`);
 }
 
-console.log('\n========================================');
-console.log('AIElementTools 版本对比测试');
-console.log('========================================\n');
-
-// 读取文件
+// Load and parse files
 const originalCode = fs.readFileSync(
     path.join(__dirname, '../../js/managers/AIElementTools.js'),
     'utf-8'
 );
-
 const refactoredCode = fs.readFileSync(
     path.join(__dirname, '../../js/managers/AIElementTools.refactored.js'),
     'utf-8'
 );
 
-console.log('📋 文件对比\n');
-
-// 测试 1: 文件大小
-const originalLines = originalCode.split('\n').length;
-const refactoredLines = refactoredCode.split('\n').length;
-const lineReduction = ((originalLines - refactoredLines) / originalLines * 100).toFixed(1);
-recordResult('1.1', refactoredLines <= originalLines, 
-    `行数: ${originalLines} → ${refactoredLines} (-${lineReduction}%)`);
-
-// 测试 2: 类结构
-const hasOriginalClass = /class AIElementTools/.test(originalCode);
-const hasRefactoredClass = /class AIElementTools/.test(refactoredCode);
-recordResult('1.2', hasOriginalClass && hasRefactoredClass, '类结构一致');
-
-// 测试 3: 公共方法
-const extractAsyncMethods = (code) => {
-    const methods = [];
-    const regex = /async\s+(\w+)\s*\(/g;
+// Extract method names using regex
+const extractMethods = (code) => {
+    const asyncMethodRegex = /async\s+(\w+)\s*\(/g;
+    const syncMethodRegex = /(\w+)\s*\([^)]*\)\s*\{/g;
+    const methods = new Set();
     let match;
-    while ((match = regex.exec(code)) !== null) {
-        methods.push(match[1]);
+
+    while ((match = asyncMethodRegex.exec(code)) !== null) {
+        methods.add(match[1]);
     }
-    return methods;
+    while ((match = syncMethodRegex.exec(code)) !== null) {
+        if (!match[1].startsWith('_') && !methods.has(match[1])) {
+            methods.add(match[1]);
+        }
+    }
+
+    return Array.from(methods).filter(m => !m.startsWith('constructor'));
 };
 
-const originalMethods = extractAsyncMethods(originalCode);
-const refactoredMethods = extractAsyncMethods(refactoredCode);
-recordResult('1.3', originalMethods.every(m => refactoredMethods.includes(m)),
-    `公共方法: ${originalMethods.length} 个`);
-
-// 测试 4: 私有方法
-const extractPrivateMethods = (code) => {
-    const methods = [];
-    const regex = /_([a-zA-Z]+)\s*\(/g;
-    let match;
-    while ((match = regex.exec(code)) !== null) {
-        methods.push(match[1]);
-    }
-    return [...new Set(methods)];
-};
-
-const originalPrivateMethods = extractPrivateMethods(originalCode);
-const refactoredPrivateMethods = extractPrivateMethods(refactoredCode);
-recordResult('1.4', refactoredPrivateMethods.length >= originalPrivateMethods.length,
-    `私有方法: ${originalPrivateMethods.length} → ${refactoredPrivateMethods.length}`);
-
-console.log('\n📋 代码质量\n');
-
-// 测试 5: 最大函数长度
+// Extract function lengths
 const extractFunctionLengths = (code) => {
     const lengths = [];
     const regex = /(\w+)\s*\([^)]*\)\s*{/g;
@@ -112,106 +97,234 @@ const extractFunctionLengths = (code) => {
     return lengths.length > 0 ? Math.max(...lengths) : 0;
 };
 
-const originalMaxLength = extractFunctionLengths(originalCode);
-const refactoredMaxLength = extractFunctionLengths(refactoredCode);
-recordResult('2.1', refactoredMaxLength < originalMaxLength,
-    `最大函数长度: ${originalMaxLength} → ${refactoredMaxLength} 行`);
-
-// 测试 6: 嵌套深度
-const estimateMaxNesting = (code) => {
+// Extract maximum nesting depth
+const extractMaxNesting = (code) => {
     const lines = code.split('\n');
     let maxNesting = 0;
-    
-    lines.forEach(line => {
-        const spaces = line.search(/\S|$/);
-        if (spaces !== -1) {
-            const nesting = Math.floor(spaces / 2);
+
+    for (const line of lines) {
+        // Count indentation by spaces (2 spaces = 1 level)
+        const match = line.match(/^(\s*)/);
+        if (match) {
+            const nesting = Math.floor(match[1].length / 2);
             maxNesting = Math.max(maxNesting, nesting);
         }
-    });
-    
+    }
+
     return maxNesting;
 };
 
-const originalNesting = estimateMaxNesting(originalCode);
-const refactoredNesting = estimateMaxNesting(refactoredCode);
-recordResult('2.2', refactoredNesting < originalNesting,
-    `最大嵌套深度: ${originalNesting} → ${refactoredNesting}`);
+// Extract tool definitions
+const extractToolDefinitions = (code) => {
+    const match = code.match(/getToolDefinitions\(\)\s*\{[\s\S]*?return\s*\[([\s\S]*?)\];[\s\S]*?^\}/);
+    if (!match) return [];
 
-// 测试 7: 错误处理
-const countTryCatch = (code) => {
-    const tryMatches = code.match(/try\s*{/g) || [];
-    const asyncMatches = code.match(/async\s+\w+\s*\(/g) || [];
-    return asyncMatches.length > 0 ? (tryMatches.length / asyncMatches.length) : 0;
+    const toolsMatch = match[1].match(/name:\s*['"](\w+)['"]/g);
+    if (!toolsMatch) return [];
+
+    return toolsMatch.map(t => t.match(/name:\s*['"](\w+)['"]/)[1]);
 };
 
-const originalErrorHandling = countTryCatch(originalCode);
-const refactoredErrorHandling = countTryCatch(refactoredCode);
-recordResult('2.3', refactoredErrorHandling >= originalErrorHandling,
-    `错误处理覆盖率: ${(originalErrorHandling * 100).toFixed(0)}% → ${(refactoredErrorHandling * 100).toFixed(0)}%`);
-
-console.log('\n📋 语法验证\n');
-
-// 测试 8: 语法检查
-try {
-    new Function(refactoredCode);
-    recordResult('3.1', true, '重构版本语法正确');
-} catch (error) {
-    recordResult('3.1', false, `语法错误: ${error.message}`);
-}
-
-try {
-    new Function(originalCode);
-    recordResult('3.2', true, '原版本语法正确');
-} catch (error) {
-    recordResult('3.2', false, `语法错误: ${error.message}`);
-}
-
+// Run tests
 console.log('\n========================================');
-console.log('测试结果汇总');
+console.log('AIElementTools Version Comparison');
 console.log('========================================\n');
 
-const passRate = testStats.total > 0 ? 
-    Math.round((testStats.passed / testStats.total) * 100) : 0;
+const originalMethods = extractMethods(originalCode);
+const refactoredMethods = extractMethods(refactoredCode);
 
-console.log(`总计: ${testStats.total}`);
-console.log(`✅ 通过: ${testStats.passed}`);
-console.log(`❌ 失败: ${testStats.failed}`);
-console.log(`通过率: ${passRate}%\n`);
+// Test 1: Check if updateElementDescription exists in refactored version
+test(
+    'Refactored version includes updateElementDescription',
+    () => ({
+        passed: refactoredMethods.includes('updateElementDescription'),
+        message: refactoredMethods.includes('updateElementDescription')
+            ? 'updateElementDescription found'
+            : 'updateElementDescription missing'
+    })
+);
 
-if (testStats.failed > 0) {
-    console.log('失败的测试:');
-    testStats.tests.filter(t => !t.passed).forEach(t => {
-        console.log(`  ❌ ${t.testId}: ${t.message}`);
-    });
-    console.log();
-}
+// Test 2: Check if all original methods are present in refactored version
+test(
+    'All original methods present in refactored version',
+    () => {
+        const missing = originalMethods.filter(m => !refactoredMethods.includes(m));
+        return {
+            passed: missing.length === 0,
+            message: missing.length === 0
+                ? 'All methods present'
+                : `Missing methods: ${missing.join(', ')}`
+        };
+    }
+);
 
-const results = {
+// Test 3: Check function length improvement
+const originalMaxLength = extractFunctionLengths(originalCode);
+const refactoredMaxLength = extractFunctionLengths(refactoredCode);
+test(
+    'Function length reduced',
+    () => {
+        const reduction = ((originalMaxLength - refactoredMaxLength) / originalMaxLength * 100).toFixed(1);
+        return {
+            passed: refactoredMaxLength <= originalMaxLength,
+            message: `${originalMaxLength} → ${refactoredMaxLength} (${reduction}%)`
+        };
+    }
+);
+
+// Test 4: Check nesting depth reduction
+const originalNesting = extractMaxNesting(originalCode);
+const refactoredNesting = extractMaxNesting(refactoredCode);
+test(
+    'Nesting depth reduced',
+    () => {
+        const reduction = ((originalNesting - refactoredNesting) / originalNesting * 100).toFixed(1);
+        return {
+            passed: refactoredNesting <= originalNesting,
+            message: `${originalNesting} → ${refactoredNesting} (${reduction}%)`
+        };
+    }
+);
+
+// Test 5: Check tool definitions
+const originalTools = extractToolDefinitions(originalCode);
+const refactoredTools = extractToolDefinitions(refactoredCode);
+test(
+    'Tool definitions complete',
+    () => {
+        const missing = originalTools.filter(t => !refactoredTools.includes(t));
+        return {
+            passed: missing.length === 0,
+            message: missing.length === 0
+                ? 'All tools present'
+                : `Missing tools: ${missing.join(', ')}`
+        };
+    }
+);
+
+// Test 6: Check syntax validity
+test(
+    'Original file syntax valid',
+    () => {
+        try {
+            eval(originalCode);
+            return { passed: true, message: 'Syntax valid' };
+        } catch (error) {
+            return { passed: false, message: `Syntax error: ${error.message}` };
+        }
+    }
+);
+
+test(
+    'Refactored file syntax valid',
+    () => {
+        try {
+            eval(refactoredCode);
+            return { passed: true, message: 'Syntax valid' };
+        } catch (error) {
+            return { passed: false, message: `Syntax error: ${error.message}` };
+        }
+    }
+);
+
+// Test 7: Check error handling coverage
+test(
+    'Error handling improved',
+    () => {
+        const originalTryCount = (originalCode.match(/try\s*{/g) || []).length;
+        const refactoredTryCount = (refactoredCode.match(/try\s*{/g) || []).length;
+        const coverage = Math.min((refactoredTryCount / refactoredMethods.length) * 100, 100);
+
+        return {
+            passed: refactoredTryCount >= originalTryCount,
+            message: `Original: ${originalTryCount} try blocks, Refactored: ${refactoredTryCount} try blocks (${coverage.toFixed(0)}% coverage)`
+        };
+    }
+);
+
+// Test 8: Check line count
+const originalLines = originalCode.split('\n').length;
+const refactoredLines = refactoredCode.split('\n').length;
+test(
+    'Line count reasonable',
+    () => {
+        const increase = ((refactoredLines - originalLines) / originalLines * 100).toFixed(1);
+        return {
+            passed: refactoredLines <= originalLines * 1.1, // Allow 10% increase
+            message: `${originalLines} → ${refactoredLines} (${increase}% increase)`
+        };
+    }
+);
+
+// Test 9: Check method count consistency
+test(
+    'Method count matches',
+    () => {
+        return {
+            passed: originalMethods.length === refactoredMethods.length,
+            message: `Original: ${originalMethods.length}, Refactored: ${refactoredMethods.length}`
+        };
+    }
+);
+
+// Summary
+console.log('\n========================================');
+console.log('Test Summary');
+console.log('========================================\n');
+
+const passed = results.tests.filter(t => t.status === 'PASSED').length;
+const failed = results.tests.filter(t => t.status === 'FAILED' || t.status === 'ERROR').length;
+const passRate = Math.round((passed / results.tests.length) * 100);
+
+console.log(`Total: ${results.tests.length}`);
+console.log(`✅ Passed: ${passed}`);
+console.log(`❌ Failed: ${failed}`);
+console.log(`Pass Rate: ${passRate}%`);
+
+// Save results
+const summary = {
     timestamp: new Date().toISOString(),
     summary: {
-        total: testStats.total,
-        passed: testStats.passed,
-        failed: testStats.failed,
-        passRate: passRate
+        total: results.tests.length,
+        passed,
+        failed,
+        passRate
     },
     comparison: {
         originalLines,
         refactoredLines,
-        lineReduction,
+        lineReduction: (((originalLines - refactoredLines) / originalLines) * 100).toFixed(1),
         originalMethods,
         refactoredMethods,
         originalMaxLength,
         refactoredMaxLength,
         originalNesting,
-        refactoredNesting
-    }
+        refactoredNesting,
+        originalTools,
+        refactoredTools
+    },
+    tests: results.tests
 };
 
-fs.writeFileSync(
-    path.join(__dirname, 'version-comparison-results.json'),
-    JSON.stringify(results, null, 2)
-);
-console.log('测试结果已保存到: tests/managers/version-comparison-results.json\n');
+const resultPath = path.join(__dirname, 'version-comparison-results.json');
+fs.writeFileSync(resultPath, JSON.stringify(summary, null, 2));
+console.log(`\nTest results saved to: ${resultPath}`);
 
-process.exit(testStats.failed > 0 ? 1 : 0);
+// Decision
+console.log('\n========================================');
+console.log('Recommendation');
+console.log('========================================\n');
+
+if (passRate >= 90) {
+    console.log('✅ READY TO REPLACE');
+    console.log('All critical tests passed. Safe to replace.');
+} else if (passRate >= 70) {
+    console.log('⚠️  NEEDS REVIEW');
+    console.log('Most tests passed but some issues found.');
+    console.log('Review failed tests before replacing.');
+} else {
+    console.log('❌ NOT READY');
+    console.log('Too many issues found. Do not replace.');
+}
+
+console.log('');

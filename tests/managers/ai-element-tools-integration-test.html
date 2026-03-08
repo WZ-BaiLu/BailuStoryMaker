@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIElementTools 集成测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            margin-top: 0;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .console {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .progress {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            flex: 1;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin-right: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #28a745;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 AIElementTools 集成测试</h1>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-value" id="totalTests">0</div>
+            <div class="stat-label">总测试数</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="passedTests" style="color: #28a745;">0</div>
+            <div class="stat-label">通过</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="failedTests" style="color: #dc3545;">0</div>
+            <div class="stat-label">失败</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="passRate">0%</div>
+            <div class="stat-label">通过率</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试控制</h2>
+        <button onclick="runAllTests()">运行所有测试</button>
+        <button onclick="testOriginalVersion()">测试原版本</button>
+        <button onclick="testRefactoredVersion()">测试重构版本</button>
+        <button onclick="compareResults()">对比结果</button>
+        <button onclick="exportResults()">导出结果</button>
+    </div>
+
+    <div class="test-section">
+        <h2>测试进度</h2>
+        <div class="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            <div class="progress-text" id="progressText">0/0</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试结果</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>控制台输出</h2>
+        <div class="console" id="consoleOutput"></div>
+    </div>
+
+    <script src="../js/managers/AIElementTools.js"></script>
+    <script src="../js/managers/AIElementTools.refactored.js"></script>
+
+    <script>
+        // Test results storage
+        const testResults = {
+            original: [],
+            refactored: []
+        };
+
+        const consoleElement = document.getElementById('consoleOutput');
+
+        function logToConsole(message) {
+            const time = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.textContent = `[${time}] ${message}`;
+            consoleElement.appendChild(line);
+            consoleElement.scrollTop = consoleElement.scrollHeight;
+            console.log(message);
+        }
+
+        function addTestResult(type, testId, passed, message, duration = 0) {
+            const result = {
+                testId,
+                passed,
+                message,
+                duration,
+                timestamp: new Date().toISOString()
+            };
+
+            testResults[type].push(result);
+            updateUI();
+        }
+
+        function updateUI() {
+            const total = testResults.original.length + testResults.refactored.length;
+            const passed = testResults.original.filter(t => t.passed).length +
+                          testResults.refactored.filter(t => t.passed).length;
+            const failed = total - passed;
+            const rate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+            document.getElementById('totalTests').textContent = total;
+            document.getElementById('passedTests').textContent = passed;
+            document.getElementById('failedTests').textContent = failed;
+            document.getElementById('passRate').textContent = `${rate}%`;
+
+            // Update progress
+            const totalTests = 20; // Expected total
+            document.getElementById('progressText').textContent = `${total}/${totalTests}`;
+            document.getElementById('progressFill').style.width = `${(total / totalTests) * 100}%`;
+
+            // Update results display
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('testResults');
+            container.innerHTML = '';
+
+            // Original version results
+            if (testResults.original.length > 0) {
+                const origSection = document.createElement('div');
+                origSection.innerHTML = '<h3>原版本</h3>';
+                testResults.original.forEach(result => {
+                    const div = document.createElement('div');
+                    div.className = `test-result ${result.passed ? 'success' : 'error'}`;
+                    div.textContent = `${result.testId}: ${result.message} (${result.duration}ms)`;
+                    origSection.appendChild(div);
+                });
+                container.appendChild(origSection);
+            }
+
+            // Refactored version results
+            if (testResults.refactored.length > 0) {
+                const refactSection = document.createElement('div');
+                refactSection.innerHTML = '<h3>重构版本</h3>';
+                testResults.refactored.forEach(result => {
+                    const div = document.createElement('div');
+                    div.className = `test-result ${result.passed ? 'success' : 'error'}`;
+                    div.textContent = `${result.testId}: ${result.message} (${result.duration}ms)`;
+                    refactSection.appendChild(div);
+                });
+                container.appendChild(refactSection);
+            }
+        }
+
+        async function runTest(type, testId, testFn) {
+            const startTime = Date.now();
+            try {
+                await testFn();
+                const duration = Date.now() - startTime;
+                addTestResult(type, testId, true, '通过', duration);
+                logToConsole(`[${type.toUpperCase()}] ${testId} 通过 (${duration}ms)`);
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                addTestResult(type, testId, false, error.message, duration);
+                logToConsole(`[${type.toUpperCase()}] ${testId} 失败: ${error.message}`);
+            }
+        }
+
+        // Mock dependencies
+        class MockElementManager {
+            constructor() {
+                this.elements = [];
+            }
+            addElement(element) {
+                this.elements.push(element);
+                return element;
+            }
+            updateElement(id, updates) {
+                const element = this.elements.find(e => e.id === id);
+                if (element) {
+                    Object.assign(element, updates);
+                    return element;
+                }
+                return null;
+            }
+            getElement(id) {
+                return this.elements.find(e => e.id === id);
+            }
+            addKeyword(id, keyword) {
+                const element = this.getElement(id);
+                if (element) {
+                    if (!element.keywords) element.keywords = [];
+                    element.keywords.push(keyword);
+                }
+            }
+            listElements(type) {
+                return this.elements.filter(e => e.type === type);
+            }
+        }
+
+        class MockStateTimeline {
+            indexParagraphTimestamp(paragraphId, timestamp) {
+                // Mock implementation
+            }
+        }
+
+        class MockStoryData {
+            constructor() {
+                this.chapters = [
+                    { id: 'chapter1', paragraphs: [] }
+                ];
+            }
+        }
+
+        // Test functions
+        async function testOriginalVersion() {
+            logToConsole('开始测试原版本...');
+            testResults.original = [];
+
+            const mockElementManager = new MockElementManager();
+            const mockStateTimeline = new MockStateTimeline();
+            const mockStoryData = new MockStoryData();
+
+            const aiTools = new AIElementTools(mockElementManager, mockStateTimeline, mockStoryData);
+
+            await runTest('original', '1.1 addElement', async () => {
+                const result = await aiTools.addElement({
+                    type: 'character',
+                    name: '张三',
+                    description: '主角',
+                    keywords: ['hero']
+                });
+                if (!result.success) throw new Error('addElement failed');
+                if (mockElementManager.elements.length !== 1) throw new Error('Element not added');
+            });
+
+            await runTest('original', '1.2 addElement - invalid type', async () => {
+                try {
+                    await aiTools.addElement({
+                        type: 'invalid',
+                        name: 'Test',
+                        description: 'Test'
+                    });
+                    throw new Error('Should have thrown error');
+                } catch (error) {
+                    // Expected to throw
+                }
+            });
+
+            await runTest('original', '2.1 updateElementLocation', async () => {
+                const result = await aiTools.updateElementLocation({
+                    elementId: mockElementManager.elements[0].id,
+                    location: 'location1'
+                });
+                if (!result.success) throw new Error('updateElementLocation failed');
+            });
+
+            await runTest('original', '3.1 updateElementDescription', async () => {
+                const result = await aiTools.updateElementDescription({
+                    elementId: mockElementManager.elements[0].id,
+                    description: '更新后的描述'
+                });
+                if (!result.success) throw new Error('updateElementDescription failed');
+                if (!result.changes || !result.changes.description) throw new Error('No changes recorded');
+            });
+
+            await runTest('original', '3.2 updateElementDescription - keywords', async () => {
+                const result = await aiTools.updateElementDescription({
+                    elementId: mockElementManager.elements[0].id,
+                    keywords: ['brave', 'smart']
+                });
+                if (!result.success) throw new Error('updateElementDescription with keywords failed');
+            });
+
+            await runTest('original', '4.1 getContextInfo', async () => {
+                const result = await aiTools.getContextInfo({});
+                if (!result.success) throw new Error('getContextInfo failed');
+            });
+
+            await runTest('original', '5.1 listElements', async () => {
+                const result = await aiTools.listElements({
+                    types: ['characters']
+                });
+                if (!result.success) throw new Error('listElements failed');
+            });
+
+            logToConsole('原版本测试完成');
+        }
+
+        async function testRefactoredVersion() {
+            logToConsole('开始测试重构版本...');
+            testResults.refactored = [];
+
+            const mockElementManager = new MockElementManager();
+            const mockStateTimeline = new MockStateTimeline();
+            const mockStoryData = new MockStoryData();
+
+            const aiTools = new AIElementTools(mockElementManager, mockStateTimeline, mockStoryData);
+
+            await runTest('refactored', '1.1 addElement', async () => {
+                const result = await aiTools.addElement({
+                    type: 'character',
+                    name: '李四',
+                    description: '主角',
+                    keywords: ['hero']
+                });
+                if (!result.success) throw new Error('addElement failed');
+                if (mockElementManager.elements.length !== 1) throw new Error('Element not added');
+            });
+
+            await runTest('refactored', '1.2 addElement - invalid type', async () => {
+                try {
+                    await aiTools.addElement({
+                        type: 'invalid',
+                        name: 'Test',
+                        description: 'Test'
+                    });
+                    throw new Error('Should have thrown error');
+                } catch (error) {
+                    // Expected to throw
+                }
+            });
+
+            await runTest('refactored', '2.1 updateElementLocation', async () => {
+                const result = await aiTools.updateElementLocation({
+                    elementId: mockElementManager.elements[0].id,
+                    location: 'location1'
+                });
+                if (!result.success) throw new Error('updateElementLocation failed');
+            });
+
+            await runTest('refactored', '3.1 updateElementDescription', async () => {
+                const result = await aiTools.updateElementDescription({
+                    elementId: mockElementManager.elements[0].id,
+                    description: '更新后的描述'
+                });
+                if (!result.success) throw new Error('updateElementDescription failed');
+                if (!result.changes || !result.changes.description) throw new Error('No changes recorded');
+            });
+
+            await runTest('refactored', '3.2 updateElementDescription - keywords', async () => {
+                const result = await aiTools.updateElementDescription({
+                    elementId: mockElementManager.elements[0].id,
+                    keywords: ['brave', 'smart']
+                });
+                if (!result.success) throw new Error('updateElementDescription with keywords failed');
+            });
+
+            await runTest('refactored', '4.1 getContextInfo', async () => {
+                const result = await aiTools.getContextInfo({});
+                if (!result.success) throw new Error('getContextInfo failed');
+            });
+
+            await runTest('refactored', '5.1 listElements', async () => {
+                const result = await aiTools.listElements({
+                    types: ['characters']
+                });
+                if (!result.success) throw new Error('listElements failed');
+            });
+
+            logToConsole('重构版本测试完成');
+        }
+
+        async function runAllTests() {
+            logToConsole('开始运行所有测试...');
+            await testOriginalVersion();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testRefactoredVersion();
+            logToConsole('所有测试完成');
+        }
+
+        function compareResults() {
+            logToConsole('对比测试结果...');
+
+            const container = document.getElementById('testResults');
+            const comparisonDiv = document.createElement('div');
+            comparisonDiv.className = 'test-section';
+            comparisonDiv.innerHTML = '<h3>结果对比</h3>';
+
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>测试</th>
+                        <th>原版本</th>
+                        <th>重构版本</th>
+                        <th>一致性</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+
+            const tbody = table.querySelector('tbody');
+            const maxTests = Math.max(testResults.original.length, testResults.refactored.length);
+
+            for (let i = 0; i < maxTests; i++) {
+                const orig = testResults.original[i];
+                const refact = testResults.refactored[i];
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${orig ? orig.testId : refact.testId}</td>
+                    <td>${orig ? (orig.passed ? '✅ 通过' : '❌ 失败') : '-'}</td>
+                    <td>${refact ? (refact.passed ? '✅ 通过' : '❌ 失败') : '-'}</td>
+                    <td>${orig && refact && (orig.passed === refact.passed) ? '✅ 一致' : '❌ 不一致'}</td>
+                `;
+                tbody.appendChild(row);
+            }
+
+            comparisonDiv.appendChild(table);
+            container.appendChild(comparisonDiv);
+
+            // Summary
+            let consistent = 0;
+            for (let i = 0; i < Math.min(testResults.original.length, testResults.refactored.length); i++) {
+                if (testResults.original[i].passed === testResults.refactored[i].passed) {
+                    consistent++;
+                }
+            }
+            const consistencyRate = Math.round((consistent / Math.min(testResults.original.length, testResults.refactored.length)) * 100);
+
+            logToConsole(`一致性率: ${consistencyRate}%`);
+        }
+
+        function exportResults() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                original: testResults.original,
+                refactored: testResults.refactored,
+                summary: {
+                    originalPassed: testResults.original.filter(t => t.passed).length,
+                    originalTotal: testResults.original.length,
+                    refactoredPassed: testResults.refactored.filter(t => t.passed).length,
+                    refactoredTotal: testResults.refactored.length
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-element-tools-test-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            logToConsole('测试结果已导出');
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            logToConsole('页面加载完成');
+            // Uncomment to auto-run tests
+            // setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>

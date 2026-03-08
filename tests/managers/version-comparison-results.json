@@ -1,33 +1,96 @@
 {
-  "timestamp": "2026-03-08T04:29:11.832Z",
+  "timestamp": "2026-03-08T04:40:47.016Z",
   "summary": {
-    "total": 9,
-    "passed": 7,
+    "total": 10,
+    "passed": 8,
     "failed": 2,
-    "passRate": 78
+    "passRate": 80
   },
   "comparison": {
     "originalLines": 714,
-    "refactoredLines": 727,
-    "lineReduction": "-1.8",
+    "refactoredLines": 828,
+    "lineReduction": "-16.0",
     "originalMethods": [
       "addElement",
       "updateElementLocation",
       "updateElementDescription",
       "updateParagraphTimestamp",
       "getContextInfo",
-      "listElements"
+      "listElements",
+      "catch",
+      "if",
+      "for",
+      "getToolDefinitions"
     ],
     "refactoredMethods": [
       "addElement",
       "updateElementLocation",
+      "updateElementDescription",
       "updateParagraphTimestamp",
       "getContextInfo",
-      "listElements"
+      "listElements",
+      "catch",
+      "if",
+      "for",
+      "getToolDefinitions"
     ],
     "originalMaxLength": 168,
-    "refactoredMaxLength": 136,
+    "refactoredMaxLength": 172,
     "originalNesting": 11,
-    "refactoredNesting": 9
-  }
+    "refactoredNesting": 9,
+    "originalTools": [],
+    "refactoredTools": []
+  },
+  "tests": [
+    {
+      "test": "Refactored version includes updateElementDescription",
+      "status": "PASSED",
+      "message": "updateElementDescription found"
+    },
+    {
+      "test": "All original methods present in refactored version",
+      "status": "PASSED",
+      "message": "All methods present"
+    },
+    {
+      "test": "Function length reduced",
+      "status": "FAILED",
+      "message": "168 → 172 (-2.4%)"
+    },
+    {
+      "test": "Nesting depth reduced",
+      "status": "PASSED",
+      "message": "11 → 9 (18.2%)"
+    },
+    {
+      "test": "Tool definitions complete",
+      "status": "PASSED",
+      "message": "All tools present"
+    },
+    {
+      "test": "Original file syntax valid",
+      "status": "PASSED",
+      "message": "Syntax valid"
+    },
+    {
+      "test": "Refactored file syntax valid",
+      "status": "PASSED",
+      "message": "Syntax valid"
+    },
+    {
+      "test": "Error handling improved",
+      "status": "PASSED",
+      "message": "Original: 7 try blocks, Refactored: 7 try blocks (70% coverage)"
+    },
+    {
+      "test": "Line count reasonable",
+      "status": "FAILED",
+      "message": "714 → 828 (16.0% increase)"
+    },
+    {
+      "test": "Method count matches",
+      "status": "PASSED",
+      "message": "Original: 10, Refactored: 10"
+    }
+  ]
 }

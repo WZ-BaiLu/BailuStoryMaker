@@ -55,6 +55,16 @@ class AIElementTools {
     }
   }
 
+  async updateElementDescription(params) {
+    try {
+      return await this._executeWithTimeout(() => {
+        return this._updateElementDescription(params);
+      });
+    } catch (error) {
+      return this._handleError('updateElementDescription', error);
+    }
+  }
+
   async updateParagraphTimestamp(params) {
     try {
       return await this._executeWithTimeout(() => {
@@ -117,7 +127,7 @@ class AIElementTools {
   _updateElementLocation(params) {
     const { elementId, location } = params;
     const element = this._resolveElement(elementId);
-    
+
     this._validateLocation(location, element);
 
     element.location = location || null;
@@ -126,6 +136,61 @@ class AIElementTools {
     return {
       success: true,
       message: `Element ${element.name} location updated to ${location || 'none'}`
+    };
+  }
+
+  /**
+   * Update element description implementation - Refactored
+   * @private
+   */
+  _updateElementDescription(params) {
+    const { elementId, description, stateDescription, keywords, status } = params;
+
+    // Validate element exists
+    const element = this._resolveElement(elementId);
+
+    // Collect changes
+    const changes = {};
+    const updates = {};
+
+    if (description !== undefined) {
+      updates.description = description;
+      changes.description = description;
+    }
+
+    if (stateDescription !== undefined) {
+      updates.stateDescription = stateDescription;
+      changes.stateDescription = stateDescription;
+    }
+
+    if (keywords !== undefined) {
+      if (!Array.isArray(keywords)) {
+        throw new Error('keywords must be an array');
+      }
+      // Validate all keywords are strings
+      const invalidKeywords = keywords.filter(k => typeof k !== 'string');
+      if (invalidKeywords.length > 0) {
+        throw new Error('All keywords must be strings');
+      }
+      updates.keywords = keywords;
+      changes.keywords = keywords;
+    }
+
+    if (status !== undefined) {
+      // Add status keyword
+      this.elementManager.addKeyword(elementId, status);
+      changes.status = status;
+    }
+
+    // Apply updates
+    if (Object.keys(updates).length > 0) {
+      this.elementManager.updateElement(elementId, updates);
+    }
+
+    return {
+      success: true,
+      message: `Element "${element.name}" description updated`,
+      changes
     };
   }
 
@@ -677,6 +742,42 @@ class AIElementTools {
               location: {
                 type: 'string',
                 description: '新位置 ID（设置为 null 移除位置）'
+              }
+            },
+            required: ['elementId']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'updateElementDescription',
+          description: '更新元素的描述、状态描述、关键词和状态信息',
+          parameters: {
+            type: 'object',
+            properties: {
+              elementId: {
+                type: 'string',
+                description: '元素 ID 或名称'
+              },
+              description: {
+                type: 'string',
+                description: '元素描述（可选）'
+              },
+              stateDescription: {
+                type: 'string',
+                description: '状态描述对象（可选）'
+              },
+              keywords: {
+                type: 'array',
+                items: {
+                  type: 'string'
+                },
+                description: '关键词数组（可选）'
+              },
+              status: {
+                type: 'string',
+                description: '状态关键词，如 "破损"、"被遗忘" 等（可选）'
               }
             },
             required: ['elementId']
