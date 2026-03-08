@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-03-08T04:29:11.832Z",
+  "summary": {
+    "total": 9,
+    "passed": 7,
+    "failed": 2,
+    "passRate": 78
+  },
+  "comparison": {
+    "originalLines": 714,
+    "refactoredLines": 727,
+    "lineReduction": "-1.8",
+    "originalMethods": [
+      "addElement",
+      "updateElementLocation",
+      "updateElementDescription",
+      "updateParagraphTimestamp",
+      "getContextInfo",
+      "listElements"
+    ],
+    "refactoredMethods": [
+      "addElement",
+      "updateElementLocation",
+      "updateParagraphTimestamp",
+      "getContextInfo",
+      "listElements"
+    ],
+    "originalMaxLength": 168,
+    "refactoredMaxLength": 136,
+    "originalNesting": 11,
+    "refactoredNesting": 9
+  }
+}
