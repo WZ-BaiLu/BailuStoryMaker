@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-03-08T04:20:31.268Z",
+  "summary": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "passRate": 100
+  },
+  "tests": [
+    {
+      "testId": "1.1",
+      "passed": true,
+      "message": "成功执行异步函数"
+    },
+    {
+      "testId": "1.2",
+      "passed": true,
+      "message": "捕获异步错误"
+    },
+    {
+      "testId": "1.3",
+      "passed": true,
+      "message": "不提供上下文"
+    },
+    {
+      "testId": "2.1",
+      "passed": true,
+      "message": "成功执行同步函数"
+    },
+    {
+      "testId": "2.2",
+      "passed": true,
+      "message": "捕获同步错误"
+    },
+    {
+      "testId": "3.1",
+      "passed": true,
+      "message": "使用通知管理器"
+    },
+    {
+      "testId": "3.2",
+      "passed": true,
+      "message": "无通知管理器"
+    },
+    {
+      "testId": "4.1",
+      "passed": true,
+      "message": "验证通过"
+    },
+    {
+      "testId": "4.2",
+      "passed": true,
+      "message": "必填字段为空"
+    },
+    {
+      "testId": "4.3",
+      "passed": true,
+      "message": "字段太短"
+    },
+    {
+      "testId": "4.4",
+      "passed": true,
+      "message": "字段太长"
+    },
+    {
+      "testId": "4.5",
+      "passed": true,
+      "message": "正则表达式验证"
+    },
+    {
+      "testId": "4.6",
+      "passed": true,
+      "message": "多字段验证"
+    },
+    {
+      "testId": "5.1",
+      "passed": true,
+      "message": "空函数处理"
+    },
+    {
+      "testId": "5.2",
+      "passed": true,
+      "message": "null 参数处理"
+    },
+    {
+      "testId": "5.3",
+      "passed": true,
+      "message": "空验证规则"
+    }
+  ]
+}

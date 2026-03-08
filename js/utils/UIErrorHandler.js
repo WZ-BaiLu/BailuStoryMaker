@@ -51,8 +51,10 @@ class UIErrorHandler {
   }
 }
 
-// Export for testing
+// Export for testing (Node.js only)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { UIErrorHandler };
+  module.exports.UIErrorHandler = UIErrorHandler;
 }
+
+
 

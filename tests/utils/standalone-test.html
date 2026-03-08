@@ -750,10 +750,41 @@
 
         // 页面加载完成后自动运行所有测试
         window.addEventListener('load', () => {
-            logToConsole('页面加载完成，等待手动测试...');
-            // 可选：取消注释以自动运行所有测试
-            // setTimeout(runAllTests, 1000);
+            logToConsole('页面加载完成，准备自动运行测试...');
+            // 自动运行所有测试
+            setTimeout(runAllTests, 1000);
+
+            // 测试完成后导出结果
+            setTimeout(() => {
+                exportTestResults();
+            }, 10000); // 10秒后导出（确保所有测试完成）
         });
+
+        // 导出测试结果
+        function exportTestResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                summary: {
+                    total: testStats.total,
+                    passed: testStats.passed,
+                    failed: testStats.failed,
+                    passRate: testStats.total > 0 ? 
+                        Math.round((testStats.passed / testStats.total) * 100) : 0
+                },
+                tests: testStats.tests
+            };
+
+            // 创建 Blob 并下载
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'test-results-' + Date.now() + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            logToConsole(`测试结果已导出到 test-results-${Date.now()}.json`);
+        }
     </script>
 </body>
 </html>
