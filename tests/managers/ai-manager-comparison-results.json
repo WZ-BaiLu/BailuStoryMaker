@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-03-08T04:58:45.558Z",
+  "summary": {
+    "total": 7,
+    "passed": 5,
+    "failed": 2,
+    "passRate": 71
+  },
+  "comparison": {
+    "originalLines": 2674,
+    "refactoredLines": 649,
+    "originalMethods": 79,
+    "refactoredMethods": 31,
+    "originalMaxLength": 101,
+    "refactoredMaxLength": 58,
+    "originalNesting": 8,
+    "refactoredNesting": 7
+  },
+  "tests": [
+    {
+      "test": "Line count comparison",
+      "status": "PASSED",
+      "message": "2674 → 649 (75.7%)"
+    },
+    {
+      "test": "Method count comparison",
+      "status": "FAILED",
+      "message": "Original: 79, Refactored: 31"
+    },
+    {
+      "test": "All critical methods present",
+      "status": "FAILED",
+      "message": "Missing: generateStory, generateChapter, generateParagraph, generateParagraphWithAI, generateEvents"
+    },
+    {
+      "test": "Function length reduced",
+      "status": "PASSED",
+      "message": "101 → 58 (42.6%)"
+    },
+    {
+      "test": "Nesting depth reduced",
+      "status": "PASSED",
+      "message": "8 → 7 (12.5%)"
+    },
+    {
+      "test": "Original syntax valid",
+      "status": "PASSED",
+      "message": "Valid"
+    },
+    {
+      "test": "Refactored syntax valid",
+      "status": "PASSED",
+      "message": "Valid"
+    }
+  ]
+}
